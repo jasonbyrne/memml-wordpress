@@ -13,6 +13,7 @@ $events_fixture     = file_get_contents( __DIR__ . '/fixtures/events.json' ); //
 $volunteers_fixture = file_get_contents( __DIR__ . '/fixtures/volunteer-opportunities.json' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local test fixture.
 $previous_options   = get_option( Memml_Settings::OPTION_NAME, false );
 $had_options        = false !== $previous_options;
+$previous_query     = $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Preserve test process state.
 
 $mock_request = static function ( $response, $args, $url ) use ( $events_fixture, $volunteers_fixture ) {
 	unset( $response, $args );
@@ -112,9 +113,27 @@ try {
 		}
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, source and layout toggles, timezone, and month view smoke test passed.' );
+	$_GET['memml_calendar'] = 'events';
+	$_GET['memml_view']     = 'month';
+	$_GET['memml_month']    = '2026-10';
+
+	$query_html         = do_shortcode( '[memml_calendar calendar="volunteers" view="list"]' );
+	$query_expectations = array(
+		'data-calendar="events"',
+		'data-layout="month"',
+		'data-month="2026-10" data-month-label="October 2026"><div',
+	);
+
+	foreach ( $query_expectations as $expectation ) {
+		if ( false === strpos( $query_html, $expectation ) ) {
+			throw new RuntimeException( 'Missing direct-link query output: ' . $expectation );
+		}
+	}
+
+	WP_CLI::success( 'Memml Calendar activation, connection, URL state, source and layout toggles, timezone, and month view smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
+	$_GET = $previous_query;
 
 	if ( $had_options ) {
 		update_option( Memml_Settings::OPTION_NAME, $previous_options );

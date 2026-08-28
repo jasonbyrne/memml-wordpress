@@ -26,6 +26,11 @@ Set `calendar="volunteers"` on `[memml_calendar]` when volunteer opportunities s
 be selected first. Set `view="month"` on any shortcode when Month should be selected
 first. These properties set the initial selections; visitors can change them.
 
+Calendar changes are reflected in the page URL using `memml_calendar`, `memml_view`,
+and `memml_month` query parameters. Visitors can copy that URL to share the selected
+calendar, layout, and displayed month. Query parameters override the shortcode or
+block's initial selections when a shared link is opened.
+
 The plugin requests public data from memml.com, caches successful responses,
 revalidates them using ETags, and can show the last known-good response during a
 temporary service or network error.
@@ -57,6 +62,11 @@ Yes. Each page can use the events block, the volunteers block, or both.
 
 Yes. Visitors can switch between List and Month. The block setting or `view` shortcode
 property controls which view they see first.
+
+= Can I link directly to a selected calendar view? =
+
+Yes. The URL updates as visitors change the calendar, layout, or displayed month.
+Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
 

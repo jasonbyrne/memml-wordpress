@@ -54,8 +54,8 @@ final class Memml_Renderer {
 		$this->enqueue_assets();
 		++self::$instance;
 
-		$calendar          = 'volunteers' === $calendar ? 'volunteers' : 'events';
-		$layout            = $this->normalize_layout( $layout );
+		$calendar          = $this->get_initial_calendar( $calendar );
+		$layout            = $this->get_initial_layout( $layout );
 		$instance_id       = 'memml-calendar-' . self::$instance;
 		$events_id         = $instance_id . '-events';
 		$volunteers_id     = $instance_id . '-volunteers';
@@ -292,35 +292,46 @@ final class Memml_Renderer {
 		ksort( $months );
 		++self::$instance;
 
-		$calendar_id = 'memml-month-calendar-' . self::$instance;
-		$month_count = count( $months );
-		$first_month = reset( $months );
-		$first_label = wp_date( 'F Y', $first_month['first_day']->getTimestamp(), $timezone );
-		$navigation  = sprintf(
+		$calendar_id     = 'memml-month-calendar-' . self::$instance;
+		$month_keys      = array_keys( $months );
+		$month_count     = count( $months );
+		$requested_month = $this->get_requested_month();
+		$selected_index  = array_search( $requested_month, $month_keys, true );
+
+		if ( false === $selected_index ) {
+			$selected_index = 0;
+		}
+
+		$selected_month = $months[ $month_keys[ $selected_index ] ];
+		$first_label    = wp_date( 'F Y', $selected_month['first_day']->getTimestamp(), $timezone );
+		$navigation     = sprintf(
 			'<div class="memml-calendar__month-header"><h3 aria-live="polite" class="memml-calendar__month-label" data-memml-month-label>%s</h3></div>',
 			esc_html( $first_label )
 		);
 
 		if ( $month_count > 1 ) {
 			$navigation = sprintf(
-				'<div class="memml-calendar__month-header"><button aria-controls="%1$s" aria-label="%2$s" class="memml-calendar__month-button" data-memml-month-prev disabled type="button">&lsaquo;</button><h3 aria-live="polite" class="memml-calendar__month-label" data-memml-month-label>%3$s</h3><button aria-controls="%1$s" aria-label="%4$s" class="memml-calendar__month-button" data-memml-month-next type="button">&rsaquo;</button></div>',
+				'<div class="memml-calendar__month-header"><button aria-controls="%1$s" aria-label="%2$s" class="memml-calendar__month-button" data-memml-month-prev%3$s type="button">&lsaquo;</button><h3 aria-live="polite" class="memml-calendar__month-label" data-memml-month-label>%4$s</h3><button aria-controls="%1$s" aria-label="%5$s" class="memml-calendar__month-button" data-memml-month-next%6$s type="button">&rsaquo;</button></div>',
 				esc_attr( $calendar_id ),
 				esc_attr__( 'Previous month', 'memml' ),
+				0 === $selected_index ? ' disabled' : '',
 				esc_html( $first_label ),
-				esc_attr__( 'Next month', 'memml' )
+				esc_attr__( 'Next month', 'memml' ),
+				$selected_index === $month_count - 1 ? ' disabled' : ''
 			);
 		}
 
 		$panels = '';
 		$index  = 0;
 
-		foreach ( $months as $month ) {
-			$panels .= $this->render_month_panel( $month, $feed, $timezone, $index );
+		foreach ( $months as $month_key => $month ) {
+			$panels .= $this->render_month_panel( $month, $month_key, $feed, $timezone, $index, $selected_index );
 			++$index;
 		}
 
 		return sprintf(
-			'<div class="memml-calendar__month" data-memml-month-calendar data-month-count="%1$d">%2$s<div id="%3$s">%4$s</div></div>',
+			'<div class="memml-calendar__month" data-feed="%1$s" data-memml-month-calendar data-month-count="%2$d">%3$s<div id="%4$s">%5$s</div></div>',
+			esc_attr( $feed ),
 			$month_count,
 			$navigation,
 			esc_attr( $calendar_id ),
@@ -331,13 +342,15 @@ final class Memml_Renderer {
 	/**
 	 * Renders one month table.
 	 *
-	 * @param array        $month    Grouped month data.
-	 * @param string       $feed     Feed identifier.
-	 * @param DateTimeZone $timezone Organization timezone.
-	 * @param int          $index    Month index.
+	 * @param array        $month          Grouped month data.
+	 * @param string       $month_key      Month key in YYYY-MM format.
+	 * @param string       $feed           Feed identifier.
+	 * @param DateTimeZone $timezone       Organization timezone.
+	 * @param int          $index          Month index.
+	 * @param int          $selected_index Initially selected month index.
 	 * @return string
 	 */
-	private function render_month_panel( $month, $feed, $timezone, $index ) {
+	private function render_month_panel( $month, $month_key, $feed, $timezone, $index, $selected_index ) {
 		$first_day     = $month['first_day'];
 		$month_label   = wp_date( 'F Y', $first_day->getTimestamp(), $timezone );
 		$start_of_week = min( 6, max( 0, (int) get_option( 'start_of_week', 0 ) ) );
@@ -391,10 +404,11 @@ final class Memml_Renderer {
 		}
 
 		return sprintf(
-			'<section class="memml-calendar__month-panel" data-memml-month-index="%1$d" data-month-label="%2$s"%3$s><div class="memml-calendar__month-scroll"><table class="memml-calendar__month-table"><caption class="screen-reader-text">%2$s</caption><thead><tr>%4$s</tr></thead><tbody>%5$s</tbody></table></div></section>',
+			'<section class="memml-calendar__month-panel" data-memml-month-index="%1$d" data-month="%2$s" data-month-label="%3$s"%4$s><div class="memml-calendar__month-scroll"><table class="memml-calendar__month-table"><caption class="screen-reader-text">%3$s</caption><thead><tr>%5$s</tr></thead><tbody>%6$s</tbody></table></div></section>',
 			$index,
+			esc_attr( $month_key ),
 			esc_attr( $month_label ),
-			0 === $index ? '' : ' hidden',
+			$selected_index === $index ? '' : ' hidden',
 			$weekday_row,
 			$rows
 		);
@@ -509,7 +523,71 @@ final class Memml_Renderer {
 	private function get_layout_from_attributes( $attributes ) {
 		$layout = is_array( $attributes ) && isset( $attributes['view'] ) ? $attributes['view'] : 'list';
 
-		return $this->normalize_layout( $layout );
+		return $this->get_initial_layout( $layout );
+	}
+
+	/**
+	 * Gets the initial calendar, allowing a direct-link query to override content settings.
+	 *
+	 * @param string $calendar Calendar configured by the block or shortcode.
+	 * @return string
+	 */
+	private function get_initial_calendar( $calendar ) {
+		$query_calendar = $this->get_query_choice( 'memml_calendar', array( 'events', 'volunteers' ) );
+
+		if ( '' !== $query_calendar ) {
+			return $query_calendar;
+		}
+
+		return 'volunteers' === $calendar ? 'volunteers' : 'events';
+	}
+
+	/**
+	 * Gets the initial layout, allowing a direct-link query to override content settings.
+	 *
+	 * @param string $layout Layout configured by the block or shortcode.
+	 * @return string
+	 */
+	private function get_initial_layout( $layout ) {
+		$query_layout = $this->get_query_choice( 'memml_view', array( 'list', 'month' ) );
+
+		return '' !== $query_layout ? $query_layout : $this->normalize_layout( $layout );
+	}
+
+	/**
+	 * Gets a valid requested month in YYYY-MM format.
+	 *
+	 * @return string
+	 */
+	private function get_requested_month() {
+		$month = $this->get_query_value( 'memml_month' );
+
+		return preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/D', $month ) ? $month : '';
+	}
+
+	/**
+	 * Gets an allow-listed public query value.
+	 *
+	 * @param string $parameter Query parameter name.
+	 * @param array  $allowed   Allowed values.
+	 * @return string
+	 */
+	private function get_query_choice( $parameter, $allowed ) {
+		$value = $this->get_query_value( $parameter );
+
+		return in_array( $value, $allowed, true ) ? $value : '';
+	}
+
+	/**
+	 * Gets a sanitized scalar public query value.
+	 *
+	 * @param string $parameter Query parameter name.
+	 * @return string
+	 */
+	private function get_query_value( $parameter ) {
+		$value = isset( $_GET[ $parameter ] ) ? wp_unslash( $_GET[ $parameter ] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public display state only.
+
+		return is_string( $value ) ? sanitize_key( $value ) : '';
 	}
 
 	/**
