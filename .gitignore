@@ -4,6 +4,8 @@
 node_modules/
 vendor/
 npm-debug.log*
+dist/
+memml-wordpress.zip
 plugin-check-build/
 playwright-report/
 test-results/

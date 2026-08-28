@@ -12,6 +12,9 @@
 /src
 /tests
 /plugin-check-build
+/dist
+/playwright.config.js
+/scripts
 /vendor
 /.distignore
 /.gitignore

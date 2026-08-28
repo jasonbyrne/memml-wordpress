@@ -49,11 +49,16 @@ temporary service or network error.
 
 == Installation ==
 
-1. Upload the plugin files to `/wp-content/plugins/memml`, or install a release ZIP.
-2. Activate Memml Calendar through the Plugins screen in WordPress.
-3. Open Settings > Memml Calendar and enter your Memml organization key.
-4. Select Test connection and confirm that your organization name appears.
-5. Add either Memml Events or Memml Volunteers to a page.
+1. Download the `memml-calendar-VERSION.zip` file attached to the latest GitHub release. Do not use GitHub's automatically generated Source code archive.
+2. In WordPress Admin, open Plugins > Add New Plugin and select Upload Plugin.
+3. Choose the downloaded ZIP, select Install Now, and then activate Memml Calendar.
+4. Open Settings > Memml Calendar and enter your Memml organization key. For a feed URL containing `/api/public/v1/river-city-neighbors/events.json`, the key is `river-city-neighbors`.
+5. Select Test connection and confirm that your organization name appears.
+6. Add the Memml Calendar, Memml Events, or Memml Volunteers block to a page. Shortcodes are also available as described above.
+
+To update a manually installed copy, download the newer release ZIP and upload it
+through Plugins > Add New Plugin > Upload Plugin. WordPress will offer to replace the
+installed version.
 
 == Frequently Asked Questions ==
 
