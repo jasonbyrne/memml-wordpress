@@ -1,6 +1,11 @@
 import { registerBlockType } from '@wordpress/blocks';
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
-import { PanelBody, Placeholder, SelectControl } from '@wordpress/components';
+import {
+	PanelBody,
+	Placeholder,
+	SelectControl,
+	TextControl,
+} from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 import calendarMetadata from '../blocks/calendar/block.json';
@@ -31,6 +36,20 @@ const PeriodControl = ( { value, onChange } ) => (
 	/>
 );
 
+const UrlKeyControl = ( { value, onChange } ) => (
+	<TextControl
+		label={ __( 'Share-link identifier', 'memml' ) }
+		help={ __(
+			'Optional. Use a short, unique identifier when a page contains more than one Memml calendar.',
+			'memml'
+		) }
+		value={ value }
+		onChange={ ( urlKey ) =>
+			onChange( urlKey.toLowerCase().replace( /[^a-z0-9_-]/g, '' ) )
+		}
+	/>
+);
+
 const createFeedEdit = ( label, instructions ) =>
 	function FeedEdit( { attributes, setAttributes } ) {
 		return (
@@ -45,6 +64,12 @@ const createFeedEdit = ( label, instructions ) =>
 							value={ attributes.period }
 							onChange={ ( period ) =>
 								setAttributes( { period } )
+							}
+						/>
+						<UrlKeyControl
+							value={ attributes.urlKey }
+							onChange={ ( urlKey ) =>
+								setAttributes( { urlKey } )
 							}
 						/>
 					</PanelBody>
@@ -80,6 +105,10 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 				<PeriodControl
 					value={ attributes.period }
 					onChange={ ( period ) => setAttributes( { period } ) }
+				/>
+				<UrlKeyControl
+					value={ attributes.urlKey }
+					onChange={ ( urlKey ) => setAttributes( { urlKey } ) }
 				/>
 			</PanelBody>
 		</InspectorControls>

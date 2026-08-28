@@ -70,14 +70,15 @@ try {
 		throw new RuntimeException( 'The connection test did not return the fixture organization name.' );
 	}
 
-	$html        = do_shortcode( '[memml_calendar calendar="volunteers"]' );
-	$month_html  = do_shortcode( '[memml_calendar calendar="events" view="month"]' );
-	$events_html = do_shortcode( '[memml_events view="month"]' );
+	$html        = do_shortcode( '[memml_calendar calendar="volunteers" url_key="primary"]' );
+	$month_html  = do_shortcode( '[memml_calendar calendar="events" view="month" url_key="monthly"]' );
+	$events_html = do_shortcode( '[memml_events view="month" url_key="events"]' );
 
 	$expectations = array(
 		'data-calendar="volunteers"',
 		'data-layout="list"',
 		'data-period="upcoming"',
+		'data-memml-url-prefix="memml_primary_"',
 		'data-memml-layout="list"',
 		'data-memml-layout="month"',
 		'data-memml-period="upcoming"',
@@ -98,6 +99,7 @@ try {
 		'data-memml-month-calendar',
 		'September 2026',
 		'October 2026',
+		'data-month="2026-08" data-month-label="August 2026"',
 		'Riverside Cleanup',
 		'Community Dinner',
 	);
@@ -158,13 +160,18 @@ try {
 		throw new RuntimeException( 'Upcoming events leaked into the Past panel.' );
 	}
 
-	$_GET['memml_calendar'] = 'events';
-	$_GET['memml_view']     = 'month';
-	$_GET['memml_month']    = '2026-10';
-	$_GET['memml_period']   = 'past';
+	if ( false !== strpos( $past_segment, 'register/school-supply-drive' ) || false !== strpos( $past_segment, 'events/evt_01JPASTLATER.ics' ) ) {
+		throw new RuntimeException( 'Expired actions were rendered for a past event.' );
+	}
 
-	$query_html         = do_shortcode( '[memml_calendar calendar="volunteers" view="list"]' );
+	$_GET['memml_shared_calendar'] = 'events';
+	$_GET['memml_shared_view']     = 'month';
+	$_GET['memml_shared_month']    = '2026-10';
+	$_GET['memml_shared_period']   = 'past';
+
+	$query_html         = do_shortcode( '[memml_calendar calendar="volunteers" view="list" url_key="shared"]' );
 	$query_expectations = array(
+		'data-memml-url-prefix="memml_shared_"',
 		'data-calendar="events"',
 		'data-layout="month"',
 		'data-period="past"',
@@ -175,6 +182,12 @@ try {
 		if ( false === strpos( $query_html, $expectation ) ) {
 			throw new RuntimeException( 'Missing direct-link query output: ' . $expectation );
 		}
+	}
+
+	$second_html = do_shortcode( '[memml_volunteers url_key="sidebar"]' );
+
+	if ( false === strpos( $second_html, 'data-memml-url-prefix="memml_sidebar_"' ) || false !== strpos( $second_html, 'data-layout="month"' ) ) {
+		throw new RuntimeException( 'A second calendar did not retain its independently scoped initial state.' );
 	}
 
 	WP_CLI::success( 'Memml Calendar activation, connection, URL state, upcoming/past filtering, sorting, toggles, timezone, and month view smoke test passed.' );

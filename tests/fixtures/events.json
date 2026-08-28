@@ -28,9 +28,9 @@
       "url": "https://memml.com/river-city-neighbors/events/school-supply-drive",
       "imageUrl": null,
       "icsUrl": "https://memml.com/api/public/v1/river-city-neighbors/events/evt_01JPASTLATER.ics",
-      "publicEventUrl": null,
-      "ctaLabel": null,
-      "volunteerSignupUrl": null
+      "publicEventUrl": "https://rivercityneighbors.example/register/school-supply-drive",
+      "ctaLabel": "Register",
+      "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/school-supply-drive"
     },
     {
       "id": "evt_01JPASTEARLIER",

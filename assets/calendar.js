@@ -3,12 +3,27 @@
 
 	const rootControllers = [];
 	const monthControllers = [];
+	const messages = window.memmlCalendarI18n || {
+		event: 'event',
+		events: 'events',
+		opportunity: 'volunteer opportunity',
+		opportunities: 'volunteer opportunities',
+		showing: 'Showing {count} {items}.',
+		showingMonth: 'Showing {month}, {count} {items}.',
+	};
 
-	const updateUrl = function ( changes ) {
+	const formatMessage = function ( template, values ) {
+		return Object.keys( values ).reduce( function ( message, key ) {
+			return message.replace( '{' + key + '}', values[ key ] );
+		}, template );
+	};
+
+	const updateUrl = function ( prefix, changes ) {
 		const url = new URL( window.location.href );
 
-		Object.keys( changes ).forEach( function ( parameter ) {
-			const value = changes[ parameter ];
+		Object.keys( changes ).forEach( function ( name ) {
+			const parameter = prefix + name;
+			const value = changes[ name ];
 
 			if ( value ) {
 				url.searchParams.set( parameter, value );
@@ -27,12 +42,13 @@
 			window.history.pushState( {}, '', nextUrl );
 		}
 
-		applyUrlState();
+		applyUrlState( prefix );
 	};
 
 	document
 		.querySelectorAll( '[data-memml-calendar]' )
 		.forEach( function ( calendar ) {
+			const prefix = calendar.dataset.memmlUrlPrefix;
 			const sourceButtons =
 				calendar.querySelectorAll( '[data-memml-view]' );
 			const layoutButtons = calendar.querySelectorAll(
@@ -50,6 +66,7 @@
 			const periodControls = calendar.querySelector(
 				'[data-memml-period-controls]'
 			);
+			const status = calendar.querySelector( '[data-memml-status]' );
 			const initialCalendar = calendar.dataset.calendar || 'events';
 			const initialLayout = calendar.dataset.layout || 'list';
 			const initialPeriod = calendar.dataset.period || 'upcoming';
@@ -122,8 +139,7 @@
 				} );
 			};
 
-			const getActiveMonth = function () {
-				let scope = calendar;
+			const getSourceScope = function () {
 				const activeSource = calendar.querySelector(
 					'[data-memml-view][aria-pressed="true"]'
 				);
@@ -134,40 +150,105 @@
 					);
 
 					if ( sourcePanel ) {
-						scope = sourcePanel;
+						return sourcePanel;
 					}
 				}
 
-				const panel = scope.querySelector(
+				return calendar;
+			};
+
+			const getActiveMonth = function () {
+				const panel = getSourceScope().querySelector(
 					'[data-memml-layout-panel="month"] [data-memml-month-index]:not([hidden])'
 				);
 
 				return panel ? panel.dataset.month : '';
 			};
 
+			const announce = function () {
+				if ( ! status ) {
+					return;
+				}
+
+				const scope = getSourceScope();
+				let content = scope.querySelector(
+					'[data-memml-layout-panel="' +
+						calendar.dataset.layout +
+						'"]:not([hidden])'
+				);
+
+				if ( ! content ) {
+					content = scope;
+				}
+
+				if ( 'list' === calendar.dataset.layout ) {
+					const periodPanel = content.querySelector(
+						'[data-memml-period-panel="' +
+							calendar.dataset.period +
+							'"]:not([hidden])'
+					);
+
+					if ( periodPanel ) {
+						content = periodPanel;
+					}
+				} else {
+					const monthPanel = content.querySelector(
+						'[data-memml-month-index]:not([hidden])'
+					);
+
+					if ( monthPanel ) {
+						content = monthPanel;
+					}
+				}
+
+				const count =
+					content.querySelectorAll( '[data-memml-item]' ).length;
+				const feed = calendar.dataset.calendar || calendar.dataset.feed;
+				let items = 1 === count ? messages.event : messages.events;
+
+				if ( 'volunteers' === feed ) {
+					items =
+						1 === count
+							? messages.opportunity
+							: messages.opportunities;
+				}
+				const monthPanel = content.matches( '[data-memml-month-index]' )
+					? content
+					: null;
+
+				status.textContent = formatMessage(
+					monthPanel ? messages.showingMonth : messages.showing,
+					{
+						count,
+						items,
+						month: monthPanel ? monthPanel.dataset.monthLabel : '',
+					}
+				);
+			};
+
 			sourceButtons.forEach( function ( button ) {
 				button.addEventListener( 'click', function () {
 					const source = button.dataset.memmlView;
-					const changes = { memml_calendar: source };
+					const changes = { calendar: source };
 
 					showSource( source );
 					if ( 'month' === calendar.dataset.layout ) {
-						changes.memml_month = getActiveMonth();
+						changes.month = getActiveMonth();
 					}
-					updateUrl( changes );
+					updateUrl( prefix, changes );
 				} );
 			} );
 
 			layoutButtons.forEach( function ( button ) {
 				button.addEventListener( 'click', function () {
 					const layout = button.dataset.memmlLayout;
-					const changes = { memml_view: layout };
+					const changes = { view: layout };
 
 					showLayout( layout );
 					if ( 'month' === layout ) {
-						changes.memml_month = getActiveMonth();
+						changes.month = getActiveMonth();
 					}
-					updateUrl( changes );
+					updateUrl( prefix, changes );
 				} );
 			} );
 
@@ -176,14 +257,16 @@
 					const period = button.dataset.memmlPeriod;
 
 					showPeriod( period );
-					updateUrl( { memml_period: period } );
+					updateUrl( prefix, { period } );
 				} );
 			} );
 
 			rootControllers.push( {
+				announce,
 				initialCalendar,
 				initialLayout,
 				initialPeriod,
+				prefix,
 				showLayout,
 				showPeriod,
 				showSource,
@@ -193,6 +276,8 @@
 	document
 		.querySelectorAll( '[data-memml-month-calendar]' )
 		.forEach( function ( calendar ) {
+			const root = calendar.closest( '[data-memml-calendar]' );
+			const prefix = root ? root.dataset.memmlUrlPrefix : '';
 			const panels = Array.from(
 				calendar.querySelectorAll( '[data-memml-month-index]' )
 			);
@@ -233,20 +318,24 @@
 				}
 
 				if ( updateHistory && panels[ current ] ) {
-					updateUrl( {
-						memml_month: panels[ current ].dataset.month,
+					updateUrl( prefix, {
+						month: panels[ current ].dataset.month,
 					} );
 				}
 			};
 
 			const showMonthKey = function ( month ) {
-				const index = panels.findIndex( function ( panel ) {
+				let index = panels.findIndex( function ( panel ) {
 					return panel.dataset.month === month;
 				} );
 
-				if ( index >= 0 ) {
-					showMonth( index, false );
+				if ( index < 0 ) {
+					index = panels.findIndex( function ( panel ) {
+						return panel.dataset.month === initialMonth;
+					} );
 				}
+
+				showMonth( index < 0 ? 0 : index, false );
 			};
 
 			if ( previous ) {
@@ -262,17 +351,17 @@
 			}
 
 			showMonth( current, false );
-			monthControllers.push( { initialMonth, showMonthKey } );
+			monthControllers.push( { initialMonth, prefix, showMonthKey } );
 		} );
 
-	const applyUrlState = function () {
+	const applyUrlState = function ( announcePrefix ) {
 		const parameters = new URL( window.location.href ).searchParams;
-		const calendar = parameters.get( 'memml_calendar' );
-		const layout = parameters.get( 'memml_view' );
-		const month = parameters.get( 'memml_month' );
-		const period = parameters.get( 'memml_period' );
 
 		rootControllers.forEach( function ( controller ) {
+			const calendar = parameters.get( controller.prefix + 'calendar' );
+			const layout = parameters.get( controller.prefix + 'view' );
+			const period = parameters.get( controller.prefix + 'period' );
+
 			controller.showSource(
 				'events' === calendar || 'volunteers' === calendar
 					? calendar
@@ -291,16 +380,31 @@
 		} );
 
 		monthControllers.forEach( function ( controller ) {
+			const month = parameters.get( controller.prefix + 'month' );
+
 			controller.showMonthKey(
 				/^\d{4}-(0[1-9]|1[0-2])$/.test( month || '' )
 					? month
 					: controller.initialMonth
 			);
 		} );
+
+		if ( announcePrefix ) {
+			rootControllers.forEach( function ( controller ) {
+				if (
+					'*' === announcePrefix ||
+					controller.prefix === announcePrefix
+				) {
+					controller.announce();
+				}
+			} );
+		}
 	};
 
-	window.addEventListener( 'popstate', applyUrlState );
-	applyUrlState();
+	window.addEventListener( 'popstate', function () {
+		applyUrlState( '*' );
+	} );
+	applyUrlState( '' );
 
 	document
 		.querySelectorAll( '.memml-calendar__image img' )

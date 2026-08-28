@@ -18,9 +18,9 @@ does not store Memml credentials.
 
 Choose the calendar that belongs on each page:
 
-* Use the Memml Calendar block or `[memml_calendar calendar="events" view="list" period="upcoming"]` shortcode to let visitors switch calendars and display views.
-* Use the Memml Events block or `[memml_events view="list" period="upcoming"]` shortcode for general events with a List/Month switcher.
-* Use the Memml Volunteers block or `[memml_volunteers view="list" period="upcoming"]` shortcode for volunteer opportunities with a List/Month switcher.
+* Use the Memml Calendar block or `[memml_calendar calendar="events" view="list" period="upcoming" url_key="main"]` shortcode to let visitors switch calendars and display views.
+* Use the Memml Events block or `[memml_events view="list" period="upcoming" url_key="events"]` shortcode for general events with a List/Month switcher.
+* Use the Memml Volunteers block or `[memml_volunteers view="list" period="upcoming" url_key="volunteers"]` shortcode for volunteer opportunities with a List/Month switcher.
 
 Set `calendar="volunteers"` on `[memml_calendar]` when volunteer opportunities should
 be selected first. Set `view="month"` on any shortcode when Month should be selected
@@ -29,10 +29,19 @@ In List view, visitors can choose Upcoming or Past. Upcoming is selected by defa
 set `period="past"` to select Past initially. Dates and sorting use the organization's
 timezone. Upcoming is oldest-first from today onward, while Past is newest-first.
 
-Calendar changes are reflected in the page URL using `memml_calendar`, `memml_view`,
-`memml_period`, and `memml_month` query parameters. Visitors can copy that URL to
-share the selected calendar, layout, list filter, and displayed month. Query parameters
-override the shortcode or block's initial selections when a shared link is opened.
+Calendar changes are reflected in instance-scoped query parameters such as
+`memml_main_calendar`, `memml_main_view`, `memml_main_period`, and
+`memml_main_month`. Visitors can copy that URL to share the selected calendar,
+layout, list filter, and displayed month. The optional block Share-link identifier
+or shortcode `url_key` supplies the `main` portion and keeps links stable on pages
+with multiple calendars. Calendars without one receive a per-page sequence.
+
+Month view includes empty months between the earliest and latest dated feed items
+when the feed spans five years or less. Wider feeds keep all populated months while
+skipping long empty gaps to prevent excessive page markup.
+Past lists depend on the public Memml feeds retaining historical records; the plugin
+does not create or synchronize a separate history archive. Expired registration,
+volunteer, and Add to calendar actions are not shown for past items.
 
 The plugin requests public data from memml.com, caches successful responses,
 revalidates them using ETags, and can show the last known-good response during a

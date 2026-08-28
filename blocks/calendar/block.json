@@ -25,6 +25,10 @@
       "type": "string",
       "default": "upcoming",
       "enum": ["upcoming", "past"]
+    },
+    "urlKey": {
+      "type": "string",
+      "default": ""
     }
   },
   "supports": {

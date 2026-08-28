@@ -11,13 +11,31 @@ defined( 'ABSPATH' ) || exit;
  * Renders escaped Memml feed data for blocks and shortcodes.
  */
 final class Memml_Renderer {
+	/**
+	 * Maximum span in which empty intervening month panels are generated.
+	 */
+	const MAX_CONTIGUOUS_MONTHS = 60;
 
 	/**
 	 * Number of toggle instances rendered during the request.
 	 *
 	 * @var int
 	 */
-	private static $instance = 0;
+	private static $calendar_instance = 0;
+
+	/**
+	 * Number of month controls rendered during the request.
+	 *
+	 * @var int
+	 */
+	private static $month_instance = 0;
+
+	/**
+	 * Share-link identifiers already used during the request.
+	 *
+	 * @var array
+	 */
+	private static $used_url_keys = array();
 
 	/**
 	 * Renders the general events calendar.
@@ -31,7 +49,8 @@ final class Memml_Renderer {
 		return $this->render_single_feed(
 			'events',
 			$this->get_layout_from_attributes( $attributes ),
-			$this->get_period_from_attributes( $attributes )
+			$this->get_period_from_attributes( $attributes ),
+			$this->get_url_key_from_attributes( $attributes )
 		);
 	}
 
@@ -47,7 +66,8 @@ final class Memml_Renderer {
 		return $this->render_single_feed(
 			'volunteers',
 			$this->get_layout_from_attributes( $attributes ),
-			$this->get_period_from_attributes( $attributes )
+			$this->get_period_from_attributes( $attributes ),
+			$this->get_url_key_from_attributes( $attributes )
 		);
 	}
 
@@ -57,23 +77,26 @@ final class Memml_Renderer {
 	 * @param string $calendar Initial calendar: events or volunteers.
 	 * @param string $layout   Initial display layout: list or month.
 	 * @param string $period   Initial list period: upcoming or past.
+	 * @param string $url_key  Optional stable share-link identifier.
 	 * @return string
 	 */
-	public function render_calendar( $calendar = 'events', $layout = 'list', $period = 'upcoming' ) {
+	public function render_calendar( $calendar = 'events', $layout = 'list', $period = 'upcoming', $url_key = '' ) {
 		$this->enqueue_assets();
-		++self::$instance;
+		++self::$calendar_instance;
 
-		$calendar          = $this->get_initial_calendar( $calendar );
-		$layout            = $this->get_initial_layout( $layout );
-		$period            = $this->get_initial_period( $period );
-		$instance_id       = 'memml-calendar-' . self::$instance;
+		$url_key           = $this->get_unique_url_key( $url_key );
+		$query_prefix      = 'memml_' . $url_key . '_';
+		$calendar          = $this->get_initial_calendar( $calendar, $query_prefix );
+		$layout            = $this->get_initial_layout( $layout, $query_prefix );
+		$period            = $this->get_initial_period( $period, $query_prefix );
+		$instance_id       = 'memml-calendar-' . self::$calendar_instance;
 		$events_id         = $instance_id . '-events';
 		$volunteers_id     = $instance_id . '-volunteers';
 		$events_result     = $this->get_client_result( 'events' );
 		$volunteers_result = $this->get_client_result( 'volunteers' );
 		$feeds             = array( 'events', 'volunteers' );
-		$events_layouts    = $this->render_layout_panels( 'events', $layout, $period, $instance_id, $events_result );
-		$volunteer_layouts = $this->render_layout_panels( 'volunteers', $layout, $period, $instance_id, $volunteers_result );
+		$events_layouts    = $this->render_layout_panels( 'events', $layout, $period, $instance_id, $events_result, $query_prefix );
+		$volunteer_layouts = $this->render_layout_panels( 'volunteers', $layout, $period, $instance_id, $volunteers_result, $query_prefix );
 		$source_controls   = sprintf(
 			'<div class="memml-calendar__filter" role="group" aria-label="%1$s"><button aria-controls="%2$s" aria-pressed="%3$s" class="memml-calendar__filter-button" data-memml-view="events" type="button">%4$s</button><button aria-controls="%5$s" aria-pressed="%6$s" class="memml-calendar__filter-button" data-memml-view="volunteers" type="button">%7$s</button></div>',
 			esc_attr__( 'Choose a calendar', 'memml' ),
@@ -87,7 +110,8 @@ final class Memml_Renderer {
 		$toolbar           = '<div class="memml-calendar__toolbar">' . $source_controls . $this->render_layout_controls( $layout, $instance_id, $feeds ) . '</div>';
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--switchable" data-memml-calendar data-calendar="%1$s" data-layout="%2$s" data-period="%3$s">%4$s%5$s<div class="memml-calendar__panel" id="%6$s"%7$s>%8$s</div><div class="memml-calendar__panel" id="%9$s"%10$s>%11$s</div></div>',
+			'<div class="memml-calendar memml-calendar--switchable" data-memml-calendar data-memml-url-prefix="%1$s" data-calendar="%2$s" data-layout="%3$s" data-period="%4$s">%5$s%6$s<div class="memml-calendar__panel" id="%7$s"%8$s>%9$s</div><div class="memml-calendar__panel" id="%10$s"%11$s>%12$s</div>%13$s</div>',
+			esc_attr( $query_prefix ),
 			esc_attr( $calendar ),
 			esc_attr( $layout ),
 			esc_attr( $period ),
@@ -98,7 +122,8 @@ final class Memml_Renderer {
 			$events_layouts,
 			esc_attr( $volunteers_id ),
 			'volunteers' === $calendar ? '' : ' hidden',
-			$volunteer_layouts
+			$volunteer_layouts,
+			$this->render_live_region()
 		);
 	}
 
@@ -108,24 +133,31 @@ final class Memml_Renderer {
 	 * @param string $feed   Feed identifier.
 	 * @param string $layout Initial display layout.
 	 * @param string $period Initial list period.
+	 * @param string $url_key Optional stable share-link identifier.
 	 * @return string
 	 */
-	private function render_single_feed( $feed, $layout, $period ) {
-		++self::$instance;
+	private function render_single_feed( $feed, $layout, $period, $url_key = '' ) {
+		++self::$calendar_instance;
 
-		$instance_id = 'memml-calendar-' . self::$instance;
-		$result      = $this->get_client_result( $feed );
+		$url_key      = $this->get_unique_url_key( $url_key );
+		$query_prefix = 'memml_' . $url_key . '_';
+		$layout       = $this->get_initial_layout( $layout, $query_prefix );
+		$period       = $this->get_initial_period( $period, $query_prefix );
+		$instance_id  = 'memml-calendar-' . self::$calendar_instance;
+		$result       = $this->get_client_result( $feed );
 
 		$feeds = array( $feed );
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--%1$s" data-memml-calendar data-layout="%2$s" data-period="%3$s"><div class="memml-calendar__toolbar">%4$s</div>%5$s%6$s</div>',
+			'<div class="memml-calendar memml-calendar--%1$s" data-memml-calendar data-memml-url-prefix="%2$s" data-feed="%1$s" data-layout="%3$s" data-period="%4$s"><div class="memml-calendar__toolbar">%5$s</div>%6$s%7$s%8$s</div>',
 			esc_attr( $feed ),
+			esc_attr( $query_prefix ),
 			esc_attr( $layout ),
 			esc_attr( $period ),
 			$this->render_layout_controls( $layout, $instance_id, $feeds ),
 			$this->render_period_controls( $period, $layout, $instance_id, $feeds ),
-			$this->render_layout_panels( $feed, $layout, $period, $instance_id, $result )
+			$this->render_layout_panels( $feed, $layout, $period, $instance_id, $result, $query_prefix ),
+			$this->render_live_region()
 		);
 	}
 
@@ -197,13 +229,14 @@ final class Memml_Renderer {
 	 * @param string         $period      Initial list period.
 	 * @param string         $instance_id Calendar instance ID.
 	 * @param array|WP_Error $result      Feed client result.
+	 * @param string         $query_prefix Instance-scoped query prefix.
 	 * @return string
 	 */
-	private function render_layout_panels( $feed, $layout, $period, $instance_id, $result ) {
+	private function render_layout_panels( $feed, $layout, $period, $instance_id, $result, $query_prefix ) {
 		$list_id    = $instance_id . '-' . $feed . '-list';
 		$month_id   = $instance_id . '-' . $feed . '-month';
 		$list_html  = $this->render_period_panels( $feed, $period, $instance_id, $result );
-		$month_html = 'events' === $feed ? $this->render_events_panel( 'month', $result ) : $this->render_volunteers_panel( 'month', $result );
+		$month_html = 'events' === $feed ? $this->render_events_panel( 'month', $result, 'upcoming', $query_prefix ) : $this->render_volunteers_panel( 'month', $result, 'upcoming', $query_prefix );
 
 		return sprintf(
 			'<div data-memml-layout-panel="list" id="%1$s"%2$s>%3$s</div><div data-memml-layout-panel="month" id="%4$s"%5$s>%6$s</div>',
@@ -248,9 +281,10 @@ final class Memml_Renderer {
 	 * @param string         $layout Display layout.
 	 * @param array|WP_Error $result Feed client result.
 	 * @param string         $period List period.
+	 * @param string         $query_prefix Instance-scoped query prefix.
 	 * @return string
 	 */
-	private function render_events_panel( $layout, $result, $period = 'upcoming' ) {
+	private function render_events_panel( $layout, $result, $period = 'upcoming', $query_prefix = '' ) {
 		if ( is_wp_error( $result ) ) {
 			return $this->render_error( $result );
 		}
@@ -266,7 +300,7 @@ final class Memml_Renderer {
 		$timezone = $this->get_timezone( $result['data'] );
 
 		if ( 'month' === $layout ) {
-			return $this->render_month_calendar( $events, 'events', $timezone );
+			return $this->render_month_calendar( $events, 'events', $timezone, $query_prefix );
 		}
 
 		$events = $this->filter_list_items( $events, $period, $timezone );
@@ -283,7 +317,7 @@ final class Memml_Renderer {
 
 		foreach ( $events as $event ) {
 			if ( is_array( $event ) ) {
-				$cards .= $this->render_event_card( $event, $timezone );
+				$cards .= $this->render_event_card( $event, $timezone, 'past' === $period );
 			}
 		}
 
@@ -296,9 +330,10 @@ final class Memml_Renderer {
 	 * @param string         $layout Display layout.
 	 * @param array|WP_Error $result Feed client result.
 	 * @param string         $period List period.
+	 * @param string         $query_prefix Instance-scoped query prefix.
 	 * @return string
 	 */
-	private function render_volunteers_panel( $layout, $result, $period = 'upcoming' ) {
+	private function render_volunteers_panel( $layout, $result, $period = 'upcoming', $query_prefix = '' ) {
 		if ( is_wp_error( $result ) ) {
 			return $this->render_error( $result );
 		}
@@ -319,7 +354,7 @@ final class Memml_Renderer {
 		$timezone = $this->get_timezone( $data );
 
 		if ( 'month' === $layout ) {
-			return $this->render_month_calendar( $opportunities, 'volunteers', $timezone );
+			return $this->render_month_calendar( $opportunities, 'volunteers', $timezone, $query_prefix );
 		}
 
 		$opportunities = $this->filter_list_items( $opportunities, $period, $timezone );
@@ -336,7 +371,7 @@ final class Memml_Renderer {
 
 		foreach ( $opportunities as $opportunity ) {
 			if ( is_array( $opportunity ) ) {
-				$cards .= $this->render_volunteer_card( $opportunity, $timezone );
+				$cards .= $this->render_volunteer_card( $opportunity, $timezone, 'past' === $period );
 			}
 		}
 
@@ -403,9 +438,10 @@ final class Memml_Renderer {
 	 * @param array        $items    Event or opportunity records.
 	 * @param string       $feed     Feed identifier.
 	 * @param DateTimeZone $timezone Organization timezone.
+	 * @param string       $query_prefix Instance-scoped query prefix.
 	 * @return string
 	 */
-	private function render_month_calendar( $items, $feed, $timezone ) {
+	private function render_month_calendar( $items, $feed, $timezone, $query_prefix ) {
 		$months = array();
 
 		foreach ( $items as $item ) {
@@ -441,12 +477,13 @@ final class Memml_Renderer {
 		}
 
 		ksort( $months );
-		++self::$instance;
+		$months = $this->fill_month_range( $months, $timezone );
+		++self::$month_instance;
 
-		$calendar_id     = 'memml-month-calendar-' . self::$instance;
+		$calendar_id     = 'memml-month-calendar-' . self::$month_instance;
 		$month_keys      = array_keys( $months );
 		$month_count     = count( $months );
-		$requested_month = $this->get_requested_month();
+		$requested_month = $this->get_requested_month( $query_prefix );
 		$selected_index  = array_search( $requested_month, $month_keys, true );
 
 		if ( false === $selected_index ) {
@@ -576,6 +613,7 @@ final class Memml_Renderer {
 	private function render_month_entry( $item, $feed, $timezone ) {
 		$title   = isset( $item['title'] ) ? (string) $item['title'] : '';
 		$time    = $this->render_time_only( $item, $timezone );
+		$is_past = $this->is_item_past( $item, $timezone );
 		$status  = '';
 		$details = '';
 		$actions = '';
@@ -591,7 +629,7 @@ final class Memml_Renderer {
 				);
 			}
 
-			$actions = $this->render_event_actions( $item );
+			$actions = $is_past ? '' : $this->render_event_actions( $item );
 		} else {
 			if ( isset( $item['spotsRemaining'] ) ) {
 				$spots   = max( 0, (int) $item['spotsRemaining'] );
@@ -604,7 +642,7 @@ final class Memml_Renderer {
 				) . '</span>';
 			}
 
-			if ( ! empty( $item['url'] ) ) {
+			if ( ! $is_past && ! empty( $item['url'] ) ) {
 				$actions = sprintf(
 					'<div class="memml-calendar__actions"><a class="memml-calendar__calendar-link" href="%1$s">%2$s</a></div>',
 					esc_url( $item['url'] ),
@@ -614,7 +652,7 @@ final class Memml_Renderer {
 		}
 
 		return sprintf(
-			'<article class="memml-calendar__month-entry">%1$s<h4 class="memml-calendar__month-title">%2$s</h4>%3$s%4$s%5$s</article>',
+			'<article class="memml-calendar__month-entry" data-memml-item>%1$s<h4 class="memml-calendar__month-title">%2$s</h4>%3$s%4$s%5$s</article>',
 			$status,
 			esc_html( $title ),
 			$time,
@@ -683,6 +721,54 @@ final class Memml_Renderer {
 	}
 
 	/**
+	 * Determines whether an item is before today in the organization timezone.
+	 *
+	 * @param array        $item     Feed record.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return bool
+	 */
+	private function is_item_past( $item, $timezone ) {
+		$date = $this->get_item_datetime( $item, $timezone );
+
+		return $date && $date->format( 'Y-m-d' ) < $this->get_today( $timezone )->format( 'Y-m-d' );
+	}
+
+	/**
+	 * Adds empty months between the first and last feed month.
+	 *
+	 * @param array        $months   Grouped feed months.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return array
+	 */
+	private function fill_month_range( $months, $timezone ) {
+		$keys    = array_keys( $months );
+		$first   = new DateTimeImmutable( $keys[0] . '-01 00:00:00', $timezone );
+		$last    = new DateTimeImmutable( end( $keys ) . '-01 00:00:00', $timezone );
+		$span    = ( (int) $last->format( 'Y' ) - (int) $first->format( 'Y' ) ) * 12;
+		$span   += (int) $last->format( 'n' ) - (int) $first->format( 'n' ) + 1;
+		$filled  = array();
+		$current = $first;
+
+		if ( $span > self::MAX_CONTIGUOUS_MONTHS ) {
+			return $months;
+		}
+
+		while ( $current <= $last ) {
+			$key = $current->format( 'Y-m' );
+
+			$filled[ $key ] = isset( $months[ $key ] )
+				? $months[ $key ]
+				: array(
+					'first_day' => $current,
+					'days'      => array(),
+				);
+			$current        = $current->modify( 'first day of next month' );
+		}
+
+		return $filled;
+	}
+
+	/**
 	 * Chooses the current or next available month, falling back to the latest month.
 	 *
 	 * @param array        $month_keys Month keys in chronological order.
@@ -710,7 +796,7 @@ final class Memml_Renderer {
 	private function get_layout_from_attributes( $attributes ) {
 		$layout = is_array( $attributes ) && isset( $attributes['view'] ) ? $attributes['view'] : 'list';
 
-		return $this->get_initial_layout( $layout );
+		return $this->normalize_layout( $layout );
 	}
 
 	/**
@@ -722,17 +808,62 @@ final class Memml_Renderer {
 	private function get_period_from_attributes( $attributes ) {
 		$period = is_array( $attributes ) && isset( $attributes['period'] ) ? $attributes['period'] : 'upcoming';
 
-		return $this->get_initial_period( $period );
+		return 'past' === $period ? 'past' : 'upcoming';
+	}
+
+	/**
+	 * Gets an optional stable share-link identifier from block or shortcode attributes.
+	 *
+	 * @param array|string $attributes Block or shortcode attributes.
+	 * @return string
+	 */
+	private function get_url_key_from_attributes( $attributes ) {
+		if ( ! is_array( $attributes ) ) {
+			return '';
+		}
+
+		if ( isset( $attributes['urlKey'] ) ) {
+			return sanitize_key( $attributes['urlKey'] );
+		}
+
+		return isset( $attributes['url_key'] ) ? sanitize_key( $attributes['url_key'] ) : '';
+	}
+
+	/**
+	 * Reserves a unique share-link identifier for this rendered calendar.
+	 *
+	 * @param string $requested Requested identifier.
+	 * @return string
+	 */
+	private function get_unique_url_key( $requested ) {
+		$base = sanitize_key( $requested );
+
+		if ( '' === $base ) {
+			$base = (string) self::$calendar_instance;
+		}
+
+		$key    = $base;
+		$suffix = 2;
+
+		while ( isset( self::$used_url_keys[ $key ] ) ) {
+			$key = $base . '-' . $suffix;
+			++$suffix;
+		}
+
+		self::$used_url_keys[ $key ] = true;
+
+		return $key;
 	}
 
 	/**
 	 * Gets the initial calendar, allowing a direct-link query to override content settings.
 	 *
-	 * @param string $calendar Calendar configured by the block or shortcode.
+	 * @param string $calendar     Calendar configured by the block or shortcode.
+	 * @param string $query_prefix Instance-scoped query prefix.
 	 * @return string
 	 */
-	private function get_initial_calendar( $calendar ) {
-		$query_calendar = $this->get_query_choice( 'memml_calendar', array( 'events', 'volunteers' ) );
+	private function get_initial_calendar( $calendar, $query_prefix ) {
+		$query_calendar = $this->get_query_choice( $query_prefix . 'calendar', array( 'events', 'volunteers' ) );
 
 		if ( '' !== $query_calendar ) {
 			return $query_calendar;
@@ -744,11 +875,12 @@ final class Memml_Renderer {
 	/**
 	 * Gets the initial layout, allowing a direct-link query to override content settings.
 	 *
-	 * @param string $layout Layout configured by the block or shortcode.
+	 * @param string $layout       Layout configured by the block or shortcode.
+	 * @param string $query_prefix Instance-scoped query prefix.
 	 * @return string
 	 */
-	private function get_initial_layout( $layout ) {
-		$query_layout = $this->get_query_choice( 'memml_view', array( 'list', 'month' ) );
+	private function get_initial_layout( $layout, $query_prefix ) {
+		$query_layout = $this->get_query_choice( $query_prefix . 'view', array( 'list', 'month' ) );
 
 		return '' !== $query_layout ? $query_layout : $this->normalize_layout( $layout );
 	}
@@ -756,11 +888,12 @@ final class Memml_Renderer {
 	/**
 	 * Gets the initial list period, allowing a direct-link query to override settings.
 	 *
-	 * @param string $period Period configured by the block or shortcode.
+	 * @param string $period       Period configured by the block or shortcode.
+	 * @param string $query_prefix Instance-scoped query prefix.
 	 * @return string
 	 */
-	private function get_initial_period( $period ) {
-		$query_period = $this->get_query_choice( 'memml_period', array( 'upcoming', 'past' ) );
+	private function get_initial_period( $period, $query_prefix ) {
+		$query_period = $this->get_query_choice( $query_prefix . 'period', array( 'upcoming', 'past' ) );
 
 		if ( '' !== $query_period ) {
 			return $query_period;
@@ -772,10 +905,11 @@ final class Memml_Renderer {
 	/**
 	 * Gets a valid requested month in YYYY-MM format.
 	 *
+	 * @param string $query_prefix Instance-scoped query prefix.
 	 * @return string
 	 */
-	private function get_requested_month() {
-		$month = $this->get_query_value( 'memml_month' );
+	private function get_requested_month( $query_prefix ) {
+		$month = $this->get_query_value( $query_prefix . 'month' );
 
 		return preg_match( '/^\d{4}-(0[1-9]|1[0-2])$/D', $month ) ? $month : '';
 	}
@@ -843,9 +977,10 @@ final class Memml_Renderer {
 	 *
 	 * @param array        $event    Event feed record.
 	 * @param DateTimeZone $timezone Organization timezone.
+	 * @param bool         $is_past  Whether the event is in the Past list.
 	 * @return string
 	 */
-	private function render_event_card( $event, $timezone ) {
+	private function render_event_card( $event, $timezone, $is_past = false ) {
 		$title       = isset( $event['title'] ) ? (string) $event['title'] : '';
 		$status      = isset( $event['status'] ) ? (string) $event['status'] : 'scheduled';
 		$status      = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
@@ -870,14 +1005,14 @@ final class Memml_Renderer {
 		}
 
 		return sprintf(
-			'<article class="memml-calendar__card memml-calendar__card--%1$s">%2$s<div class="memml-calendar__card-body">%3$s<h3 class="memml-calendar__title">%4$s</h3><div class="memml-calendar__meta">%5$s</div>%6$s%7$s</div></article>',
+			'<article class="memml-calendar__card memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__card-body">%3$s<h3 class="memml-calendar__title">%4$s</h3><div class="memml-calendar__meta">%5$s</div>%6$s%7$s</div></article>',
 			esc_attr( $status ),
 			$this->render_image( isset( $event['imageUrl'] ) ? $event['imageUrl'] : '', $title ),
 			$status_html,
 			esc_html( $title ),
 			$meta,
 			$this->render_description( isset( $event['description'] ) ? $event['description'] : '' ),
-			$this->render_event_actions( $event )
+			$is_past ? '' : $this->render_event_actions( $event )
 		);
 	}
 
@@ -886,9 +1021,10 @@ final class Memml_Renderer {
 	 *
 	 * @param array        $opportunity Opportunity feed record.
 	 * @param DateTimeZone $timezone    Organization timezone.
+	 * @param bool         $is_past     Whether the opportunity is in the Past list.
 	 * @return string
 	 */
-	private function render_volunteer_card( $opportunity, $timezone ) {
+	private function render_volunteer_card( $opportunity, $timezone, $is_past = false ) {
 		$title = isset( $opportunity['title'] ) ? (string) $opportunity['title'] : '';
 		$meta  = $this->render_datetime( $opportunity, $timezone );
 
@@ -910,12 +1046,12 @@ final class Memml_Renderer {
 			);
 		}
 
-		$needs_more = ! empty( $opportunity['needsMore'] )
+		$needs_more = ! $is_past && ! empty( $opportunity['needsMore'] )
 			? '<span class="memml-calendar__status memml-calendar__status--needed">' . esc_html__( 'Volunteers needed', 'memml' ) . '</span>'
 			: '';
 		$actions    = '';
 
-		if ( ! empty( $opportunity['url'] ) ) {
+		if ( ! $is_past && ! empty( $opportunity['url'] ) ) {
 			$actions = sprintf(
 				'<div class="memml-calendar__actions"><a class="memml-calendar__button memml-calendar__button--primary" href="%1$s">%2$s</a></div>',
 				esc_url( $opportunity['url'] ),
@@ -924,7 +1060,7 @@ final class Memml_Renderer {
 		}
 
 		return sprintf(
-			'<article class="memml-calendar__card memml-calendar__card--volunteer">%1$s<div class="memml-calendar__card-body">%2$s<h3 class="memml-calendar__title">%3$s</h3><div class="memml-calendar__meta">%4$s</div>%5$s%6$s</div></article>',
+			'<article class="memml-calendar__card memml-calendar__card--volunteer" data-memml-item>%1$s<div class="memml-calendar__card-body">%2$s<h3 class="memml-calendar__title">%3$s</h3><div class="memml-calendar__meta">%4$s</div>%5$s%6$s</div></article>',
 			$this->render_image( isset( $opportunity['imageUrl'] ) ? $opportunity['imageUrl'] : '', $title ),
 			$needs_more,
 			esc_html( $title ),
@@ -1088,6 +1224,15 @@ final class Memml_Renderer {
 	}
 
 	/**
+	 * Renders a live region for visitor-initiated calendar changes.
+	 *
+	 * @return string
+	 */
+	private function render_live_region() {
+		return '<p aria-atomic="true" aria-live="polite" class="screen-reader-text" data-memml-status></p>';
+	}
+
+	/**
 	 * Enqueues low-specificity front-end assets only when needed.
 	 *
 	 * @return void
@@ -1105,6 +1250,18 @@ final class Memml_Renderer {
 			array(),
 			MEMML_VERSION,
 			true
+		);
+		wp_localize_script(
+			'memml-calendar',
+			'memmlCalendarI18n',
+			array(
+				'event'         => __( 'event', 'memml' ),
+				'events'        => __( 'events', 'memml' ),
+				'opportunity'   => __( 'volunteer opportunity', 'memml' ),
+				'opportunities' => __( 'volunteer opportunities', 'memml' ),
+				'showing'       => __( 'Showing {count} {items}.', 'memml' ),
+				'showingMonth'  => __( 'Showing {month}, {count} {items}.', 'memml' ),
+			)
 		);
 		wp_script_add_data( 'memml-calendar', 'strategy', 'defer' );
 	}

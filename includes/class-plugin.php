@@ -122,8 +122,9 @@ final class Memml_Plugin {
 		$calendar = isset( $attributes['calendar'] ) ? $attributes['calendar'] : 'events';
 		$layout   = isset( $attributes['view'] ) ? $attributes['view'] : 'list';
 		$period   = isset( $attributes['period'] ) ? $attributes['period'] : 'upcoming';
+		$url_key  = isset( $attributes['urlKey'] ) ? $attributes['urlKey'] : '';
 
-		return $this->renderer->render_calendar( $calendar, $layout, $period );
+		return $this->renderer->render_calendar( $calendar, $layout, $period, $url_key );
 	}
 
 	/**
@@ -137,12 +138,13 @@ final class Memml_Plugin {
 			array(
 				'calendar' => 'events',
 				'period'   => 'upcoming',
+				'url_key'  => '',
 				'view'     => 'list',
 			),
 			is_array( $attributes ) ? $attributes : array(),
 			'memml_calendar'
 		);
 
-		return $this->renderer->render_calendar( $attributes['calendar'], $attributes['view'], $attributes['period'] );
+		return $this->renderer->render_calendar( $attributes['calendar'], $attributes['view'], $attributes['period'], $attributes['url_key'] );
 	}
 }
