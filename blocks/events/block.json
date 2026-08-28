@@ -1,6 +1,6 @@
 {
   "$schema": "https://schemas.wp.org/trunk/block.json",
-  "apiVersion": 2,
+  "apiVersion": 3,
   "name": "memml/events",
   "version": "0.1.0",
   "title": "Memml Events",
@@ -10,6 +10,13 @@
   "keywords": ["events", "calendar", "nonprofit"],
   "textdomain": "memml",
   "editorScript": "memml-block-editor",
+  "attributes": {
+    "view": {
+      "type": "string",
+      "default": "list",
+      "enum": ["list", "month"]
+    }
+  },
   "supports": {
     "html": false
   }

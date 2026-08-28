@@ -120,8 +120,9 @@ final class Memml_Plugin {
 	 */
 	public function render_calendar_block( $attributes ) {
 		$default_view = isset( $attributes['defaultView'] ) ? $attributes['defaultView'] : 'events';
+		$layout       = isset( $attributes['view'] ) ? $attributes['view'] : 'list';
 
-		return $this->renderer->render_calendar( $default_view );
+		return $this->renderer->render_calendar( $default_view, $layout );
 	}
 
 	/**
@@ -132,11 +133,14 @@ final class Memml_Plugin {
 	 */
 	public function render_calendar_shortcode( $attributes ) {
 		$attributes = shortcode_atts(
-			array( 'default' => 'events' ),
+			array(
+				'default' => 'events',
+				'view'    => 'list',
+			),
 			is_array( $attributes ) ? $attributes : array(),
 			'memml_calendar'
 		);
 
-		return $this->renderer->render_calendar( $attributes['default'] );
+		return $this->renderer->render_calendar( $attributes['default'], $attributes['view'] );
 	}
 }

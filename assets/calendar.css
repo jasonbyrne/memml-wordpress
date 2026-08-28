@@ -157,6 +157,143 @@
 	font-size: 0.9em;
 }
 
+:where(.memml-calendar__month-header) {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	align-items: center;
+	gap: var(--memml-spacing);
+	margin-block-end: var(--memml-spacing);
+}
+
+:where(.memml-calendar__month-label) {
+	grid-column: 2;
+	margin: 0;
+	text-align: center;
+}
+
+:where(.memml-calendar__month-button) {
+	display: inline-grid;
+	width: 2.5rem;
+	height: 2.5rem;
+	place-items: center;
+	border: 1px solid var(--memml-border);
+	border-radius: var(--memml-radius);
+	background: var(--memml-card-background);
+	color: inherit;
+	cursor: pointer;
+	font: inherit;
+	font-size: 1.5rem;
+}
+
+:where(.memml-calendar__month-button:disabled) {
+	cursor: default;
+	opacity: 0.4;
+}
+
+:where(.memml-calendar__month-scroll) {
+	overflow-x: auto;
+}
+
+:where(.memml-calendar__month-table) {
+	width: 100%;
+	min-width: 38rem;
+	border-spacing: 0;
+	border-collapse: separate;
+	table-layout: fixed;
+}
+
+:where(.memml-calendar__month-table th) {
+	padding: 0.5rem;
+	color: var(--memml-muted);
+	font-size: 0.8em;
+	font-weight: 650;
+	text-align: center;
+}
+
+:where(.memml-calendar__month-day) {
+	height: 8rem;
+	padding: 0.4rem;
+	border-block-start: 1px solid var(--memml-border);
+	border-inline-start: 1px solid var(--memml-border);
+	background: var(--memml-card-background);
+	vertical-align: top;
+}
+
+:where(.memml-calendar__month-day:nth-child(7)) {
+	border-inline-end: 1px solid var(--memml-border);
+}
+
+:where(.memml-calendar__month-table tbody tr:last-child .memml-calendar__month-day) {
+	border-block-end: 1px solid var(--memml-border);
+}
+
+:where(.memml-calendar__month-day.is-empty) {
+	background: color-mix(in srgb, var(--memml-border) 20%, transparent);
+}
+
+:where(.memml-calendar__day-number) {
+	display: block;
+	margin-block-end: 0.3rem;
+	color: var(--memml-muted);
+	font-size: 0.8em;
+	font-weight: 700;
+}
+
+:where(.memml-calendar__month-entry) {
+	display: grid;
+	gap: 0.2rem;
+	margin-block-start: 0.35rem;
+	padding: 0.4rem;
+	border-inline-start: 0.2rem solid var(--memml-accent);
+	border-radius: 0.2rem;
+	background: color-mix(in srgb, var(--memml-accent) 8%, var(--memml-card-background));
+	font-size: 0.78em;
+}
+
+:where(.memml-calendar__month-title) {
+	margin: 0;
+	font-size: 1em;
+	line-height: 1.25;
+}
+
+:where(.memml-calendar__month-time, .memml-calendar__month-spots) {
+	color: var(--memml-muted);
+}
+
+:where(.memml-calendar__month-status) {
+	font-size: 0.72em;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+:where(.memml-calendar__month-status--cancelled) {
+	color: var(--memml-muted);
+}
+
+:where(.memml-calendar__month-status--postponed) {
+	color: #6b4f00;
+}
+
+:where(.memml-calendar__month-entry .memml-calendar__actions) {
+	gap: 0.35rem;
+	margin-block-start: 0.15rem;
+}
+
+:where(.memml-calendar__month-entry .memml-calendar__button) {
+	padding: 0.2rem 0.35rem;
+	font-size: 0.9em;
+}
+
+:where(.memml-calendar .screen-reader-text) {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
 :where(.memml-calendar__notice) {
 	margin: 0;
 	padding: var(--memml-spacing);

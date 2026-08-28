@@ -7,23 +7,44 @@ import calendarMetadata from '../blocks/calendar/block.json';
 import eventsMetadata from '../blocks/events/block.json';
 import volunteersMetadata from '../blocks/volunteers/block.json';
 
+const LayoutControl = ( { value, onChange } ) => (
+	<SelectControl
+		label={ __( 'Display view', 'memml' ) }
+		value={ value }
+		options={ [
+			{ label: __( 'List', 'memml' ), value: 'list' },
+			{ label: __( 'Month', 'memml' ), value: 'month' },
+		] }
+		onChange={ onChange }
+	/>
+);
+
 const createFeedEdit = ( label, instructions ) =>
-	function FeedEdit() {
+	function FeedEdit( { attributes, setAttributes } ) {
 		return (
-			<div { ...useBlockProps() }>
-				<Placeholder icon="admin-site-alt3" label={ label }>
-					{ instructions }
-				</Placeholder>
-			</div>
+			<>
+				<InspectorControls>
+					<PanelBody title={ __( 'Calendar settings', 'memml' ) }>
+						<LayoutControl
+							value={ attributes.view }
+							onChange={ ( view ) => setAttributes( { view } ) }
+						/>
+					</PanelBody>
+				</InspectorControls>
+				<div { ...useBlockProps() }>
+					<Placeholder icon="admin-site-alt3" label={ label }>
+						{ instructions }
+					</Placeholder>
+				</div>
+			</>
 		);
 	};
-
 const CalendarEdit = ( { attributes, setAttributes } ) => (
 	<>
 		<InspectorControls>
 			<PanelBody title={ __( 'Calendar settings', 'memml' ) }>
 				<SelectControl
-					label={ __( 'Default view', 'memml' ) }
+					label={ __( 'Initially selected calendar', 'memml' ) }
 					value={ attributes.defaultView }
 					options={ [
 						{ label: __( 'Events', 'memml' ), value: 'events' },
@@ -35,6 +56,10 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 					onChange={ ( defaultView ) =>
 						setAttributes( { defaultView } )
 					}
+				/>
+				<LayoutControl
+					value={ attributes.view }
+					onChange={ ( view ) => setAttributes( { view } ) }
 				/>
 			</PanelBody>
 		</InspectorControls>

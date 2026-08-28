@@ -22,28 +22,34 @@ final class Memml_Renderer {
 	/**
 	 * Renders the general events calendar.
 	 *
+	 * @param array|string $attributes Block or shortcode attributes.
 	 * @return string
 	 */
-	public function render_events() {
+	public function render_events( $attributes = array() ) {
 		$this->enqueue_assets();
+		$layout = $this->get_layout_from_attributes( $attributes );
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--events">%s</div>',
-			$this->render_events_panel()
+			'<div class="memml-calendar memml-calendar--events memml-calendar--%1$s" data-layout="%1$s">%2$s</div>',
+			esc_attr( $layout ),
+			$this->render_events_panel( $layout )
 		);
 	}
 
 	/**
 	 * Renders the volunteer opportunities calendar.
 	 *
+	 * @param array|string $attributes Block or shortcode attributes.
 	 * @return string
 	 */
-	public function render_volunteers() {
+	public function render_volunteers( $attributes = array() ) {
 		$this->enqueue_assets();
+		$layout = $this->get_layout_from_attributes( $attributes );
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--volunteers">%s</div>',
-			$this->render_volunteers_panel()
+			'<div class="memml-calendar memml-calendar--volunteers memml-calendar--%1$s" data-layout="%1$s">%2$s</div>',
+			esc_attr( $layout ),
+			$this->render_volunteers_panel( $layout )
 		);
 	}
 
@@ -51,19 +57,21 @@ final class Memml_Renderer {
 	 * Renders a visitor-facing calendar switcher.
 	 *
 	 * @param string $default_view Initial view: events or volunteers.
+	 * @param string $layout       Display layout: list or month.
 	 * @return string
 	 */
-	public function render_calendar( $default_view = 'events' ) {
+	public function render_calendar( $default_view = 'events', $layout = 'list' ) {
 		$this->enqueue_assets();
 		++self::$instance;
 
 		$default_view  = 'volunteers' === $default_view ? 'volunteers' : 'events';
+		$layout        = $this->normalize_layout( $layout );
 		$instance_id   = 'memml-calendar-' . self::$instance;
 		$events_id     = $instance_id . '-events';
 		$volunteers_id = $instance_id . '-volunteers';
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--switchable" data-memml-calendar data-default-view="%1$s">' .
+			'<div class="memml-calendar memml-calendar--switchable memml-calendar--%13$s" data-memml-calendar data-default-view="%1$s" data-layout="%13$s">' .
 			'<div class="memml-calendar__filter" role="group" aria-label="%2$s">' .
 			'<button aria-controls="%3$s" aria-pressed="%4$s" class="memml-calendar__filter-button" data-memml-view="events" type="button">%5$s</button>' .
 			'<button aria-controls="%6$s" aria-pressed="%7$s" class="memml-calendar__filter-button" data-memml-view="volunteers" type="button">%8$s</button>' .
@@ -80,18 +88,20 @@ final class Memml_Renderer {
 			'volunteers' === $default_view ? 'true' : 'false',
 			esc_html__( 'Volunteer Opportunities', 'memml' ),
 			'events' === $default_view ? '' : ' hidden',
-			$this->render_events_panel(),
+			$this->render_events_panel( $layout ),
 			'volunteers' === $default_view ? '' : ' hidden',
-			$this->render_volunteers_panel()
+			$this->render_volunteers_panel( $layout ),
+			esc_attr( $layout )
 		);
 	}
 
 	/**
 	 * Renders the events feed content.
 	 *
+	 * @param string $layout Display layout.
 	 * @return string
 	 */
-	private function render_events_panel() {
+	private function render_events_panel( $layout ) {
 		$result = $this->get_client_result( 'events' );
 
 		if ( is_wp_error( $result ) ) {
@@ -107,7 +117,12 @@ final class Memml_Renderer {
 		}
 
 		$timezone = $this->get_timezone( $result['data'] );
-		$cards    = '';
+
+		if ( 'month' === $layout ) {
+			return $this->render_month_calendar( $events, 'events', $timezone );
+		}
+
+		$cards = '';
 
 		foreach ( $events as $event ) {
 			if ( is_array( $event ) ) {
@@ -121,9 +136,10 @@ final class Memml_Renderer {
 	/**
 	 * Renders the volunteer feed content.
 	 *
+	 * @param string $layout Display layout.
 	 * @return string
 	 */
-	private function render_volunteers_panel() {
+	private function render_volunteers_panel( $layout ) {
 		$result = $this->get_client_result( 'volunteers' );
 
 		if ( is_wp_error( $result ) ) {
@@ -144,7 +160,12 @@ final class Memml_Renderer {
 		}
 
 		$timezone = $this->get_timezone( $data );
-		$cards    = '';
+
+		if ( 'month' === $layout ) {
+			return $this->render_month_calendar( $opportunities, 'volunteers', $timezone );
+		}
+
+		$cards = '';
 
 		foreach ( $opportunities as $opportunity ) {
 			if ( is_array( $opportunity ) ) {
@@ -153,6 +174,282 @@ final class Memml_Renderer {
 		}
 
 		return '<div class="memml-calendar__grid">' . $cards . '</div>';
+	}
+
+	/**
+	 * Renders feed items in one or more organization-timezone month grids.
+	 *
+	 * @param array        $items    Event or opportunity records.
+	 * @param string       $feed     Feed identifier.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return string
+	 */
+	private function render_month_calendar( $items, $feed, $timezone ) {
+		$months = array();
+
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+
+			$date = $this->get_item_datetime( $item, $timezone );
+
+			if ( ! $date ) {
+				continue;
+			}
+
+			$month_key = $date->format( 'Y-m' );
+			$day       = (int) $date->format( 'j' );
+
+			if ( ! isset( $months[ $month_key ] ) ) {
+				$months[ $month_key ] = array(
+					'first_day' => $date->modify( 'first day of this month' )->setTime( 0, 0 ),
+					'days'      => array(),
+				);
+			}
+
+			if ( ! isset( $months[ $month_key ]['days'][ $day ] ) ) {
+				$months[ $month_key ]['days'][ $day ] = array();
+			}
+
+			$months[ $month_key ]['days'][ $day ][] = $item;
+		}
+
+		if ( empty( $months ) ) {
+			return $this->render_notice( __( 'No dated calendar items are currently available.', 'memml' ) );
+		}
+
+		ksort( $months );
+		++self::$instance;
+
+		$calendar_id = 'memml-month-calendar-' . self::$instance;
+		$month_count = count( $months );
+		$first_month = reset( $months );
+		$first_label = wp_date( 'F Y', $first_month['first_day']->getTimestamp(), $timezone );
+		$navigation  = sprintf(
+			'<div class="memml-calendar__month-header"><h3 aria-live="polite" class="memml-calendar__month-label" data-memml-month-label>%s</h3></div>',
+			esc_html( $first_label )
+		);
+
+		if ( $month_count > 1 ) {
+			$navigation = sprintf(
+				'<div class="memml-calendar__month-header"><button aria-controls="%1$s" aria-label="%2$s" class="memml-calendar__month-button" data-memml-month-prev disabled type="button">&lsaquo;</button><h3 aria-live="polite" class="memml-calendar__month-label" data-memml-month-label>%3$s</h3><button aria-controls="%1$s" aria-label="%4$s" class="memml-calendar__month-button" data-memml-month-next type="button">&rsaquo;</button></div>',
+				esc_attr( $calendar_id ),
+				esc_attr__( 'Previous month', 'memml' ),
+				esc_html( $first_label ),
+				esc_attr__( 'Next month', 'memml' )
+			);
+		}
+
+		$panels = '';
+		$index  = 0;
+
+		foreach ( $months as $month ) {
+			$panels .= $this->render_month_panel( $month, $feed, $timezone, $index );
+			++$index;
+		}
+
+		return sprintf(
+			'<div class="memml-calendar__month" data-memml-month-calendar data-month-count="%1$d">%2$s<div id="%3$s">%4$s</div></div>',
+			$month_count,
+			$navigation,
+			esc_attr( $calendar_id ),
+			$panels
+		);
+	}
+
+	/**
+	 * Renders one month table.
+	 *
+	 * @param array        $month    Grouped month data.
+	 * @param string       $feed     Feed identifier.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @param int          $index    Month index.
+	 * @return string
+	 */
+	private function render_month_panel( $month, $feed, $timezone, $index ) {
+		$first_day     = $month['first_day'];
+		$month_label   = wp_date( 'F Y', $first_day->getTimestamp(), $timezone );
+		$start_of_week = min( 6, max( 0, (int) get_option( 'start_of_week', 0 ) ) );
+		$first_weekday = (int) $first_day->format( 'w' );
+		$offset        = ( $first_weekday - $start_of_week + 7 ) % 7;
+		$days_in_month = (int) $first_day->format( 't' );
+		$cell_count    = (int) ceil( ( $offset + $days_in_month ) / 7 ) * 7;
+		$weekday_row   = '';
+		$reference_day = new DateTimeImmutable( '2024-01-07 12:00:00', $timezone );
+
+		for ( $column = 0; $column < 7; ++$column ) {
+			$weekday_index = ( $start_of_week + $column ) % 7;
+			$weekday       = $reference_day->modify( '+' . $weekday_index . ' days' );
+			$weekday_row  .= '<th scope="col">' . esc_html( wp_date( 'D', $weekday->getTimestamp(), $timezone ) ) . '</th>';
+		}
+
+		$rows = '';
+
+		for ( $cell = 0; $cell < $cell_count; ++$cell ) {
+			if ( 0 === $cell % 7 ) {
+				$rows .= '<tr>';
+			}
+
+			$day = $cell - $offset + 1;
+
+			if ( $day < 1 || $day > $days_in_month ) {
+				$rows .= '<td aria-hidden="true" class="memml-calendar__month-day is-empty"></td>';
+			} else {
+				$date       = $first_day->setDate( (int) $first_day->format( 'Y' ), (int) $first_day->format( 'n' ), $day );
+				$date_label = wp_date( get_option( 'date_format' ), $date->getTimestamp(), $timezone );
+				$entries    = '';
+
+				if ( ! empty( $month['days'][ $day ] ) ) {
+					foreach ( $month['days'][ $day ] as $item ) {
+						$entries .= $this->render_month_entry( $item, $feed, $timezone );
+					}
+				}
+
+				$rows .= sprintf(
+					'<td aria-label="%1$s" class="memml-calendar__month-day%2$s"><span class="memml-calendar__day-number">%3$d</span>%4$s</td>',
+					esc_attr( $date_label ),
+					'' === $entries ? '' : ' has-items',
+					$day,
+					$entries
+				);
+			}
+
+			if ( 6 === $cell % 7 ) {
+				$rows .= '</tr>';
+			}
+		}
+
+		return sprintf(
+			'<section class="memml-calendar__month-panel" data-memml-month-index="%1$d" data-month-label="%2$s"%3$s><div class="memml-calendar__month-scroll"><table class="memml-calendar__month-table"><caption class="screen-reader-text">%2$s</caption><thead><tr>%4$s</tr></thead><tbody>%5$s</tbody></table></div></section>',
+			$index,
+			esc_attr( $month_label ),
+			0 === $index ? '' : ' hidden',
+			$weekday_row,
+			$rows
+		);
+	}
+
+	/**
+	 * Renders one compact item in a month day.
+	 *
+	 * @param array        $item     Feed record.
+	 * @param string       $feed     Feed identifier.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return string
+	 */
+	private function render_month_entry( $item, $feed, $timezone ) {
+		$title   = isset( $item['title'] ) ? (string) $item['title'] : '';
+		$time    = $this->render_time_only( $item, $timezone );
+		$status  = '';
+		$details = '';
+		$actions = '';
+
+		if ( 'events' === $feed ) {
+			$event_status = isset( $item['status'] ) ? (string) $item['status'] : 'scheduled';
+
+			if ( in_array( $event_status, array( 'cancelled', 'postponed' ), true ) ) {
+				$status = sprintf(
+					'<span class="memml-calendar__month-status memml-calendar__month-status--%1$s">%2$s</span>',
+					esc_attr( $event_status ),
+					'cancelled' === $event_status ? esc_html__( 'Cancelled', 'memml' ) : esc_html__( 'Postponed', 'memml' )
+				);
+			}
+
+			$actions = $this->render_event_actions( $item );
+		} else {
+			if ( isset( $item['spotsRemaining'] ) ) {
+				$spots   = max( 0, (int) $item['spotsRemaining'] );
+				$details = '<span class="memml-calendar__month-spots">' . esc_html(
+					sprintf(
+						/* translators: %d: Number of volunteer positions still available. */
+						_n( '%d spot', '%d spots', $spots, 'memml' ),
+						$spots
+					)
+				) . '</span>';
+			}
+
+			if ( ! empty( $item['url'] ) ) {
+				$actions = sprintf(
+					'<div class="memml-calendar__actions"><a class="memml-calendar__calendar-link" href="%1$s">%2$s</a></div>',
+					esc_url( $item['url'] ),
+					esc_html__( 'Volunteer', 'memml' )
+				);
+			}
+		}
+
+		return sprintf(
+			'<article class="memml-calendar__month-entry">%1$s<h4 class="memml-calendar__month-title">%2$s</h4>%3$s%4$s%5$s</article>',
+			$status,
+			esc_html( $title ),
+			$time,
+			$details,
+			$actions
+		);
+	}
+
+	/**
+	 * Gets an item's local date and time.
+	 *
+	 * @param array        $item     Feed record.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return DateTimeImmutable|null
+	 */
+	private function get_item_datetime( $item, $timezone ) {
+		try {
+			if ( ! empty( $item['startsAt'] ) ) {
+				return ( new DateTimeImmutable( $item['startsAt'] ) )->setTimezone( $timezone );
+			}
+
+			if ( ! empty( $item['eventDate'] ) ) {
+				return new DateTimeImmutable( $item['eventDate'] . ' 00:00:00', $timezone );
+			}
+		} catch ( Exception $exception ) {
+			unset( $exception );
+		}
+
+		return null;
+	}
+
+	/**
+	 * Renders a compact local time for month entries.
+	 *
+	 * @param array        $item     Feed record.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return string
+	 */
+	private function render_time_only( $item, $timezone ) {
+		if ( ! empty( $item['allDay'] ) || empty( $item['startsAt'] ) ) {
+			return '<span class="memml-calendar__month-time">' . esc_html__( 'All day', 'memml' ) . '</span>';
+		}
+
+		$date = $this->get_item_datetime( $item, $timezone );
+
+		return $date
+			? '<time class="memml-calendar__month-time" datetime="' . esc_attr( $item['startsAt'] ) . '">' . esc_html( wp_date( get_option( 'time_format' ), $date->getTimestamp(), $timezone ) ) . '</time>'
+			: '';
+	}
+
+	/**
+	 * Gets a safe display layout from block or shortcode attributes.
+	 *
+	 * @param array|string $attributes Block or shortcode attributes.
+	 * @return string
+	 */
+	private function get_layout_from_attributes( $attributes ) {
+		$layout = is_array( $attributes ) && isset( $attributes['view'] ) ? $attributes['view'] : 'list';
+
+		return $this->normalize_layout( $layout );
+	}
+
+	/**
+	 * Normalizes a display layout.
+	 *
+	 * @param string $layout Candidate layout.
+	 * @return string
+	 */
+	private function normalize_layout( $layout ) {
+		return 'month' === $layout ? 'month' : 'list';
 	}
 
 	/**

@@ -43,6 +43,15 @@ update_option(
 );
 
 try {
+	$block_registry = WP_Block_Type_Registry::get_instance();
+	$block_names    = array( 'memml/calendar', 'memml/events', 'memml/volunteers' );
+
+	foreach ( $block_names as $block_name ) {
+		if ( ! $block_registry->is_registered( $block_name ) ) {
+			throw new RuntimeException( 'Block was not registered: ' . $block_name );
+		}
+	}
+
 	$connection = ( new Memml_Feed_Client() )->get_events( 'river-city-neighbors', true );
 
 	if ( is_wp_error( $connection ) ) {
@@ -53,7 +62,8 @@ try {
 		throw new RuntimeException( 'The connection test did not return the fixture organization name.' );
 	}
 
-	$html = do_shortcode( '[memml_calendar default="volunteers"]' );
+	$html       = do_shortcode( '[memml_calendar default="volunteers"]' );
+	$month_html = do_shortcode( '[memml_calendar default="events" view="month"]' );
 
 	$expectations = array(
 		'data-default-view="volunteers"',
@@ -68,7 +78,22 @@ try {
 		}
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, toggle, and timezone smoke test passed.' );
+	$month_expectations = array(
+		'data-layout="month"',
+		'data-memml-month-calendar',
+		'September 2026',
+		'October 2026',
+		'Riverside Cleanup',
+		'Community Dinner',
+	);
+
+	foreach ( $month_expectations as $expectation ) {
+		if ( false === strpos( $month_html, $expectation ) ) {
+			throw new RuntimeException( 'Missing month output: ' . $expectation );
+		}
+	}
+
+	WP_CLI::success( 'Memml Calendar activation, connection, source toggle, timezone, and month view smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
 
