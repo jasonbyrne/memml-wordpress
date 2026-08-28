@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<ruleset name="Memml WordPress Plugin">
+	<description>WordPress coding standards for the Memml plugin.</description>
+
+	<file>memml.php</file>
+	<file>includes</file>
+	<file>tests</file>
+
+	<arg name="basepath" value="."/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+	<arg name="extensions" value="php"/>
+
+	<rule ref="WordPress-Extra"/>
+	<rule ref="WordPress.Files.FileName.InvalidClassFileName">
+		<exclude-pattern>includes/class-feed-client.php</exclude-pattern>
+		<exclude-pattern>includes/class-plugin.php</exclude-pattern>
+		<exclude-pattern>includes/class-settings.php</exclude-pattern>
+	</rule>
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="memml"/>
+			</property>
+		</properties>
+	</rule>
+	<rule ref="PHPCompatibilityWP">
+		<include-pattern>*\.php$</include-pattern>
+	</rule>
+
+	<config name="testVersion" value="7.4-"/>
+	<exclude-pattern>vendor/*</exclude-pattern>
+</ruleset>

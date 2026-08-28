@@ -1,0 +1,25 @@
+{
+  "name": "memml-wordpress",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WordPress blocks for Memml public events and volunteer opportunities.",
+  "scripts": {
+    "build": "wp-scripts build",
+    "format": "wp-scripts format",
+    "lint:js": "wp-scripts lint-js src",
+    "start": "wp-scripts start",
+    "wp-env": "wp-env",
+    "wp-env:start": "wp-env start",
+    "wp-env:stop": "wp-env stop"
+  },
+  "devDependencies": {
+    "@wordpress/env": "^11.14.0",
+    "@wordpress/scripts": "^34.2.0"
+  },
+  "dependencies": {
+    "@wordpress/block-editor": "^17.0.0",
+    "@wordpress/blocks": "^15.27.0",
+    "@wordpress/components": "^40.0.0",
+    "@wordpress/i18n": "^6.27.0"
+  }
+}

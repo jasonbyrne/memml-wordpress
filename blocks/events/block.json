@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "memml/events",
+  "version": "0.1.0",
+  "title": "Memml Events",
+  "category": "widgets",
+  "icon": "calendar-alt",
+  "description": "Display public events from Memml.",
+  "keywords": ["events", "calendar", "nonprofit"],
+  "textdomain": "memml",
+  "editorScript": "memml-block-editor",
+  "supports": {
+    "html": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "memml/volunteers",
+  "version": "0.1.0",
+  "title": "Memml Volunteers",
+  "category": "widgets",
+  "icon": "groups",
+  "description": "Display public volunteer opportunities from Memml.",
+  "keywords": ["volunteer", "opportunities", "nonprofit"],
+  "textdomain": "memml",
+  "editorScript": "memml-block-editor",
+  "supports": {
+    "html": false
+  }
+}

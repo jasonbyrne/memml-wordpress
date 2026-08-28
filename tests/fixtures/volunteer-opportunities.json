@@ -1,0 +1,29 @@
+{
+  "organization": {
+    "name": "River City Neighbors",
+    "organizationKey": "river-city-neighbors",
+    "timezone": "America/New_York",
+    "logoUrl": "https://cdn.memml.com/organizations/river-city-neighbors/logo.png",
+    "websiteUrl": "https://rivercityneighbors.example"
+  },
+  "links": {
+    "json": "https://memml.com/api/public/v1/river-city-neighbors/volunteer-opportunities.json"
+  },
+  "volunteerOpportunities": [
+    {
+      "publicKey": "vol_01JTESTVOLUNTEER",
+      "title": "Food Pantry Sorters",
+      "description": "Sort and shelve weekly food donations.",
+      "location": "River City Food Pantry",
+      "eventDate": "2026-09-19",
+      "startsAt": "2026-09-19T13:00:00.000Z",
+      "endsAt": "2026-09-19T16:00:00.000Z",
+      "allDay": false,
+      "positionCount": 12,
+      "spotsRemaining": 4,
+      "needsMore": true,
+      "url": "https://memml.com/river-city-neighbors/volunteer/vol_01JTESTVOLUNTEER",
+      "imageUrl": "https://cdn.memml.com/volunteer/food-pantry-sorters.jpg"
+    }
+  ]
+}

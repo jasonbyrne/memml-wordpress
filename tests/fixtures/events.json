@@ -1,0 +1,55 @@
+{
+  "organization": {
+    "name": "River City Neighbors",
+    "organizationKey": "river-city-neighbors",
+    "timezone": "America/New_York",
+    "logoUrl": "https://cdn.memml.com/organizations/river-city-neighbors/logo.png",
+    "websiteUrl": "https://rivercityneighbors.example"
+  },
+  "links": {
+    "calendar": "https://memml.com/river-city-neighbors/events",
+    "ics": "https://memml.com/api/public/v1/river-city-neighbors/events.ics",
+    "rss": "https://memml.com/api/public/v1/river-city-neighbors/events.rss",
+    "json": "https://memml.com/api/public/v1/river-city-neighbors/events.json"
+  },
+  "events": [
+    {
+      "id": "evt_01JTESTEVENT",
+      "uid": "evt_01JTESTEVENT@memml.com",
+      "title": "Riverside Cleanup",
+      "description": "Bring gloves and comfortable shoes. All ages are welcome.",
+      "location": "Riverside Park, 100 River Road",
+      "cost": null,
+      "status": "scheduled",
+      "startsAt": "2026-09-12T13:00:00.000Z",
+      "endsAt": "2026-09-12T16:00:00.000Z",
+      "allDay": false,
+      "lastModified": "2026-08-20T18:42:00.000Z",
+      "url": "https://memml.com/river-city-neighbors/events/riverside-cleanup",
+      "imageUrl": "https://cdn.memml.com/events/riverside-cleanup.jpg",
+      "icsUrl": "https://memml.com/api/public/v1/river-city-neighbors/events/evt_01JTESTEVENT.ics",
+      "publicEventUrl": "https://rivercityneighbors.example/register/cleanup",
+      "ctaLabel": "Register",
+      "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/riverside-cleanup"
+    },
+    {
+      "id": "evt_01JPOSTPONED",
+      "uid": "evt_01JPOSTPONED@memml.com",
+      "title": "Community Dinner",
+      "description": "A neighborhood dinner and fundraiser.",
+      "location": "Community Hall",
+      "cost": "$10 suggested donation",
+      "status": "postponed",
+      "startsAt": "2026-10-03T22:00:00.000Z",
+      "endsAt": "2026-10-04T01:00:00.000Z",
+      "allDay": false,
+      "lastModified": "2026-08-24T14:15:00.000Z",
+      "url": "https://memml.com/river-city-neighbors/events/community-dinner",
+      "imageUrl": null,
+      "icsUrl": "https://memml.com/api/public/v1/river-city-neighbors/events/evt_01JPOSTPONED.ics",
+      "publicEventUrl": null,
+      "ctaLabel": null,
+      "volunteerSignupUrl": null
+    }
+  ]
+}
