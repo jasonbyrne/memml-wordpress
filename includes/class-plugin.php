@@ -20,10 +20,18 @@ final class Memml_Plugin {
 	private $settings;
 
 	/**
+	 * Public feed renderer.
+	 *
+	 * @var Memml_Renderer
+	 */
+	private $renderer;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
 		$this->settings = new Memml_Settings();
+		$this->renderer = new Memml_Renderer();
 	}
 
 	/**
@@ -34,6 +42,37 @@ final class Memml_Plugin {
 	public function register() {
 		$this->settings->register();
 		add_action( 'init', array( $this, 'register_blocks' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_frontend_assets' ) );
+		add_shortcode( 'memml_calendar', array( $this, 'render_calendar_shortcode' ) );
+		add_shortcode( 'memml_events', array( $this->renderer, 'render_events' ) );
+		add_shortcode( 'memml_volunteers', array( $this->renderer, 'render_volunteers' ) );
+	}
+
+	/**
+	 * Enqueues front-end assets early when the current post uses Memml Calendar.
+	 *
+	 * Render callbacks also enqueue as a fallback for non-post contexts.
+	 *
+	 * @return void
+	 */
+	public function maybe_enqueue_frontend_assets() {
+		global $post;
+
+		if ( ! $post instanceof WP_Post ) {
+			return;
+		}
+
+		$content        = $post->post_content;
+		$uses_block     = has_block( 'memml/calendar', $post ) ||
+			has_block( 'memml/events', $post ) ||
+			has_block( 'memml/volunteers', $post );
+		$uses_shortcode = has_shortcode( $content, 'memml_calendar' ) ||
+			has_shortcode( $content, 'memml_events' ) ||
+			has_shortcode( $content, 'memml_volunteers' );
+
+		if ( $uses_block || $uses_shortcode ) {
+			$this->renderer->enqueue_assets();
+		}
 	}
 
 	/**
@@ -60,34 +99,44 @@ final class Memml_Plugin {
 		wp_set_script_translations( 'memml-block-editor', 'memml', MEMML_PLUGIN_DIR . 'languages' );
 
 		register_block_type(
+			MEMML_PLUGIN_DIR . 'blocks/calendar',
+			array( 'render_callback' => array( $this, 'render_calendar_block' ) )
+		);
+		register_block_type(
 			MEMML_PLUGIN_DIR . 'blocks/events',
-			array( 'render_callback' => array( $this, 'render_events_block' ) )
+			array( 'render_callback' => array( $this->renderer, 'render_events' ) )
 		);
 		register_block_type(
 			MEMML_PLUGIN_DIR . 'blocks/volunteers',
-			array( 'render_callback' => array( $this, 'render_volunteers_block' ) )
+			array( 'render_callback' => array( $this->renderer, 'render_volunteers' ) )
 		);
 	}
 
 	/**
-	 * M1 dynamic render callback for the events block.
+	 * Renders the shared calendar block.
 	 *
-	 * The shared public renderer is introduced with the M2 display slice.
-	 *
+	 * @param array $attributes Block attributes.
 	 * @return string
 	 */
-	public function render_events_block() {
-		return '';
+	public function render_calendar_block( $attributes ) {
+		$default_view = isset( $attributes['defaultView'] ) ? $attributes['defaultView'] : 'events';
+
+		return $this->renderer->render_calendar( $default_view );
 	}
 
 	/**
-	 * M1 dynamic render callback for the volunteers block.
+	 * Renders the shared calendar shortcode.
 	 *
-	 * The shared public renderer is introduced with the volunteer display slice.
-	 *
+	 * @param array|string $attributes Shortcode attributes.
 	 * @return string
 	 */
-	public function render_volunteers_block() {
-		return '';
+	public function render_calendar_shortcode( $attributes ) {
+		$attributes = shortcode_atts(
+			array( 'default' => 'events' ),
+			is_array( $attributes ) ? $attributes : array(),
+			'memml_calendar'
+		);
+
+		return $this->renderer->render_calendar( $attributes['default'] );
 	}
 }

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 2,
+  "name": "memml/calendar",
+  "version": "0.1.0",
+  "title": "Memml Calendar",
+  "category": "widgets",
+  "icon": "calendar",
+  "description": "Let visitors switch between Memml events and volunteer opportunities.",
+  "keywords": ["events", "calendar", "volunteer"],
+  "textdomain": "memml",
+  "editorScript": "memml-block-editor",
+  "attributes": {
+    "defaultView": {
+      "type": "string",
+      "default": "events",
+      "enum": ["events", "volunteers"]
+    }
+  },
+  "supports": {
+    "html": false
+  }
+}

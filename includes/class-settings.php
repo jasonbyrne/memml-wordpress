@@ -45,8 +45,8 @@ final class Memml_Settings {
 	 */
 	public function add_settings_page() {
 		add_options_page(
-			__( 'Memml Settings', 'memml' ),
-			__( 'Memml', 'memml' ),
+			__( 'Memml Calendar Settings', 'memml' ),
+			__( 'Memml Calendar', 'memml' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			array( $this, 'render_page' )
@@ -119,7 +119,7 @@ final class Memml_Settings {
 		$options = self::get_options();
 		?>
 		<div class="wrap memml-settings">
-			<h1><?php echo esc_html__( 'Memml Settings', 'memml' ); ?></h1>
+			<h1><?php echo esc_html__( 'Memml Calendar Settings', 'memml' ); ?></h1>
 			<p><?php echo esc_html__( 'Connect WordPress to your organization’s unauthenticated Memml public feeds.', 'memml' ); ?></p>
 			<form action="options.php" method="post">
 				<?php settings_fields( 'memml' ); ?>

@@ -1,0 +1,166 @@
+:where(.memml-calendar) {
+	--memml-accent: #2563eb;
+	--memml-accent-contrast: #fff;
+	--memml-border: #d7dce2;
+	--memml-card-background: #fff;
+	--memml-muted: #5d6673;
+	--memml-radius: 0.5rem;
+	--memml-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+	--memml-spacing: 1rem;
+	color: inherit;
+}
+
+:where(.memml-calendar__filter) {
+	display: inline-flex;
+	gap: 0.25rem;
+	margin-block-end: calc(var(--memml-spacing) * 1.5);
+	padding: 0.25rem;
+	background: color-mix(in srgb, var(--memml-border) 35%, transparent);
+	border-radius: var(--memml-radius);
+}
+
+:where(.memml-calendar__filter-button) {
+	padding: 0.55rem 0.85rem;
+	border: 0;
+	border-radius: calc(var(--memml-radius) * 0.75);
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
+	font: inherit;
+}
+
+:where(.memml-calendar__filter-button[aria-pressed="true"]) {
+	background: var(--memml-card-background);
+	box-shadow: var(--memml-shadow);
+}
+
+:where(.memml-calendar__grid) {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+	gap: var(--memml-spacing);
+}
+
+:where(.memml-calendar__card) {
+	overflow: hidden;
+	border: 1px solid var(--memml-border);
+	border-radius: var(--memml-radius);
+	background: var(--memml-card-background);
+	box-shadow: var(--memml-shadow);
+}
+
+:where(.memml-calendar__card--cancelled) {
+	opacity: 0.65;
+}
+
+:where(.memml-calendar__card--cancelled .memml-calendar__title) {
+	text-decoration: line-through;
+}
+
+:where(.memml-calendar__image) {
+	aspect-ratio: 16 / 9;
+	background: var(--memml-border);
+}
+
+:where(.memml-calendar__image img) {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+:where(.memml-calendar__card-body) {
+	display: grid;
+	gap: calc(var(--memml-spacing) * 0.75);
+	padding: var(--memml-spacing);
+}
+
+:where(.memml-calendar__title, .memml-calendar__description) {
+	margin: 0;
+}
+
+:where(.memml-calendar__meta) {
+	display: grid;
+	gap: 0.25rem;
+	color: var(--memml-muted);
+	font-size: 0.925em;
+}
+
+:where(.memml-calendar__date) {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+	font-weight: 650;
+}
+
+:where(.memml-calendar__date-chip) {
+	display: grid;
+	min-width: 2.8rem;
+	overflow: hidden;
+	border: 1px solid var(--memml-border);
+	border-radius: calc(var(--memml-radius) * 0.75);
+	background: var(--memml-card-background);
+	text-align: center;
+	line-height: 1.1;
+}
+
+:where(.memml-calendar__date-chip span) {
+	padding: 0.2rem 0.3rem;
+	background: var(--memml-accent);
+	color: var(--memml-accent-contrast);
+	font-size: 0.72em;
+	text-transform: uppercase;
+}
+
+:where(.memml-calendar__date-chip strong) {
+	padding: 0.25rem;
+	font-size: 1.2em;
+}
+
+:where(.memml-calendar__status) {
+	justify-self: start;
+	padding: 0.2rem 0.5rem;
+	border-radius: 999px;
+	background: var(--memml-border);
+	font-size: 0.8em;
+	font-weight: 700;
+}
+
+:where(.memml-calendar__status--postponed, .memml-calendar__status--needed) {
+	background: #fff4cc;
+	color: #6b4f00;
+}
+
+:where(.memml-calendar__actions) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem;
+	margin-block-start: 0.25rem;
+}
+
+:where(.memml-calendar__button) {
+	display: inline-flex;
+	padding: 0.55rem 0.8rem;
+	border: 1px solid var(--memml-border);
+	border-radius: calc(var(--memml-radius) * 0.75);
+	color: inherit;
+	text-decoration: none;
+}
+
+:where(.memml-calendar__button--primary) {
+	border-color: var(--memml-accent);
+	background: var(--memml-accent);
+	color: var(--memml-accent-contrast);
+}
+
+:where(.memml-calendar__calendar-link) {
+	font-size: 0.9em;
+}
+
+:where(.memml-calendar__notice) {
+	margin: 0;
+	padding: var(--memml-spacing);
+	border: 1px solid var(--memml-border);
+	border-radius: var(--memml-radius);
+	color: var(--memml-muted);
+}

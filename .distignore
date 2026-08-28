@@ -1,5 +1,6 @@
 /.git
 /.github
+/.phpunit.result.cache
 /.wp-env.json
 /composer.json
 /composer.lock
@@ -10,5 +11,7 @@
 /phpunit.xml.dist
 /src
 /tests
+/plugin-check-build
+/vendor
 /.distignore
 /.gitignore

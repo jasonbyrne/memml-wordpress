@@ -2,12 +2,14 @@
   "name": "memml-wordpress",
   "version": "0.1.0",
   "private": true,
-  "description": "WordPress blocks for Memml public events and volunteer opportunities.",
+  "description": "Memml Calendar blocks for public events and volunteer opportunities.",
   "scripts": {
     "build": "wp-scripts build",
     "format": "wp-scripts format",
+    "lint:css": "wp-scripts lint-style assets/calendar.css",
     "lint:js": "wp-scripts lint-js src",
     "start": "wp-scripts start",
+    "test:wp-env": "wp-env run cli wp eval-file wp-content/plugins/memml-wordpress/tests/wp-env-smoke.php",
     "wp-env": "wp-env",
     "wp-env:start": "wp-env start",
     "wp-env:stop": "wp-env stop"
