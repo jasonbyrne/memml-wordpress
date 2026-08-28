@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Memml Calendar browser fixture</title>
+	</head>
+	<body>
+		<div
+			class="memml-calendar memml-calendar--switchable"
+			data-calendar="events"
+			data-layout="list"
+			data-memml-calendar
+			data-memml-url-prefix="memml_main_"
+			data-period="upcoming"
+		>
+			<div role="group" aria-label="Choose a calendar">
+				<button aria-controls="main-events" aria-pressed="true" data-memml-view="events">Events</button>
+				<button aria-controls="main-volunteers" aria-pressed="false" data-memml-view="volunteers">Volunteer Opportunities</button>
+			</div>
+			<div role="group" aria-label="Choose a display view">
+				<button aria-pressed="true" data-memml-layout="list">List</button>
+				<button aria-pressed="false" data-memml-layout="month">Month</button>
+			</div>
+			<div data-memml-period-controls role="group" aria-label="Filter by date">
+				<button aria-pressed="true" data-memml-period="upcoming">Upcoming</button>
+				<button aria-pressed="false" data-memml-period="past">Past</button>
+			</div>
+			<div id="main-events">
+				<div data-memml-layout-panel="list">
+					<div data-memml-period-panel="upcoming"><article data-memml-item>Upcoming event</article></div>
+					<div data-memml-period-panel="past" hidden><article data-memml-item>Past event</article></div>
+				</div>
+				<div data-memml-layout-panel="month" hidden>
+					<div data-memml-month-calendar>
+						<button aria-label="Previous month" data-memml-month-prev disabled>Previous</button>
+						<h3 data-memml-month-label>August 2026</h3>
+						<button aria-label="Next month" data-memml-month-next>Next</button>
+						<section data-memml-month-index="0" data-month="2026-08" data-month-label="August 2026"><article data-memml-item>August event</article></section>
+						<section data-memml-month-index="1" data-month="2026-09" data-month-label="September 2026" hidden></section>
+						<section data-memml-month-index="2" data-month="2026-10" data-month-label="October 2026" hidden><article data-memml-item>October event</article></section>
+					</div>
+				</div>
+			</div>
+			<div id="main-volunteers" hidden>
+				<div data-memml-layout-panel="list"><div data-memml-period-panel="upcoming"><article data-memml-item>Upcoming volunteer opportunity</article></div><div data-memml-period-panel="past" hidden></div></div>
+				<div data-memml-layout-panel="month" hidden><div data-memml-month-calendar><h3 data-memml-month-label>October 2026</h3><section data-memml-month-index="0" data-month="2026-10" data-month-label="October 2026"><article data-memml-item>October volunteer opportunity</article></section></div></div>
+			</div>
+			<p aria-live="polite" data-memml-status></p>
+		</div>
+
+		<div class="memml-calendar" data-feed="volunteers" data-layout="list" data-memml-calendar data-memml-url-prefix="memml_sidebar_" data-period="upcoming">
+			<div role="group" aria-label="Choose a display view"><button aria-pressed="true" data-memml-layout="list">List</button><button aria-pressed="false" data-memml-layout="month">Month</button></div>
+			<div data-memml-period-controls role="group" aria-label="Filter by date"><button aria-pressed="true" data-memml-period="upcoming">Upcoming</button><button aria-pressed="false" data-memml-period="past">Past</button></div>
+			<div data-memml-layout-panel="list"><div data-memml-period-panel="upcoming"><article data-memml-item>Upcoming volunteer opportunity</article></div><div data-memml-period-panel="past" hidden><article data-memml-item>Past volunteer opportunity</article></div></div>
+			<div data-memml-layout-panel="month" hidden></div>
+			<p aria-live="polite" data-memml-status></p>
+		</div>
+
+		<script>
+			window.memmlCalendarI18n = {
+				event: 'event', events: 'events', opportunity: 'volunteer opportunity', opportunities: 'volunteer opportunities', showing: 'Showing {count} {items}.', showingMonth: 'Showing {month}, {count} {items}.'
+			};
+		</script>
+		<script src="/assets/calendar.js"></script>
+	</body>
+</html>

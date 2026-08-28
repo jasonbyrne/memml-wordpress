@@ -5,3 +5,5 @@ node_modules/
 vendor/
 npm-debug.log*
 plugin-check-build/
+playwright-report/
+test-results/
