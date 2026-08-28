@@ -9,7 +9,7 @@ import volunteersMetadata from '../blocks/volunteers/block.json';
 
 const LayoutControl = ( { value, onChange } ) => (
 	<SelectControl
-		label={ __( 'Display view', 'memml' ) }
+		label={ __( 'Initially selected view', 'memml' ) }
 		value={ value }
 		options={ [
 			{ label: __( 'List', 'memml' ), value: 'list' },
@@ -45,7 +45,7 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 			<PanelBody title={ __( 'Calendar settings', 'memml' ) }>
 				<SelectControl
 					label={ __( 'Initially selected calendar', 'memml' ) }
-					value={ attributes.defaultView }
+					value={ attributes.calendar }
 					options={ [
 						{ label: __( 'Events', 'memml' ), value: 'events' },
 						{
@@ -53,9 +53,7 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 							value: 'volunteers',
 						},
 					] }
-					onChange={ ( defaultView ) =>
-						setAttributes( { defaultView } )
-					}
+					onChange={ ( calendar ) => setAttributes( { calendar } ) }
 				/>
 				<LayoutControl
 					value={ attributes.view }
@@ -69,7 +67,7 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 				label={ __( 'Memml Calendar', 'memml' ) }
 			>
 				{ __(
-					'Visitors can switch between events and volunteer opportunities.',
+					'Visitors can switch calendars and choose a list or month view.',
 					'memml'
 				) }
 			</Placeholder>

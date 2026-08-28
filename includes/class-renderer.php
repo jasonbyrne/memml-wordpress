@@ -27,13 +27,8 @@ final class Memml_Renderer {
 	 */
 	public function render_events( $attributes = array() ) {
 		$this->enqueue_assets();
-		$layout = $this->get_layout_from_attributes( $attributes );
 
-		return sprintf(
-			'<div class="memml-calendar memml-calendar--events memml-calendar--%1$s" data-layout="%1$s">%2$s</div>',
-			esc_attr( $layout ),
-			$this->render_events_panel( $layout )
-		);
+		return $this->render_single_feed( 'events', $this->get_layout_from_attributes( $attributes ) );
 	}
 
 	/**
@@ -44,66 +39,142 @@ final class Memml_Renderer {
 	 */
 	public function render_volunteers( $attributes = array() ) {
 		$this->enqueue_assets();
-		$layout = $this->get_layout_from_attributes( $attributes );
 
-		return sprintf(
-			'<div class="memml-calendar memml-calendar--volunteers memml-calendar--%1$s" data-layout="%1$s">%2$s</div>',
-			esc_attr( $layout ),
-			$this->render_volunteers_panel( $layout )
-		);
+		return $this->render_single_feed( 'volunteers', $this->get_layout_from_attributes( $attributes ) );
 	}
 
 	/**
 	 * Renders a visitor-facing calendar switcher.
 	 *
-	 * @param string $default_view Initial view: events or volunteers.
-	 * @param string $layout       Display layout: list or month.
+	 * @param string $calendar Initial calendar: events or volunteers.
+	 * @param string $layout   Initial display layout: list or month.
 	 * @return string
 	 */
-	public function render_calendar( $default_view = 'events', $layout = 'list' ) {
+	public function render_calendar( $calendar = 'events', $layout = 'list' ) {
 		$this->enqueue_assets();
 		++self::$instance;
 
-		$default_view  = 'volunteers' === $default_view ? 'volunteers' : 'events';
-		$layout        = $this->normalize_layout( $layout );
-		$instance_id   = 'memml-calendar-' . self::$instance;
-		$events_id     = $instance_id . '-events';
-		$volunteers_id = $instance_id . '-volunteers';
+		$calendar          = 'volunteers' === $calendar ? 'volunteers' : 'events';
+		$layout            = $this->normalize_layout( $layout );
+		$instance_id       = 'memml-calendar-' . self::$instance;
+		$events_id         = $instance_id . '-events';
+		$volunteers_id     = $instance_id . '-volunteers';
+		$events_result     = $this->get_client_result( 'events' );
+		$volunteers_result = $this->get_client_result( 'volunteers' );
+		$events_layouts    = $this->render_layout_panels( 'events', $layout, $instance_id, $events_result );
+		$volunteer_layouts = $this->render_layout_panels( 'volunteers', $layout, $instance_id, $volunteers_result );
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--switchable memml-calendar--%13$s" data-memml-calendar data-default-view="%1$s" data-layout="%13$s">' .
-			'<div class="memml-calendar__filter" role="group" aria-label="%2$s">' .
+			'<div class="memml-calendar memml-calendar--switchable" data-memml-calendar data-calendar="%1$s" data-layout="%14$s">' .
+			'<div class="memml-calendar__toolbar"><div class="memml-calendar__filter" role="group" aria-label="%2$s">' .
 			'<button aria-controls="%3$s" aria-pressed="%4$s" class="memml-calendar__filter-button" data-memml-view="events" type="button">%5$s</button>' .
 			'<button aria-controls="%6$s" aria-pressed="%7$s" class="memml-calendar__filter-button" data-memml-view="volunteers" type="button">%8$s</button>' .
-			'</div>' .
-			'<div class="memml-calendar__panel" id="%3$s"%9$s>%10$s</div>' .
-			'<div class="memml-calendar__panel" id="%6$s"%11$s>%12$s</div>' .
+			'</div>%9$s</div>' .
+			'<div class="memml-calendar__panel" id="%3$s"%10$s>%11$s</div>' .
+			'<div class="memml-calendar__panel" id="%6$s"%12$s>%13$s</div>' .
 			'</div>',
-			esc_attr( $default_view ),
+			esc_attr( $calendar ),
 			esc_attr__( 'Choose a calendar', 'memml' ),
 			esc_attr( $events_id ),
-			'events' === $default_view ? 'true' : 'false',
+			'events' === $calendar ? 'true' : 'false',
 			esc_html__( 'Events', 'memml' ),
 			esc_attr( $volunteers_id ),
-			'volunteers' === $default_view ? 'true' : 'false',
+			'volunteers' === $calendar ? 'true' : 'false',
 			esc_html__( 'Volunteer Opportunities', 'memml' ),
-			'events' === $default_view ? '' : ' hidden',
-			$this->render_events_panel( $layout ),
-			'volunteers' === $default_view ? '' : ' hidden',
-			$this->render_volunteers_panel( $layout ),
+			$this->render_layout_controls( $layout, $instance_id, array( 'events', 'volunteers' ) ),
+			'events' === $calendar ? '' : ' hidden',
+			$events_layouts,
+			'volunteers' === $calendar ? '' : ' hidden',
+			$volunteer_layouts,
 			esc_attr( $layout )
+		);
+	}
+
+	/**
+	 * Renders a fixed feed with a visitor-facing layout switcher.
+	 *
+	 * @param string $feed   Feed identifier.
+	 * @param string $layout Initial display layout.
+	 * @return string
+	 */
+	private function render_single_feed( $feed, $layout ) {
+		++self::$instance;
+
+		$instance_id = 'memml-calendar-' . self::$instance;
+		$result      = $this->get_client_result( $feed );
+
+		return sprintf(
+			'<div class="memml-calendar memml-calendar--%1$s" data-memml-calendar data-layout="%2$s"><div class="memml-calendar__toolbar">%3$s</div>%4$s</div>',
+			esc_attr( $feed ),
+			esc_attr( $layout ),
+			$this->render_layout_controls( $layout, $instance_id, array( $feed ) ),
+			$this->render_layout_panels( $feed, $layout, $instance_id, $result )
+		);
+	}
+
+	/**
+	 * Renders the List and Month visitor controls.
+	 *
+	 * @param string $layout      Initial display layout.
+	 * @param string $instance_id Calendar instance ID.
+	 * @param array  $feeds       Feeds controlled by the buttons.
+	 * @return string
+	 */
+	private function render_layout_controls( $layout, $instance_id, $feeds ) {
+		$list_ids  = array();
+		$month_ids = array();
+
+		foreach ( $feeds as $feed ) {
+			$list_ids[]  = $instance_id . '-' . $feed . '-list';
+			$month_ids[] = $instance_id . '-' . $feed . '-month';
+		}
+
+		return sprintf(
+			'<div class="memml-calendar__filter memml-calendar__layout-filter" role="group" aria-label="%1$s"><button aria-controls="%2$s" aria-pressed="%3$s" class="memml-calendar__filter-button" data-memml-layout="list" type="button">%4$s</button><button aria-controls="%5$s" aria-pressed="%6$s" class="memml-calendar__filter-button" data-memml-layout="month" type="button">%7$s</button></div>',
+			esc_attr__( 'Choose a display view', 'memml' ),
+			esc_attr( implode( ' ', $list_ids ) ),
+			'list' === $layout ? 'true' : 'false',
+			esc_html__( 'List', 'memml' ),
+			esc_attr( implode( ' ', $month_ids ) ),
+			'month' === $layout ? 'true' : 'false',
+			esc_html__( 'Month', 'memml' )
+		);
+	}
+
+	/**
+	 * Renders both display layouts for one feed.
+	 *
+	 * @param string         $feed        Feed identifier.
+	 * @param string         $layout      Initial display layout.
+	 * @param string         $instance_id Calendar instance ID.
+	 * @param array|WP_Error $result      Feed client result.
+	 * @return string
+	 */
+	private function render_layout_panels( $feed, $layout, $instance_id, $result ) {
+		$list_id    = $instance_id . '-' . $feed . '-list';
+		$month_id   = $instance_id . '-' . $feed . '-month';
+		$list_html  = 'events' === $feed ? $this->render_events_panel( 'list', $result ) : $this->render_volunteers_panel( 'list', $result );
+		$month_html = 'events' === $feed ? $this->render_events_panel( 'month', $result ) : $this->render_volunteers_panel( 'month', $result );
+
+		return sprintf(
+			'<div data-memml-layout-panel="list" id="%1$s"%2$s>%3$s</div><div data-memml-layout-panel="month" id="%4$s"%5$s>%6$s</div>',
+			esc_attr( $list_id ),
+			'list' === $layout ? '' : ' hidden',
+			$list_html,
+			esc_attr( $month_id ),
+			'month' === $layout ? '' : ' hidden',
+			$month_html
 		);
 	}
 
 	/**
 	 * Renders the events feed content.
 	 *
-	 * @param string $layout Display layout.
+	 * @param string         $layout Display layout.
+	 * @param array|WP_Error $result Feed client result.
 	 * @return string
 	 */
-	private function render_events_panel( $layout ) {
-		$result = $this->get_client_result( 'events' );
-
+	private function render_events_panel( $layout, $result ) {
 		if ( is_wp_error( $result ) ) {
 			return $this->render_error( $result );
 		}
@@ -136,12 +207,11 @@ final class Memml_Renderer {
 	/**
 	 * Renders the volunteer feed content.
 	 *
-	 * @param string $layout Display layout.
+	 * @param string         $layout Display layout.
+	 * @param array|WP_Error $result Feed client result.
 	 * @return string
 	 */
-	private function render_volunteers_panel( $layout ) {
-		$result = $this->get_client_result( 'volunteers' );
-
+	private function render_volunteers_panel( $layout, $result ) {
 		if ( is_wp_error( $result ) ) {
 			return $this->render_error( $result );
 		}

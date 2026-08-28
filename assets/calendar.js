@@ -4,13 +4,20 @@
 	document
 		.querySelectorAll( '[data-memml-calendar]' )
 		.forEach( function ( calendar ) {
-			const buttons = calendar.querySelectorAll( '[data-memml-view]' );
+			const sourceButtons =
+				calendar.querySelectorAll( '[data-memml-view]' );
+			const layoutButtons = calendar.querySelectorAll(
+				'[data-memml-layout]'
+			);
+			const layoutPanels = calendar.querySelectorAll(
+				'[data-memml-layout-panel]'
+			);
 
-			buttons.forEach( function ( button ) {
+			sourceButtons.forEach( function ( button ) {
 				button.addEventListener( 'click', function () {
 					const view = button.dataset.memmlView;
 
-					buttons.forEach( function ( candidate ) {
+					sourceButtons.forEach( function ( candidate ) {
 						const isActive = candidate.dataset.memmlView === view;
 						const panel = document.getElementById(
 							candidate.getAttribute( 'aria-controls' )
@@ -23,6 +30,26 @@
 						if ( panel ) {
 							panel.hidden = ! isActive;
 						}
+					} );
+				} );
+			} );
+
+			layoutButtons.forEach( function ( button ) {
+				button.addEventListener( 'click', function () {
+					const layout = button.dataset.memmlLayout;
+
+					calendar.dataset.layout = layout;
+					layoutButtons.forEach( function ( candidate ) {
+						candidate.setAttribute(
+							'aria-pressed',
+							candidate.dataset.memmlLayout === layout
+								? 'true'
+								: 'false'
+						);
+					} );
+					layoutPanels.forEach( function ( panel ) {
+						panel.hidden =
+							panel.dataset.memmlLayoutPanel !== layout;
 					} );
 				} );
 			} );

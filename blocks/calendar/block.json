@@ -11,7 +11,7 @@
   "textdomain": "memml",
   "editorScript": "memml-block-editor",
   "attributes": {
-    "defaultView": {
+    "calendar": {
       "type": "string",
       "default": "events",
       "enum": ["events", "volunteers"]

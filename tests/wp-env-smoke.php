@@ -62,11 +62,15 @@ try {
 		throw new RuntimeException( 'The connection test did not return the fixture organization name.' );
 	}
 
-	$html       = do_shortcode( '[memml_calendar default="volunteers"]' );
-	$month_html = do_shortcode( '[memml_calendar default="events" view="month"]' );
+	$html        = do_shortcode( '[memml_calendar calendar="volunteers"]' );
+	$month_html  = do_shortcode( '[memml_calendar calendar="events" view="month"]' );
+	$events_html = do_shortcode( '[memml_events view="month"]' );
 
 	$expectations = array(
-		'data-default-view="volunteers"',
+		'data-calendar="volunteers"',
+		'data-layout="list"',
+		'data-memml-layout="list"',
+		'data-memml-layout="month"',
 		'Riverside Cleanup',
 		'Food Pantry Sorters',
 		'9:00 am',
@@ -93,7 +97,22 @@ try {
 		}
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, source toggle, timezone, and month view smoke test passed.' );
+	$events_expectations = array(
+		'memml-calendar--events',
+		'data-layout="month"',
+		'data-memml-layout="list"',
+		'data-memml-layout="month"',
+		'data-memml-layout-panel="list"',
+		'data-memml-layout-panel="month"',
+	);
+
+	foreach ( $events_expectations as $expectation ) {
+		if ( false === strpos( $events_html, $expectation ) ) {
+			throw new RuntimeException( 'Missing fixed-feed toggle output: ' . $expectation );
+		}
+	}
+
+	WP_CLI::success( 'Memml Calendar activation, connection, source and layout toggles, timezone, and month view smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
 

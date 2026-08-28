@@ -18,13 +18,13 @@ does not store Memml credentials.
 
 Choose the calendar that belongs on each page:
 
-* Use the Memml Calendar block or `[memml_calendar default="events" view="list"]` shortcode to let visitors switch calendars.
-* Use the Memml Events block or `[memml_events view="list"]` shortcode for general events only.
-* Use the Memml Volunteers block or `[memml_volunteers view="list"]` shortcode for volunteer opportunities only.
+* Use the Memml Calendar block or `[memml_calendar calendar="events" view="list"]` shortcode to let visitors switch calendars and display views.
+* Use the Memml Events block or `[memml_events view="list"]` shortcode for general events with a List/Month switcher.
+* Use the Memml Volunteers block or `[memml_volunteers view="list"]` shortcode for volunteer opportunities with a List/Month switcher.
 
-Set `default="volunteers"` on `[memml_calendar]` when volunteer opportunities should
-be selected first. Set `view="month"` on any shortcode for a month grid instead of
-the default card list. Blocks provide matching calendar and display-view controls.
+Set `calendar="volunteers"` on `[memml_calendar]` when volunteer opportunities should
+be selected first. Set `view="month"` on any shortcode when Month should be selected
+first. These properties set the initial selections; visitors can change them.
 
 The plugin requests public data from memml.com, caches successful responses,
 revalidates them using ETags, and can show the last known-good response during a
@@ -55,7 +55,8 @@ Yes. Each page can use the events block, the volunteers block, or both.
 
 = Can I use a month calendar instead of a list? =
 
-Yes. Choose Month in the block settings or pass `view="month"` to any Memml Calendar shortcode.
+Yes. Visitors can switch between List and Month. The block setting or `view` shortcode
+property controls which view they see first.
 
 == Changelog ==
 
