@@ -19,6 +19,18 @@ const LayoutControl = ( { value, onChange } ) => (
 	/>
 );
 
+const PeriodControl = ( { value, onChange } ) => (
+	<SelectControl
+		label={ __( 'Initially selected list filter', 'memml' ) }
+		value={ value }
+		options={ [
+			{ label: __( 'Upcoming', 'memml' ), value: 'upcoming' },
+			{ label: __( 'Past', 'memml' ), value: 'past' },
+		] }
+		onChange={ onChange }
+	/>
+);
+
 const createFeedEdit = ( label, instructions ) =>
 	function FeedEdit( { attributes, setAttributes } ) {
 		return (
@@ -28,6 +40,12 @@ const createFeedEdit = ( label, instructions ) =>
 						<LayoutControl
 							value={ attributes.view }
 							onChange={ ( view ) => setAttributes( { view } ) }
+						/>
+						<PeriodControl
+							value={ attributes.period }
+							onChange={ ( period ) =>
+								setAttributes( { period } )
+							}
 						/>
 					</PanelBody>
 				</InspectorControls>
@@ -58,6 +76,10 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 				<LayoutControl
 					value={ attributes.view }
 					onChange={ ( view ) => setAttributes( { view } ) }
+				/>
+				<PeriodControl
+					value={ attributes.period }
+					onChange={ ( period ) => setAttributes( { period } ) }
 				/>
 			</PanelBody>
 		</InspectorControls>

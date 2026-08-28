@@ -11,6 +11,36 @@
   },
   "volunteerOpportunities": [
     {
+      "publicKey": "vol_01JPASTLATER",
+      "title": "Community Garden Watering",
+      "description": "A completed summer garden watering shift.",
+      "location": "River City Community Garden",
+      "eventDate": "2026-07-22",
+      "startsAt": "2026-07-22T12:00:00.000Z",
+      "endsAt": "2026-07-22T14:00:00.000Z",
+      "allDay": false,
+      "positionCount": 6,
+      "spotsRemaining": 0,
+      "needsMore": false,
+      "url": "https://memml.com/river-city-neighbors/volunteer/vol_01JPASTLATER",
+      "imageUrl": null
+    },
+    {
+      "publicKey": "vol_01JPASTEARLIER",
+      "title": "Parade Route Cleanup",
+      "description": "A completed post-parade cleanup shift.",
+      "location": "Main Street",
+      "eventDate": "2026-07-06",
+      "startsAt": "2026-07-06T13:00:00.000Z",
+      "endsAt": "2026-07-06T15:00:00.000Z",
+      "allDay": false,
+      "positionCount": 10,
+      "spotsRemaining": 0,
+      "needsMore": false,
+      "url": "https://memml.com/river-city-neighbors/volunteer/vol_01JPASTEARLIER",
+      "imageUrl": null
+    },
+    {
       "publicKey": "vol_01JTESTVOLUNTEER",
       "title": "Food Pantry Sorters",
       "description": "Sort and shelve weekly food donations.",

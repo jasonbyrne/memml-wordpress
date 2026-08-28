@@ -34,7 +34,14 @@ $mock_request = static function ( $response, $args, $url ) use ( $events_fixture
 	);
 };
 
+$today_filter = static function ( $today, $timezone ) {
+	unset( $today );
+
+	return new DateTimeImmutable( '2026-08-28 00:00:00', $timezone );
+};
+
 add_filter( 'pre_http_request', $mock_request, 10, 3 );
+add_filter( 'memml_calendar_today', $today_filter, 10, 2 );
 update_option(
 	Memml_Settings::OPTION_NAME,
 	array(
@@ -70,8 +77,11 @@ try {
 	$expectations = array(
 		'data-calendar="volunteers"',
 		'data-layout="list"',
+		'data-period="upcoming"',
 		'data-memml-layout="list"',
 		'data-memml-layout="month"',
+		'data-memml-period="upcoming"',
+		'data-memml-period="past"',
 		'Riverside Cleanup',
 		'Food Pantry Sorters',
 		'9:00 am',
@@ -113,14 +123,51 @@ try {
 		}
 	}
 
+	$upcoming_start = strpos( $events_html, 'data-memml-period-panel="upcoming"' );
+	$past_start     = strpos( $events_html, 'data-memml-period-panel="past"' );
+	$month_start    = strpos( $events_html, 'data-memml-layout-panel="month"' );
+
+	if ( false === $upcoming_start || false === $past_start || false === $month_start ) {
+		throw new RuntimeException( 'Could not locate list period panels.' );
+	}
+
+	$upcoming_segment = substr( $events_html, $upcoming_start, $past_start - $upcoming_start );
+	$past_segment     = substr( $events_html, $past_start, $month_start - $past_start );
+
+	if ( false === strpos( $upcoming_segment, 'Riverside Cleanup' ) || false === strpos( $upcoming_segment, 'Community Dinner' ) ) {
+		throw new RuntimeException( 'Upcoming events were not rendered in the Upcoming panel.' );
+	}
+
+	if ( strpos( $upcoming_segment, 'Riverside Cleanup' ) > strpos( $upcoming_segment, 'Community Dinner' ) ) {
+		throw new RuntimeException( 'Upcoming events were not sorted in ascending order.' );
+	}
+
+	if ( false !== strpos( $upcoming_segment, 'School Supply Drive' ) || false !== strpos( $upcoming_segment, 'Neighborhood Picnic' ) ) {
+		throw new RuntimeException( 'Past events leaked into the Upcoming panel.' );
+	}
+
+	if ( false === strpos( $past_segment, 'School Supply Drive' ) || false === strpos( $past_segment, 'Neighborhood Picnic' ) ) {
+		throw new RuntimeException( 'Past events were not rendered in the Past panel.' );
+	}
+
+	if ( strpos( $past_segment, 'School Supply Drive' ) > strpos( $past_segment, 'Neighborhood Picnic' ) ) {
+		throw new RuntimeException( 'Past events were not sorted in descending order.' );
+	}
+
+	if ( false !== strpos( $past_segment, 'Riverside Cleanup' ) || false !== strpos( $past_segment, 'Community Dinner' ) ) {
+		throw new RuntimeException( 'Upcoming events leaked into the Past panel.' );
+	}
+
 	$_GET['memml_calendar'] = 'events';
 	$_GET['memml_view']     = 'month';
 	$_GET['memml_month']    = '2026-10';
+	$_GET['memml_period']   = 'past';
 
 	$query_html         = do_shortcode( '[memml_calendar calendar="volunteers" view="list"]' );
 	$query_expectations = array(
 		'data-calendar="events"',
 		'data-layout="month"',
+		'data-period="past"',
 		'data-month="2026-10" data-month-label="October 2026"><div',
 	);
 
@@ -130,9 +177,10 @@ try {
 		}
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, URL state, source and layout toggles, timezone, and month view smoke test passed.' );
+	WP_CLI::success( 'Memml Calendar activation, connection, URL state, upcoming/past filtering, sorting, toggles, timezone, and month view smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
+	remove_filter( 'memml_calendar_today', $today_filter, 10 );
 	$_GET = $previous_query;
 
 	if ( $had_options ) {

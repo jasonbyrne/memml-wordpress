@@ -31,6 +31,14 @@
 	margin-inline-start: auto;
 }
 
+:where(.memml-calendar__period-filter) {
+	margin-block-end: var(--memml-spacing);
+}
+
+:where(.memml-calendar__period-filter[hidden]) {
+	display: none;
+}
+
 :where(.memml-calendar__filter-button) {
 	padding: 0.55rem 0.85rem;
 	border: 0;

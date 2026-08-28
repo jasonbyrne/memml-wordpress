@@ -41,8 +41,18 @@
 			const layoutPanels = calendar.querySelectorAll(
 				'[data-memml-layout-panel]'
 			);
+			const periodButtons = calendar.querySelectorAll(
+				'[data-memml-period]'
+			);
+			const periodPanels = calendar.querySelectorAll(
+				'[data-memml-period-panel]'
+			);
+			const periodControls = calendar.querySelector(
+				'[data-memml-period-controls]'
+			);
 			const initialCalendar = calendar.dataset.calendar || 'events';
 			const initialLayout = calendar.dataset.layout || 'list';
+			const initialPeriod = calendar.dataset.period || 'upcoming';
 
 			const showSource = function ( source ) {
 				const hasSource = Array.from( sourceButtons ).some(
@@ -86,6 +96,29 @@
 				} );
 				layoutPanels.forEach( function ( panel ) {
 					panel.hidden = panel.dataset.memmlLayoutPanel !== layout;
+				} );
+
+				if ( periodControls ) {
+					periodControls.hidden = 'list' !== layout;
+				}
+			};
+
+			const showPeriod = function ( period ) {
+				if ( 'upcoming' !== period && 'past' !== period ) {
+					return;
+				}
+
+				calendar.dataset.period = period;
+				periodButtons.forEach( function ( candidate ) {
+					candidate.setAttribute(
+						'aria-pressed',
+						candidate.dataset.memmlPeriod === period
+							? 'true'
+							: 'false'
+					);
+				} );
+				periodPanels.forEach( function ( panel ) {
+					panel.hidden = panel.dataset.memmlPeriodPanel !== period;
 				} );
 			};
 
@@ -138,10 +171,21 @@
 				} );
 			} );
 
+			periodButtons.forEach( function ( button ) {
+				button.addEventListener( 'click', function () {
+					const period = button.dataset.memmlPeriod;
+
+					showPeriod( period );
+					updateUrl( { memml_period: period } );
+				} );
+			} );
+
 			rootControllers.push( {
 				initialCalendar,
 				initialLayout,
+				initialPeriod,
 				showLayout,
+				showPeriod,
 				showSource,
 			} );
 		} );
@@ -226,6 +270,7 @@
 		const calendar = parameters.get( 'memml_calendar' );
 		const layout = parameters.get( 'memml_view' );
 		const month = parameters.get( 'memml_month' );
+		const period = parameters.get( 'memml_period' );
 
 		rootControllers.forEach( function ( controller ) {
 			controller.showSource(
@@ -237,6 +282,11 @@
 				'list' === layout || 'month' === layout
 					? layout
 					: controller.initialLayout
+			);
+			controller.showPeriod(
+				'upcoming' === period || 'past' === period
+					? period
+					: controller.initialPeriod
 			);
 		} );
 

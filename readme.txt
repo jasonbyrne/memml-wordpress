@@ -18,18 +18,21 @@ does not store Memml credentials.
 
 Choose the calendar that belongs on each page:
 
-* Use the Memml Calendar block or `[memml_calendar calendar="events" view="list"]` shortcode to let visitors switch calendars and display views.
-* Use the Memml Events block or `[memml_events view="list"]` shortcode for general events with a List/Month switcher.
-* Use the Memml Volunteers block or `[memml_volunteers view="list"]` shortcode for volunteer opportunities with a List/Month switcher.
+* Use the Memml Calendar block or `[memml_calendar calendar="events" view="list" period="upcoming"]` shortcode to let visitors switch calendars and display views.
+* Use the Memml Events block or `[memml_events view="list" period="upcoming"]` shortcode for general events with a List/Month switcher.
+* Use the Memml Volunteers block or `[memml_volunteers view="list" period="upcoming"]` shortcode for volunteer opportunities with a List/Month switcher.
 
 Set `calendar="volunteers"` on `[memml_calendar]` when volunteer opportunities should
 be selected first. Set `view="month"` on any shortcode when Month should be selected
 first. These properties set the initial selections; visitors can change them.
+In List view, visitors can choose Upcoming or Past. Upcoming is selected by default;
+set `period="past"` to select Past initially. Dates and sorting use the organization's
+timezone. Upcoming is oldest-first from today onward, while Past is newest-first.
 
 Calendar changes are reflected in the page URL using `memml_calendar`, `memml_view`,
-and `memml_month` query parameters. Visitors can copy that URL to share the selected
-calendar, layout, and displayed month. Query parameters override the shortcode or
-block's initial selections when a shared link is opened.
+`memml_period`, and `memml_month` query parameters. Visitors can copy that URL to
+share the selected calendar, layout, list filter, and displayed month. Query parameters
+override the shortcode or block's initial selections when a shared link is opened.
 
 The plugin requests public data from memml.com, caches successful responses,
 revalidates them using ETags, and can show the last known-good response during a
@@ -62,6 +65,11 @@ Yes. Each page can use the events block, the volunteers block, or both.
 
 Yes. Visitors can switch between List and Month. The block setting or `view` shortcode
 property controls which view they see first.
+
+= How are Upcoming and Past lists determined? =
+
+The organization-local calendar date is compared with today. Upcoming includes today
+and future dates in ascending order. Past includes dates before today in descending order.
 
 = Can I link directly to a selected calendar view? =
 

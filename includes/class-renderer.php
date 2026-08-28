@@ -28,7 +28,11 @@ final class Memml_Renderer {
 	public function render_events( $attributes = array() ) {
 		$this->enqueue_assets();
 
-		return $this->render_single_feed( 'events', $this->get_layout_from_attributes( $attributes ) );
+		return $this->render_single_feed(
+			'events',
+			$this->get_layout_from_attributes( $attributes ),
+			$this->get_period_from_attributes( $attributes )
+		);
 	}
 
 	/**
@@ -40,7 +44,11 @@ final class Memml_Renderer {
 	public function render_volunteers( $attributes = array() ) {
 		$this->enqueue_assets();
 
-		return $this->render_single_feed( 'volunteers', $this->get_layout_from_attributes( $attributes ) );
+		return $this->render_single_feed(
+			'volunteers',
+			$this->get_layout_from_attributes( $attributes ),
+			$this->get_period_from_attributes( $attributes )
+		);
 	}
 
 	/**
@@ -48,45 +56,49 @@ final class Memml_Renderer {
 	 *
 	 * @param string $calendar Initial calendar: events or volunteers.
 	 * @param string $layout   Initial display layout: list or month.
+	 * @param string $period   Initial list period: upcoming or past.
 	 * @return string
 	 */
-	public function render_calendar( $calendar = 'events', $layout = 'list' ) {
+	public function render_calendar( $calendar = 'events', $layout = 'list', $period = 'upcoming' ) {
 		$this->enqueue_assets();
 		++self::$instance;
 
 		$calendar          = $this->get_initial_calendar( $calendar );
 		$layout            = $this->get_initial_layout( $layout );
+		$period            = $this->get_initial_period( $period );
 		$instance_id       = 'memml-calendar-' . self::$instance;
 		$events_id         = $instance_id . '-events';
 		$volunteers_id     = $instance_id . '-volunteers';
 		$events_result     = $this->get_client_result( 'events' );
 		$volunteers_result = $this->get_client_result( 'volunteers' );
-		$events_layouts    = $this->render_layout_panels( 'events', $layout, $instance_id, $events_result );
-		$volunteer_layouts = $this->render_layout_panels( 'volunteers', $layout, $instance_id, $volunteers_result );
-
-		return sprintf(
-			'<div class="memml-calendar memml-calendar--switchable" data-memml-calendar data-calendar="%1$s" data-layout="%14$s">' .
-			'<div class="memml-calendar__toolbar"><div class="memml-calendar__filter" role="group" aria-label="%2$s">' .
-			'<button aria-controls="%3$s" aria-pressed="%4$s" class="memml-calendar__filter-button" data-memml-view="events" type="button">%5$s</button>' .
-			'<button aria-controls="%6$s" aria-pressed="%7$s" class="memml-calendar__filter-button" data-memml-view="volunteers" type="button">%8$s</button>' .
-			'</div>%9$s</div>' .
-			'<div class="memml-calendar__panel" id="%3$s"%10$s>%11$s</div>' .
-			'<div class="memml-calendar__panel" id="%6$s"%12$s>%13$s</div>' .
-			'</div>',
-			esc_attr( $calendar ),
+		$feeds             = array( 'events', 'volunteers' );
+		$events_layouts    = $this->render_layout_panels( 'events', $layout, $period, $instance_id, $events_result );
+		$volunteer_layouts = $this->render_layout_panels( 'volunteers', $layout, $period, $instance_id, $volunteers_result );
+		$source_controls   = sprintf(
+			'<div class="memml-calendar__filter" role="group" aria-label="%1$s"><button aria-controls="%2$s" aria-pressed="%3$s" class="memml-calendar__filter-button" data-memml-view="events" type="button">%4$s</button><button aria-controls="%5$s" aria-pressed="%6$s" class="memml-calendar__filter-button" data-memml-view="volunteers" type="button">%7$s</button></div>',
 			esc_attr__( 'Choose a calendar', 'memml' ),
 			esc_attr( $events_id ),
 			'events' === $calendar ? 'true' : 'false',
 			esc_html__( 'Events', 'memml' ),
 			esc_attr( $volunteers_id ),
 			'volunteers' === $calendar ? 'true' : 'false',
-			esc_html__( 'Volunteer Opportunities', 'memml' ),
-			$this->render_layout_controls( $layout, $instance_id, array( 'events', 'volunteers' ) ),
+			esc_html__( 'Volunteer Opportunities', 'memml' )
+		);
+		$toolbar           = '<div class="memml-calendar__toolbar">' . $source_controls . $this->render_layout_controls( $layout, $instance_id, $feeds ) . '</div>';
+
+		return sprintf(
+			'<div class="memml-calendar memml-calendar--switchable" data-memml-calendar data-calendar="%1$s" data-layout="%2$s" data-period="%3$s">%4$s%5$s<div class="memml-calendar__panel" id="%6$s"%7$s>%8$s</div><div class="memml-calendar__panel" id="%9$s"%10$s>%11$s</div></div>',
+			esc_attr( $calendar ),
+			esc_attr( $layout ),
+			esc_attr( $period ),
+			$toolbar,
+			$this->render_period_controls( $period, $layout, $instance_id, $feeds ),
+			esc_attr( $events_id ),
 			'events' === $calendar ? '' : ' hidden',
 			$events_layouts,
+			esc_attr( $volunteers_id ),
 			'volunteers' === $calendar ? '' : ' hidden',
-			$volunteer_layouts,
-			esc_attr( $layout )
+			$volunteer_layouts
 		);
 	}
 
@@ -95,20 +107,25 @@ final class Memml_Renderer {
 	 *
 	 * @param string $feed   Feed identifier.
 	 * @param string $layout Initial display layout.
+	 * @param string $period Initial list period.
 	 * @return string
 	 */
-	private function render_single_feed( $feed, $layout ) {
+	private function render_single_feed( $feed, $layout, $period ) {
 		++self::$instance;
 
 		$instance_id = 'memml-calendar-' . self::$instance;
 		$result      = $this->get_client_result( $feed );
 
+		$feeds = array( $feed );
+
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--%1$s" data-memml-calendar data-layout="%2$s"><div class="memml-calendar__toolbar">%3$s</div>%4$s</div>',
+			'<div class="memml-calendar memml-calendar--%1$s" data-memml-calendar data-layout="%2$s" data-period="%3$s"><div class="memml-calendar__toolbar">%4$s</div>%5$s%6$s</div>',
 			esc_attr( $feed ),
 			esc_attr( $layout ),
-			$this->render_layout_controls( $layout, $instance_id, array( $feed ) ),
-			$this->render_layout_panels( $feed, $layout, $instance_id, $result )
+			esc_attr( $period ),
+			$this->render_layout_controls( $layout, $instance_id, $feeds ),
+			$this->render_period_controls( $period, $layout, $instance_id, $feeds ),
+			$this->render_layout_panels( $feed, $layout, $period, $instance_id, $result )
 		);
 	}
 
@@ -142,18 +159,50 @@ final class Memml_Renderer {
 	}
 
 	/**
+	 * Renders the Upcoming and Past list controls.
+	 *
+	 * @param string $period      Initial list period.
+	 * @param string $layout      Initial display layout.
+	 * @param string $instance_id Calendar instance ID.
+	 * @param array  $feeds       Feeds controlled by the buttons.
+	 * @return string
+	 */
+	private function render_period_controls( $period, $layout, $instance_id, $feeds ) {
+		$upcoming_ids = array();
+		$past_ids     = array();
+
+		foreach ( $feeds as $feed ) {
+			$upcoming_ids[] = $instance_id . '-' . $feed . '-upcoming';
+			$past_ids[]     = $instance_id . '-' . $feed . '-past';
+		}
+
+		return sprintf(
+			'<div class="memml-calendar__filter memml-calendar__period-filter" data-memml-period-controls role="group" aria-label="%1$s"%2$s><button aria-controls="%3$s" aria-pressed="%4$s" class="memml-calendar__filter-button" data-memml-period="upcoming" type="button">%5$s</button><button aria-controls="%6$s" aria-pressed="%7$s" class="memml-calendar__filter-button" data-memml-period="past" type="button">%8$s</button></div>',
+			esc_attr__( 'Filter by date', 'memml' ),
+			'list' === $layout ? '' : ' hidden',
+			esc_attr( implode( ' ', $upcoming_ids ) ),
+			'upcoming' === $period ? 'true' : 'false',
+			esc_html__( 'Upcoming', 'memml' ),
+			esc_attr( implode( ' ', $past_ids ) ),
+			'past' === $period ? 'true' : 'false',
+			esc_html__( 'Past', 'memml' )
+		);
+	}
+
+	/**
 	 * Renders both display layouts for one feed.
 	 *
 	 * @param string         $feed        Feed identifier.
 	 * @param string         $layout      Initial display layout.
+	 * @param string         $period      Initial list period.
 	 * @param string         $instance_id Calendar instance ID.
 	 * @param array|WP_Error $result      Feed client result.
 	 * @return string
 	 */
-	private function render_layout_panels( $feed, $layout, $instance_id, $result ) {
+	private function render_layout_panels( $feed, $layout, $period, $instance_id, $result ) {
 		$list_id    = $instance_id . '-' . $feed . '-list';
 		$month_id   = $instance_id . '-' . $feed . '-month';
-		$list_html  = 'events' === $feed ? $this->render_events_panel( 'list', $result ) : $this->render_volunteers_panel( 'list', $result );
+		$list_html  = $this->render_period_panels( $feed, $period, $instance_id, $result );
 		$month_html = 'events' === $feed ? $this->render_events_panel( 'month', $result ) : $this->render_volunteers_panel( 'month', $result );
 
 		return sprintf(
@@ -168,13 +217,40 @@ final class Memml_Renderer {
 	}
 
 	/**
+	 * Renders both list periods for one feed.
+	 *
+	 * @param string         $feed        Feed identifier.
+	 * @param string         $period      Initial list period.
+	 * @param string         $instance_id Calendar instance ID.
+	 * @param array|WP_Error $result      Feed client result.
+	 * @return string
+	 */
+	private function render_period_panels( $feed, $period, $instance_id, $result ) {
+		$upcoming_id   = $instance_id . '-' . $feed . '-upcoming';
+		$past_id       = $instance_id . '-' . $feed . '-past';
+		$upcoming_html = 'events' === $feed ? $this->render_events_panel( 'list', $result, 'upcoming' ) : $this->render_volunteers_panel( 'list', $result, 'upcoming' );
+		$past_html     = 'events' === $feed ? $this->render_events_panel( 'list', $result, 'past' ) : $this->render_volunteers_panel( 'list', $result, 'past' );
+
+		return sprintf(
+			'<div data-memml-period-panel="upcoming" id="%1$s"%2$s>%3$s</div><div data-memml-period-panel="past" id="%4$s"%5$s>%6$s</div>',
+			esc_attr( $upcoming_id ),
+			'upcoming' === $period ? '' : ' hidden',
+			$upcoming_html,
+			esc_attr( $past_id ),
+			'past' === $period ? '' : ' hidden',
+			$past_html
+		);
+	}
+
+	/**
 	 * Renders the events feed content.
 	 *
 	 * @param string         $layout Display layout.
 	 * @param array|WP_Error $result Feed client result.
+	 * @param string         $period List period.
 	 * @return string
 	 */
-	private function render_events_panel( $layout, $result ) {
+	private function render_events_panel( $layout, $result, $period = 'upcoming' ) {
 		if ( is_wp_error( $result ) ) {
 			return $this->render_error( $result );
 		}
@@ -184,13 +260,23 @@ final class Memml_Renderer {
 			: array();
 
 		if ( empty( $events ) ) {
-			return $this->render_notice( __( 'No upcoming events are currently available.', 'memml' ) );
+			return $this->render_notice( __( 'No events are currently available.', 'memml' ) );
 		}
 
 		$timezone = $this->get_timezone( $result['data'] );
 
 		if ( 'month' === $layout ) {
 			return $this->render_month_calendar( $events, 'events', $timezone );
+		}
+
+		$events = $this->filter_list_items( $events, $period, $timezone );
+
+		if ( empty( $events ) ) {
+			return $this->render_notice(
+				'past' === $period
+					? __( 'No past events are currently available.', 'memml' )
+					: __( 'No upcoming events are currently available.', 'memml' )
+			);
 		}
 
 		$cards = '';
@@ -209,9 +295,10 @@ final class Memml_Renderer {
 	 *
 	 * @param string         $layout Display layout.
 	 * @param array|WP_Error $result Feed client result.
+	 * @param string         $period List period.
 	 * @return string
 	 */
-	private function render_volunteers_panel( $layout, $result ) {
+	private function render_volunteers_panel( $layout, $result, $period = 'upcoming' ) {
 		if ( is_wp_error( $result ) ) {
 			return $this->render_error( $result );
 		}
@@ -235,6 +322,16 @@ final class Memml_Renderer {
 			return $this->render_month_calendar( $opportunities, 'volunteers', $timezone );
 		}
 
+		$opportunities = $this->filter_list_items( $opportunities, $period, $timezone );
+
+		if ( empty( $opportunities ) ) {
+			return $this->render_notice(
+				'past' === $period
+					? __( 'No past volunteer opportunities are currently available.', 'memml' )
+					: __( 'No upcoming volunteer opportunities are currently available.', 'memml' )
+			);
+		}
+
 		$cards = '';
 
 		foreach ( $opportunities as $opportunity ) {
@@ -244,6 +341,60 @@ final class Memml_Renderer {
 		}
 
 		return '<div class="memml-calendar__grid">' . $cards . '</div>';
+	}
+
+	/**
+	 * Filters and sorts list items relative to today in the organization timezone.
+	 *
+	 * @param array        $items    Feed records.
+	 * @param string       $period   Upcoming or past.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return array
+	 */
+	private function filter_list_items( $items, $period, $timezone ) {
+		$today_date = $this->get_today( $timezone )->format( 'Y-m-d' );
+		$filtered   = array();
+		$position   = 0;
+
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+
+			$date = $this->get_item_datetime( $item, $timezone );
+
+			if ( ! $date ) {
+				continue;
+			}
+
+			$is_past = $date->format( 'Y-m-d' ) < $today_date;
+
+			if ( ( 'past' === $period ) !== $is_past ) {
+				continue;
+			}
+
+			$filtered[] = array(
+				'item'      => $item,
+				'position'  => $position,
+				'timestamp' => $date->getTimestamp(),
+			);
+			++$position;
+		}
+
+		usort(
+			$filtered,
+			static function ( $left, $right ) use ( $period ) {
+				if ( $left['timestamp'] === $right['timestamp'] ) {
+					return $left['position'] <=> $right['position'];
+				}
+
+				return 'past' === $period
+					? $right['timestamp'] <=> $left['timestamp']
+					: $left['timestamp'] <=> $right['timestamp'];
+			}
+		);
+
+		return array_column( $filtered, 'item' );
 	}
 
 	/**
@@ -299,7 +450,7 @@ final class Memml_Renderer {
 		$selected_index  = array_search( $requested_month, $month_keys, true );
 
 		if ( false === $selected_index ) {
-			$selected_index = 0;
+			$selected_index = $this->get_default_month_index( $month_keys, $timezone );
 		}
 
 		$selected_month = $months[ $month_keys[ $selected_index ] ];
@@ -515,6 +666,42 @@ final class Memml_Renderer {
 	}
 
 	/**
+	 * Gets today at midnight in the organization timezone.
+	 *
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return DateTimeImmutable
+	 */
+	private function get_today( $timezone ) {
+		$today    = new DateTimeImmutable( 'today', $timezone );
+		$filtered = apply_filters( 'memml_calendar_today', $today, $timezone );
+
+		if ( $filtered instanceof DateTimeInterface ) {
+			return ( new DateTimeImmutable( '@' . $filtered->getTimestamp() ) )->setTimezone( $timezone )->setTime( 0, 0 );
+		}
+
+		return $today;
+	}
+
+	/**
+	 * Chooses the current or next available month, falling back to the latest month.
+	 *
+	 * @param array        $month_keys Month keys in chronological order.
+	 * @param DateTimeZone $timezone   Organization timezone.
+	 * @return int
+	 */
+	private function get_default_month_index( $month_keys, $timezone ) {
+		$current_month = $this->get_today( $timezone )->format( 'Y-m' );
+
+		foreach ( $month_keys as $index => $month_key ) {
+			if ( $month_key >= $current_month ) {
+				return $index;
+			}
+		}
+
+		return max( 0, count( $month_keys ) - 1 );
+	}
+
+	/**
 	 * Gets a safe display layout from block or shortcode attributes.
 	 *
 	 * @param array|string $attributes Block or shortcode attributes.
@@ -524,6 +711,18 @@ final class Memml_Renderer {
 		$layout = is_array( $attributes ) && isset( $attributes['view'] ) ? $attributes['view'] : 'list';
 
 		return $this->get_initial_layout( $layout );
+	}
+
+	/**
+	 * Gets a safe list period from block or shortcode attributes.
+	 *
+	 * @param array|string $attributes Block or shortcode attributes.
+	 * @return string
+	 */
+	private function get_period_from_attributes( $attributes ) {
+		$period = is_array( $attributes ) && isset( $attributes['period'] ) ? $attributes['period'] : 'upcoming';
+
+		return $this->get_initial_period( $period );
 	}
 
 	/**
@@ -552,6 +751,22 @@ final class Memml_Renderer {
 		$query_layout = $this->get_query_choice( 'memml_view', array( 'list', 'month' ) );
 
 		return '' !== $query_layout ? $query_layout : $this->normalize_layout( $layout );
+	}
+
+	/**
+	 * Gets the initial list period, allowing a direct-link query to override settings.
+	 *
+	 * @param string $period Period configured by the block or shortcode.
+	 * @return string
+	 */
+	private function get_initial_period( $period ) {
+		$query_period = $this->get_query_choice( 'memml_period', array( 'upcoming', 'past' ) );
+
+		if ( '' !== $query_period ) {
+			return $query_period;
+		}
+
+		return 'past' === $period ? 'past' : 'upcoming';
 	}
 
 	/**
@@ -585,7 +800,7 @@ final class Memml_Renderer {
 	 * @return string
 	 */
 	private function get_query_value( $parameter ) {
-		$value = isset( $_GET[ $parameter ] ) ? wp_unslash( $_GET[ $parameter ] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public display state only.
+		$value = isset( $_GET[ $parameter ] ) ? wp_unslash( $_GET[ $parameter ] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Scalar checked and sanitized below; public display state only.
 
 		return is_string( $value ) ? sanitize_key( $value ) : '';
 	}
