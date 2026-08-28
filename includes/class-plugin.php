@@ -41,6 +41,8 @@ final class Memml_Plugin {
 	 */
 	public function register() {
 		$this->settings->register();
+		add_action( 'init', array( $this, 'load_textdomain' ) );
+		add_action( 'init', array( $this->renderer, 'register_assets' ) );
 		add_action( 'init', array( $this, 'register_blocks' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'maybe_enqueue_frontend_assets' ) );
 		add_shortcode( 'memml_calendar', array( $this, 'render_calendar_shortcode' ) );
@@ -76,6 +78,19 @@ final class Memml_Plugin {
 	}
 
 	/**
+	 * Loads translations for copies installed outside WordPress.org.
+	 *
+	 * @return void
+	 */
+	public function load_textdomain() {
+		load_plugin_textdomain(
+			'memml',
+			false,
+			dirname( plugin_basename( MEMML_PLUGIN_FILE ) ) . '/languages'
+		);
+	}
+
+	/**
 	 * Registers the editor bundle and dynamic blocks.
 	 *
 	 * @return void
@@ -97,6 +112,20 @@ final class Memml_Plugin {
 			true
 		);
 		wp_set_script_translations( 'memml-block-editor', 'memml', MEMML_PLUGIN_DIR . 'languages' );
+
+		$options = Memml_Settings::get_options();
+
+		wp_add_inline_script(
+			'memml-block-editor',
+			'window.memmlEditor = ' . wp_json_encode(
+				array(
+					'isConfigured'    => '' !== $options['organization_key'],
+					'organizationKey' => $options['organization_key'],
+					'settingsUrl'     => Memml_Settings::get_page_url(),
+				)
+			) . ';',
+			'before'
+		);
 
 		register_block_type(
 			MEMML_PLUGIN_DIR . 'blocks/calendar',
@@ -123,8 +152,9 @@ final class Memml_Plugin {
 		$layout   = isset( $attributes['view'] ) ? $attributes['view'] : 'list';
 		$period   = isset( $attributes['period'] ) ? $attributes['period'] : 'upcoming';
 		$url_key  = isset( $attributes['urlKey'] ) ? $attributes['urlKey'] : '';
+		$limit    = isset( $attributes['limit'] ) ? $attributes['limit'] : 0;
 
-		return $this->renderer->render_calendar( $calendar, $layout, $period, $url_key );
+		return $this->renderer->render_calendar( $calendar, $layout, $period, $url_key, $limit );
 	}
 
 	/**
@@ -137,6 +167,7 @@ final class Memml_Plugin {
 		$attributes = shortcode_atts(
 			array(
 				'calendar' => 'events',
+				'limit'    => 0,
 				'period'   => 'upcoming',
 				'url_key'  => '',
 				'view'     => 'list',
@@ -145,6 +176,12 @@ final class Memml_Plugin {
 			'memml_calendar'
 		);
 
-		return $this->renderer->render_calendar( $attributes['calendar'], $attributes['view'], $attributes['period'], $attributes['url_key'] );
+		return $this->renderer->render_calendar(
+			$attributes['calendar'],
+			$attributes['view'],
+			$attributes['period'],
+			$attributes['url_key'],
+			$attributes['limit']
+		);
 	}
 }

@@ -34,6 +34,16 @@ final class Memml_Feed_Client {
 	public const DEFAULT_STALE_TTL = 604800;
 
 	/**
+	 * Default backoff after a failed refresh, in seconds.
+	 *
+	 * Keeps a slow or unreachable Memml service from being re-requested on
+	 * every page view while an error or stale response is being served.
+	 *
+	 * @var int
+	 */
+	public const DEFAULT_FAILURE_TTL = 60;
+
+	/**
 	 * Feed filename for events.
 	 *
 	 * @var string
@@ -95,6 +105,31 @@ final class Memml_Feed_Client {
 	}
 
 	/**
+	 * Gets the public feed URLs for an organization.
+	 *
+	 * @param string $organization_key Memml organization key.
+	 * @return array Feed label keyed URLs.
+	 */
+	public function get_feed_urls( $organization_key ) {
+		return array(
+			'events'     => $this->build_feed_url( $organization_key, self::EVENTS_FEED ),
+			'volunteers' => $this->build_feed_url( $organization_key, self::VOLUNTEERS_FEED ),
+		);
+	}
+
+	/**
+	 * Discards every cached response for an organization.
+	 *
+	 * @param string $organization_key Memml organization key.
+	 * @return void
+	 */
+	public function flush_cache( $organization_key ) {
+		foreach ( $this->get_feed_urls( $organization_key ) as $url ) {
+			delete_transient( 'memml_feed_' . md5( $url ) );
+		}
+	}
+
+	/**
 	 * Gets a public feed with ETag revalidation and stale-on-error fallback.
 	 *
 	 * @param string $organization_key Memml organization key.
@@ -117,13 +152,16 @@ final class Memml_Feed_Client {
 		$cached    = get_transient( $cache_key );
 		$now       = time();
 
-		if (
-			! $force_revalidate &&
-			is_array( $cached ) &&
-			isset( $cached['expires_at'], $cached['data'] ) &&
-			(int) $cached['expires_at'] > $now
-		) {
-			return $this->format_result( $cached, false, true );
+		if ( ! $force_revalidate && is_array( $cached ) ) {
+			if ( isset( $cached['expires_at'], $cached['data'] ) && (int) $cached['expires_at'] > $now ) {
+				return $this->format_result( $cached, false, true );
+			}
+
+			$backoff = $this->get_backoff_result( $cached, $now );
+
+			if ( null !== $backoff ) {
+				return $backoff;
+			}
 		}
 
 		$headers = array(
@@ -144,7 +182,9 @@ final class Memml_Feed_Client {
 
 		if ( is_wp_error( $response ) ) {
 			return $this->stale_or_error(
+				$cache_key,
 				$cached,
+				$feed_filename,
 				new WP_Error(
 					'memml_network_error',
 					__( 'Memml could not be reached. Please try again.', 'memml' ),
@@ -158,22 +198,29 @@ final class Memml_Feed_Client {
 		if ( 304 === $status_code && is_array( $cached ) && isset( $cached['data'] ) ) {
 			$cached['fetched_at'] = $now;
 			$cached['expires_at'] = $now + $this->get_cache_ttl( $feed_filename );
+			unset( $cached['error'], $cached['retry_after'] );
 			$this->store_cache( $cache_key, $cached, $feed_filename );
 
 			return $this->format_result( $cached, false, true );
 		}
 
 		if ( 404 === $status_code ) {
-			return new WP_Error(
+			$not_found = new WP_Error(
 				'memml_organization_not_found',
 				__( 'No Memml organization was found for that key.', 'memml' ),
 				array( 'status' => 404 )
 			);
+
+			$this->remember_failure( $cache_key, $cached, $feed_filename, $not_found, false );
+
+			return $not_found;
 		}
 
 		if ( $status_code < 200 || $status_code >= 300 ) {
 			return $this->stale_or_error(
+				$cache_key,
 				$cached,
+				$feed_filename,
 				new WP_Error(
 					'memml_service_error',
 					__( 'Memml returned an unexpected response. Please try again.', 'memml' ),
@@ -186,7 +233,9 @@ final class Memml_Feed_Client {
 
 		if ( ! $this->is_valid_envelope( $data ) ) {
 			return $this->stale_or_error(
+				$cache_key,
 				$cached,
+				$feed_filename,
 				new WP_Error(
 					'memml_invalid_feed',
 					__( 'Memml returned a response that could not be read.', 'memml' )
@@ -240,15 +289,73 @@ final class Memml_Feed_Client {
 	/**
 	 * Returns stale data when possible, otherwise the given error.
 	 *
-	 * Organization-key 404s intentionally do not use this path so connection tests
-	 * can always distinguish a bad key.
+	 * Either way the failure is remembered so the next page view does not
+	 * repeat the request while Memml is unavailable.
 	 *
-	 * @param mixed    $cached Cached record.
-	 * @param WP_Error $error  Request error.
+	 * @param string   $cache_key     Transient key.
+	 * @param mixed    $cached        Cached record.
+	 * @param string   $feed_filename Feed filename.
+	 * @param WP_Error $error         Request error.
 	 * @return array|WP_Error
 	 */
-	private function stale_or_error( $cached, $error ) {
+	private function stale_or_error( $cache_key, $cached, $feed_filename, $error ) {
+		$this->remember_failure( $cache_key, $cached, $feed_filename, $error, true );
+
 		if ( is_array( $cached ) && isset( $cached['data'] ) ) {
+			return $this->format_result( $cached, true, true, $error );
+		}
+
+		return $error;
+	}
+
+	/**
+	 * Records a failed refresh without discarding the last known-good response.
+	 *
+	 * @param string   $cache_key      Transient key.
+	 * @param mixed    $cached         Cached record.
+	 * @param string   $feed_filename  Feed filename.
+	 * @param WP_Error $error          Request error.
+	 * @param bool     $allow_stale    Whether stale data may be served during backoff.
+	 * @return void
+	 */
+	private function remember_failure( $cache_key, $cached, $feed_filename, $error, $allow_stale ) {
+		$record = is_array( $cached ) ? $cached : array();
+
+		$record['error'] = array(
+			'code'        => $error->get_error_code(),
+			'message'     => $error->get_error_message(),
+			'data'        => $error->get_error_data(),
+			'allow_stale' => (bool) $allow_stale,
+		);
+
+		$record['retry_after'] = time() + $this->get_failure_ttl( $feed_filename );
+
+		if ( ! isset( $record['expires_at'] ) ) {
+			$record['expires_at'] = 0;
+		}
+
+		$this->store_cache( $cache_key, $record, $feed_filename );
+	}
+
+	/**
+	 * Replays a recent failure instead of re-requesting an unavailable feed.
+	 *
+	 * @param array $cached Cached record.
+	 * @param int   $now    Current timestamp.
+	 * @return array|WP_Error|null Result during backoff, or null to request again.
+	 */
+	private function get_backoff_result( $cached, $now ) {
+		if ( ! isset( $cached['error'], $cached['retry_after'] ) || (int) $cached['retry_after'] <= $now ) {
+			return null;
+		}
+
+		$error = new WP_Error(
+			$cached['error']['code'],
+			$cached['error']['message'],
+			isset( $cached['error']['data'] ) ? $cached['error']['data'] : ''
+		);
+
+		if ( ! empty( $cached['error']['allow_stale'] ) && isset( $cached['data'] ) ) {
 			return $this->format_result( $cached, true, true, $error );
 		}
 
@@ -283,6 +390,19 @@ final class Memml_Feed_Client {
 		return max(
 			0,
 			(int) apply_filters( 'memml_feed_cache_ttl', $this->cache_ttl, $feed_filename )
+		);
+	}
+
+	/**
+	 * Gets the filterable backoff applied after a failed refresh.
+	 *
+	 * @param string $feed_filename Feed filename.
+	 * @return int
+	 */
+	private function get_failure_ttl( $feed_filename ) {
+		return max(
+			0,
+			(int) apply_filters( 'memml_feed_failure_ttl', self::DEFAULT_FAILURE_TTL, $feed_filename )
 		);
 	}
 

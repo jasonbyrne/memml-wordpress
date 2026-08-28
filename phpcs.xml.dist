@@ -3,6 +3,7 @@
 	<description>WordPress coding standards for the Memml plugin.</description>
 
 	<file>memml.php</file>
+	<file>uninstall.php</file>
 	<file>includes</file>
 	<file>tests</file>
 

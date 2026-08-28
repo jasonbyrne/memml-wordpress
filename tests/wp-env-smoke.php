@@ -60,6 +60,22 @@ try {
 		}
 	}
 
+	// A block bundle whose dependencies are not all registered never loads, which
+	// silently leaves the blocks with no editing interface.
+	require_once ABSPATH . 'wp-admin/includes/admin.php';
+	wp_scripts();
+	do_action( 'wp_default_scripts', $GLOBALS['wp_scripts'] );
+
+	$editor_asset = require dirname( __DIR__ ) . '/build/index.asset.php';
+
+	foreach ( $editor_asset['dependencies'] as $dependency ) {
+		if ( ! wp_script_is( $dependency, 'registered' ) ) {
+			throw new RuntimeException(
+				'The block editor bundle depends on a script this WordPress version does not register: ' . $dependency
+			);
+		}
+	}
+
 	$connection = ( new Memml_Feed_Client() )->get_events( 'river-city-neighbors', true );
 
 	if ( is_wp_error( $connection ) ) {
@@ -97,11 +113,16 @@ try {
 	$month_expectations = array(
 		'data-layout="month"',
 		'data-memml-month-calendar',
+		'data-memml-month-prev href="',
+		'data-memml-month-next href="',
 		'September 2026',
 		'October 2026',
 		'data-month="2026-08" data-month-label="August 2026"',
 		'Riverside Cleanup',
 		'Community Dinner',
+		'class="memml-calendar__month-scroll" role="region" tabindex="0"',
+		'is-today',
+		'aria-current="date"',
 	);
 
 	foreach ( $month_expectations as $expectation ) {
@@ -184,13 +205,144 @@ try {
 		}
 	}
 
+	$_GET['memml_edge_month'] = '2026-07';
+
+	$edge_html = do_shortcode( '[memml_events view="month" url_key="edge"]' );
+
+	if ( false === strpos( $edge_html, ' aria-disabled="true" aria-label="Previous month"' ) ) {
+		throw new RuntimeException( 'The first month did not mark Previous month as inactive.' );
+	}
+
+	if ( false !== strpos( $edge_html, ' aria-disabled="true" aria-label="Next month"' ) ) {
+		throw new RuntimeException( 'The first month incorrectly marked Next month as inactive.' );
+	}
+
+	if ( 2 !== substr_count( $edge_html, 'class="memml-calendar__month-button" data-memml-month-' ) ) {
+		throw new RuntimeException( 'An inactive month link left the accessibility tree instead of keeping its href.' );
+	}
+
 	$second_html = do_shortcode( '[memml_volunteers url_key="sidebar"]' );
 
 	if ( false === strpos( $second_html, 'data-memml-url-prefix="memml_sidebar_"' ) || false !== strpos( $second_html, 'data-layout="month"' ) ) {
 		throw new RuntimeException( 'A second calendar did not retain its independently scoped initial state.' );
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, URL state, upcoming/past filtering, sorting, toggles, timezone, and month view smoke test passed.' );
+	if ( false === strpos( $html, '<img alt="" decoding="async" loading="lazy"' ) ) {
+		throw new RuntimeException( 'Card images were not rendered as decorative.' );
+	}
+
+	$link_expectations = array(
+		'data-memml-view="events" href="',
+		'data-memml-layout="month" href="',
+		'data-memml-period="past" href="',
+		'aria-current="true"',
+	);
+
+	foreach ( $link_expectations as $expectation ) {
+		if ( false === strpos( $html, $expectation ) ) {
+			throw new RuntimeException( 'Controls were not rendered as shareable links: ' . $expectation );
+		}
+	}
+
+	if ( false !== strpos( $html, 'aria-pressed' ) ) {
+		throw new RuntimeException( 'Controls still render the button-only aria-pressed state.' );
+	}
+
+	$unlimited = do_shortcode( '[memml_events url_key="all"]' );
+	$limited   = do_shortcode( '[memml_events limit="1" url_key="capped"]' );
+
+	$count_upcoming = static function ( $markup ) {
+		$start = strpos( $markup, 'data-memml-period-panel="upcoming"' );
+		$end   = strpos( $markup, 'data-memml-period-panel="past"' );
+
+		return substr_count( substr( $markup, $start, $end - $start ), 'data-memml-item' );
+	};
+
+	if ( 2 !== $count_upcoming( $unlimited ) ) {
+		throw new RuntimeException( 'The events fixture no longer renders two upcoming items.' );
+	}
+
+	if ( 1 !== $count_upcoming( $limited ) ) {
+		throw new RuntimeException( 'The limit attribute did not cap the upcoming list.' );
+	}
+
+	if ( false === strpos( $limited, 'data-memml-layout-panel="month"' ) ) {
+		throw new RuntimeException( 'The limit attribute removed the month view.' );
+	}
+
+	wp_set_current_user( 1 );
+
+	// The editor previews blocks through the REST block renderer, so exercise
+	// the same endpoint the ServerSideRender component calls.
+	foreach ( $block_names as $block_name ) {
+		$request = new WP_REST_Request( 'GET', '/wp/v2/block-renderer/' . $block_name );
+		$request->set_param( 'context', 'edit' );
+		$request->set_param(
+			'attributes',
+			array(
+				'view'   => 'month',
+				'period' => 'upcoming',
+				'urlKey' => 'preview',
+				'limit'  => 2,
+			)
+		);
+
+		$response = rest_do_request( $request );
+
+		if ( $response->is_error() ) {
+			throw new RuntimeException(
+				'The block renderer failed for ' . $block_name . ': ' . $response->as_error()->get_error_message()
+			);
+		}
+
+		$rendered = $response->get_data()['rendered'];
+
+		if ( false === strpos( $rendered, 'data-memml-calendar' ) ) {
+			throw new RuntimeException( 'The block renderer returned no calendar for ' . $block_name . '.' );
+		}
+	}
+
+	set_current_screen( 'settings_page_memml' );
+
+	ob_start();
+	( new Memml_Settings() )->render_page();
+	$settings_html = ob_get_clean();
+
+	$settings_expectations = array(
+		'memml-organization-key',
+		'memml-test-connection',
+		'api/public/v1/river-city-neighbors/events.json',
+		'api/public/v1/river-city-neighbors/volunteer-opportunities.json',
+		'value="memml_refresh_cache"',
+		'[memml_calendar]',
+	);
+
+	foreach ( $settings_expectations as $expectation ) {
+		if ( false === strpos( $settings_html, $expectation ) ) {
+			throw new RuntimeException( 'Missing settings-screen output: ' . $expectation );
+		}
+	}
+
+	ob_start();
+	( new Memml_Settings() )->render_setup_notice();
+	$configured_notice = ob_get_clean();
+
+	if ( '' !== trim( $configured_notice ) ) {
+		throw new RuntimeException( 'The setup notice was shown for a configured site.' );
+	}
+
+	$invalid = ( new Memml_Settings() )->sanitize(
+		array(
+			'organization_key' => 'not a valid key!',
+			'base_url'         => Memml_Feed_Client::DEFAULT_BASE_URL,
+		)
+	);
+
+	if ( 'river-city-neighbors' !== $invalid['organization_key'] ) {
+		throw new RuntimeException( 'An invalid organization key discarded the saved key.' );
+	}
+
+	WP_CLI::success( 'Memml Calendar activation, connection, URL state, upcoming/past filtering, sorting, link controls, item limits, timezone, month view, settings screen, and key-retention smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
 	remove_filter( 'memml_calendar_today', $today_filter, 10 );

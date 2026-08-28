@@ -8,12 +8,12 @@ test( 'scopes URL state to each calendar and restores it through history', async
 	const main = page.locator( '[data-memml-url-prefix="memml_main_"]' );
 	const sidebar = page.locator( '[data-memml-url-prefix="memml_sidebar_"]' );
 
-	await main.getByRole( 'button', { name: 'Month' } ).click();
+	await main.getByRole( 'link', { name: 'Month' } ).click();
 	await expect( page ).toHaveURL( /memml_main_view=month/ );
 	await expect( page ).toHaveURL( /memml_main_month=2026-08/ );
 	await expect( sidebar ).toHaveAttribute( 'data-layout', 'list' );
 
-	await main.getByRole( 'button', { name: 'Next month' } ).click();
+	await main.getByRole( 'link', { name: 'Next month' } ).click();
 	await expect( page ).toHaveURL( /memml_main_month=2026-09/ );
 	await expect(
 		main.locator( '#main-events [data-memml-month-label]' )
@@ -22,7 +22,7 @@ test( 'scopes URL state to each calendar and restores it through history', async
 		'Showing September 2026, 0 events.'
 	);
 
-	await sidebar.getByRole( 'button', { name: 'Past' } ).click();
+	await sidebar.getByRole( 'link', { name: 'Past' } ).click();
 	await expect( page ).toHaveURL( /memml_sidebar_period=past/ );
 	await expect( main ).toHaveAttribute( 'data-period', 'upcoming' );
 	await expect( sidebar.locator( '[data-memml-status]' ) ).toHaveText(
@@ -58,4 +58,65 @@ test( 'applies independently scoped direct-link parameters', async ( {
 	).toHaveText( 'October 2026' );
 	await expect( sidebar ).toHaveAttribute( 'data-layout', 'list' );
 	await expect( sidebar ).toHaveAttribute( 'data-period', 'past' );
+} );
+
+test( 'exposes every control as a shareable link and handles clicks in place', async ( {
+	page,
+} ) => {
+	await page.goto( '/tests/e2e/fixture.html' );
+
+	const main = page.locator( '[data-memml-url-prefix="memml_main_"]' );
+	const monthLink = main.getByRole( 'link', { name: 'Month' } );
+	const pastLink = main.getByRole( 'link', { name: 'Past' } );
+
+	// Controls carry real URLs, so they work without JavaScript and can be
+	// opened in a new tab or copied.
+	await expect( monthLink ).toHaveAttribute(
+		'href',
+		/memml_main_view=month/
+	);
+	await expect( pastLink ).toHaveAttribute(
+		'href',
+		/memml_main_period=past/
+	);
+	await expect(
+		main.getByRole( 'link', { name: 'Volunteer Opportunities' } )
+	).toHaveAttribute( 'href', /memml_main_calendar=volunteers/ );
+
+	// With JavaScript the same click is handled in place, without a reload.
+	await page.evaluate( () => {
+		window.memmlNotReloaded = true;
+	} );
+	await monthLink.click();
+	await expect( page ).toHaveURL( /memml_main_view=month/ );
+	expect( await page.evaluate( () => window.memmlNotReloaded ) ).toBe( true );
+
+	// Anchors cannot be disabled, so an unreachable month drops its href.
+	const previousLink = main.getByRole( 'link', { name: 'Previous month' } );
+	const nextLink = main.getByRole( 'link', { name: 'Next month' } );
+
+	await expect( previousLink ).toHaveAttribute( 'aria-disabled', 'true' );
+	await expect( previousLink ).toHaveAttribute(
+		'href',
+		/memml_main_month=2026-08/
+	);
+	await expect( nextLink ).toHaveAttribute(
+		'href',
+		/memml_main_month=2026-09/
+	);
+
+	await nextLink.click();
+	await expect( previousLink ).not.toHaveAttribute( 'aria-disabled', 'true' );
+	await expect( previousLink ).toHaveAttribute(
+		'href',
+		/memml_main_month=2026-08/
+	);
+	await expect( nextLink ).toHaveAttribute(
+		'href',
+		/memml_main_month=2026-10/
+	);
+
+	await nextLink.click();
+	await expect( nextLink ).toHaveAttribute( 'aria-disabled', 'true' );
+	expect( await page.evaluate( () => window.memmlNotReloaded ) ).toBe( true );
 } );

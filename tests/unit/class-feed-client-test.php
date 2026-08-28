@@ -188,6 +188,19 @@ final class Memml_Feed_Client_Test extends TestCase {
 		Functions\expect( 'wp_remote_get' )
 			->once()
 			->andReturn( new WP_Error( 'http_request_failed', 'Connection timed out.' ) );
+		Functions\expect( 'set_transient' )
+			->once()
+			->with(
+				Mockery::type( 'string' ),
+				Mockery::on(
+					static function ( $record ) {
+						return isset( $record['data'], $record['retry_after'] ) &&
+							true === $record['error']['allow_stale'] &&
+							'memml_network_error' === $record['error']['code'];
+					}
+				),
+				Mockery::type( 'int' )
+			);
 
 		$result = ( new Memml_Feed_Client() )->get_events( 'river-city-neighbors' );
 
@@ -206,6 +219,7 @@ final class Memml_Feed_Client_Test extends TestCase {
 		Functions\expect( 'wp_remote_get' )
 			->once()
 			->andReturn( new WP_Error( 'http_request_failed', 'Connection timed out.' ) );
+		Functions\expect( 'set_transient' )->once();
 
 		$result = ( new Memml_Feed_Client() )->get_events( 'river-city-neighbors' );
 
@@ -221,6 +235,17 @@ final class Memml_Feed_Client_Test extends TestCase {
 	public function test_404_distinguishes_bad_organization_key() {
 		Functions\expect( 'get_transient' )->once()->andReturn( $this->cache_record( time() - 1 ) );
 		Functions\expect( 'wp_remote_get' )->once()->andReturn( $this->http_response( 404 ) );
+		Functions\expect( 'set_transient' )
+			->once()
+			->with(
+				Mockery::type( 'string' ),
+				Mockery::on(
+					static function ( $record ) {
+						return false === $record['error']['allow_stale'];
+					}
+				),
+				Mockery::type( 'int' )
+			);
 
 		$result = ( new Memml_Feed_Client() )->get_events( 'wrong-key' );
 
@@ -243,11 +268,119 @@ final class Memml_Feed_Client_Test extends TestCase {
 				'body'     => '{not-json',
 			)
 		);
+		Functions\expect( 'set_transient' )->once();
 
 		$result = ( new Memml_Feed_Client() )->get_events( 'river-city-neighbors' );
 
 		self::assertTrue( $result['is_stale'] );
 		self::assertSame( 'memml_invalid_feed', $result['warning']->get_error_code() );
+	}
+
+	/**
+	 * A recent failure is replayed from cache instead of re-requesting the feed.
+	 *
+	 * @return void
+	 */
+	public function test_recent_failure_skips_request_and_serves_stale_cache() {
+		$cached                = $this->cache_record( time() - 1 );
+		$cached['retry_after'] = time() + 60;
+		$cached['error']       = array(
+			'code'        => 'memml_network_error',
+			'message'     => 'Memml could not be reached. Please try again.',
+			'data'        => array(),
+			'allow_stale' => true,
+		);
+
+		Functions\expect( 'get_transient' )->once()->andReturn( $cached );
+		Functions\expect( 'wp_remote_get' )->never();
+
+		$result = ( new Memml_Feed_Client() )->get_events( 'river-city-neighbors' );
+
+		self::assertSame( $this->events, $result['data'] );
+		self::assertTrue( $result['is_stale'] );
+		self::assertSame( 'memml_network_error', $result['warning']->get_error_code() );
+	}
+
+	/**
+	 * A recent bad-key failure is replayed without falling back to stale data.
+	 *
+	 * @return void
+	 */
+	public function test_recent_not_found_failure_skips_request_and_returns_error() {
+		$cached                = $this->cache_record( time() - 1 );
+		$cached['retry_after'] = time() + 60;
+		$cached['error']       = array(
+			'code'        => 'memml_organization_not_found',
+			'message'     => 'No Memml organization was found for that key.',
+			'data'        => array( 'status' => 404 ),
+			'allow_stale' => false,
+		);
+
+		Functions\expect( 'get_transient' )->once()->andReturn( $cached );
+		Functions\expect( 'wp_remote_get' )->never();
+
+		$result = ( new Memml_Feed_Client() )->get_events( 'wrong-key' );
+
+		self::assertInstanceOf( WP_Error::class, $result );
+		self::assertSame( 'memml_organization_not_found', $result->get_error_code() );
+	}
+
+	/**
+	 * A connection test still reaches Memml during a backoff window.
+	 *
+	 * @return void
+	 */
+	public function test_force_revalidation_bypasses_failure_backoff() {
+		$cached                = $this->cache_record( time() - 1 );
+		$cached['retry_after'] = time() + 60;
+		$cached['error']       = array(
+			'code'        => 'memml_organization_not_found',
+			'message'     => 'No Memml organization was found for that key.',
+			'data'        => array( 'status' => 404 ),
+			'allow_stale' => false,
+		);
+
+		Functions\expect( 'get_transient' )->once()->andReturn( $cached );
+		Functions\expect( 'wp_remote_get' )->once()->andReturn( $this->http_response( 304 ) );
+		Functions\expect( 'set_transient' )->once();
+
+		$result = ( new Memml_Feed_Client() )->get_events( 'river-city-neighbors', true );
+
+		self::assertSame( $this->events, $result['data'] );
+	}
+
+	/**
+	 * A successful revalidation clears a recorded failure.
+	 *
+	 * @return void
+	 */
+	public function test_successful_revalidation_clears_recorded_failure() {
+		$cached                = $this->cache_record( time() - 1 );
+		$cached['retry_after'] = time() - 1;
+		$cached['error']       = array(
+			'code'        => 'memml_network_error',
+			'message'     => 'Memml could not be reached. Please try again.',
+			'data'        => array(),
+			'allow_stale' => true,
+		);
+
+		Functions\expect( 'get_transient' )->once()->andReturn( $cached );
+		Functions\expect( 'wp_remote_get' )->once()->andReturn( $this->http_response( 304 ) );
+		Functions\expect( 'set_transient' )
+			->once()
+			->with(
+				Mockery::type( 'string' ),
+				Mockery::on(
+					static function ( $record ) {
+						return ! isset( $record['error'] ) && ! isset( $record['retry_after'] );
+					}
+				),
+				Mockery::type( 'int' )
+			);
+
+		$result = ( new Memml_Feed_Client() )->get_events( 'river-city-neighbors' );
+
+		self::assertFalse( $result['is_stale'] );
 	}
 
 	/**

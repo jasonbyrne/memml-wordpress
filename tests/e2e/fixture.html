@@ -14,16 +14,16 @@
 			data-period="upcoming"
 		>
 			<div role="group" aria-label="Choose a calendar">
-				<button aria-controls="main-events" aria-pressed="true" data-memml-view="events">Events</button>
-				<button aria-controls="main-volunteers" aria-pressed="false" data-memml-view="volunteers">Volunteer Opportunities</button>
+				<a aria-controls="main-events" aria-current="true" data-memml-view="events" href="?memml_main_calendar=events">Events</a>
+				<a aria-controls="main-volunteers" data-memml-view="volunteers" href="?memml_main_calendar=volunteers">Volunteer Opportunities</a>
 			</div>
 			<div role="group" aria-label="Choose a display view">
-				<button aria-pressed="true" data-memml-layout="list">List</button>
-				<button aria-pressed="false" data-memml-layout="month">Month</button>
+				<a aria-current="true" data-memml-layout="list" href="?memml_main_view=list">List</a>
+				<a data-memml-layout="month" href="?memml_main_view=month">Month</a>
 			</div>
 			<div data-memml-period-controls role="group" aria-label="Filter by date">
-				<button aria-pressed="true" data-memml-period="upcoming">Upcoming</button>
-				<button aria-pressed="false" data-memml-period="past">Past</button>
+				<a aria-current="true" data-memml-period="upcoming" href="?memml_main_period=upcoming">Upcoming</a>
+				<a data-memml-period="past" href="?memml_main_period=past">Past</a>
 			</div>
 			<div id="main-events">
 				<div data-memml-layout-panel="list">
@@ -32,9 +32,9 @@
 				</div>
 				<div data-memml-layout-panel="month" hidden>
 					<div data-memml-month-calendar>
-						<button aria-label="Previous month" data-memml-month-prev disabled>Previous</button>
+						<a aria-disabled="true" aria-label="Previous month" data-memml-month-prev href="?memml_main_month=2026-08">Previous</a>
 						<h3 data-memml-month-label>August 2026</h3>
-						<button aria-label="Next month" data-memml-month-next>Next</button>
+						<a aria-label="Next month" data-memml-month-next href="?memml_main_month=2026-09">Next</a>
 						<section data-memml-month-index="0" data-month="2026-08" data-month-label="August 2026"><article data-memml-item>August event</article></section>
 						<section data-memml-month-index="1" data-month="2026-09" data-month-label="September 2026" hidden></section>
 						<section data-memml-month-index="2" data-month="2026-10" data-month-label="October 2026" hidden><article data-memml-item>October event</article></section>
@@ -49,8 +49,8 @@
 		</div>
 
 		<div class="memml-calendar" data-feed="volunteers" data-layout="list" data-memml-calendar data-memml-url-prefix="memml_sidebar_" data-period="upcoming">
-			<div role="group" aria-label="Choose a display view"><button aria-pressed="true" data-memml-layout="list">List</button><button aria-pressed="false" data-memml-layout="month">Month</button></div>
-			<div data-memml-period-controls role="group" aria-label="Filter by date"><button aria-pressed="true" data-memml-period="upcoming">Upcoming</button><button aria-pressed="false" data-memml-period="past">Past</button></div>
+			<div role="group" aria-label="Choose a display view"><a aria-current="true" data-memml-layout="list" href="?memml_sidebar_view=list">List</a><a data-memml-layout="month" href="?memml_sidebar_view=month">Month</a></div>
+			<div data-memml-period-controls role="group" aria-label="Filter by date"><a aria-current="true" data-memml-period="upcoming" href="?memml_sidebar_period=upcoming">Upcoming</a><a data-memml-period="past" href="?memml_sidebar_period=past">Past</a></div>
 			<div data-memml-layout-panel="list"><div data-memml-period-panel="upcoming"><article data-memml-item>Upcoming volunteer opportunity</article></div><div data-memml-period-panel="past" hidden><article data-memml-item>Past volunteer opportunity</article></div></div>
 			<div data-memml-layout-panel="month" hidden></div>
 			<p aria-live="polite" data-memml-status></p>

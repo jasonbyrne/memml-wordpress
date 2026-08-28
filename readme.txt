@@ -1,10 +1,10 @@
 === Memml Calendar ===
 Contributors: memml
 Tags: events, calendar, volunteers, nonprofit, memml
-Requires at least: 6.2
+Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,12 +22,23 @@ Choose the calendar that belongs on each page:
 * Use the Memml Events block or `[memml_events view="list" period="upcoming" url_key="events"]` shortcode for general events with a List/Month switcher.
 * Use the Memml Volunteers block or `[memml_volunteers view="list" period="upcoming" url_key="volunteers"]` shortcode for volunteer opportunities with a List/Month switcher.
 
+Set the block's Maximum items setting, or the shortcode `limit` property, to show
+only the next few items in a list. The default, 0, shows every item. Month view
+always shows every item.
+
+The blocks preview themselves in the editor using the same server-side renderer
+visitors get, so layouts and filters can be checked without leaving the post.
+
 Set `calendar="volunteers"` on `[memml_calendar]` when volunteer opportunities should
 be selected first. Set `view="month"` on any shortcode when Month should be selected
 first. These properties set the initial selections; visitors can change them.
 In List view, visitors can choose Upcoming or Past. Upcoming is selected by default;
 set `period="past"` to select Past initially. Dates and sorting use the organization's
 timezone. Upcoming is oldest-first from today onward, while Past is newest-first.
+
+Every visitor control is a real link, so the calendar keeps working when
+JavaScript is unavailable and views can be opened in a new tab. When JavaScript is
+available the same click is handled in place, without a page load.
 
 Calendar changes are reflected in instance-scoped query parameters such as
 `memml_main_calendar`, `memml_main_view`, `memml_main_period`, and
@@ -45,7 +56,16 @@ volunteer, and Add to calendar actions are not shown for past items.
 
 The plugin requests public data from memml.com, caches successful responses,
 revalidates them using ETags, and can show the last known-good response during a
-temporary service or network error.
+temporary service or network error. After a failed request it waits a short
+backoff period before contacting Memml again, so an outage cannot slow down every
+page view. Settings > Memml Calendar lists the feed URLs the site reads and
+provides a Clear cached data button for publishing a Memml change immediately.
+
+Colors, spacing, and corner radii are exposed as CSS custom properties on the
+`.memml-calendar` container, and every front-end rule uses `:where()`, so a theme
+can restyle the calendar without fighting plugin specificity.
+
+Deleting the plugin removes its settings and cached feed data.
 
 == Installation ==
 
@@ -85,12 +105,43 @@ property controls which view they see first.
 The organization-local calendar date is compared with today. Upcoming includes today
 and future dates in ascending order. Past includes dates before today in descending order.
 
+= How quickly do Memml changes appear on my site? =
+
+Within about ten minutes. To publish a change immediately, open
+Settings > Memml Calendar and select Clear cached data.
+
+= Can I show only the next few events? =
+
+Yes. Set the block's Maximum items setting or the shortcode `limit` property. It
+applies to Upcoming and Past lists; Month view always shows every item.
+
 = Can I link directly to a selected calendar view? =
 
 Yes. The URL updates as visitors change the calendar, layout, or displayed month.
 Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.2.0 =
+
+* Raised the minimum WordPress version to 6.6. Earlier versions do not register a
+  script the block editor bundle depends on, which left the blocks with no editing
+  interface.
+* Blocks now preview themselves in the editor using the server-side renderer.
+* Added a Maximum items setting and a matching shortcode `limit` property for lists.
+* Visitor controls are now links, so the calendar works without JavaScript and
+  views can be opened in a new tab.
+* A failed Memml request is no longer retried on every page view, so an outage
+  cannot slow the whole site down.
+* Added a Clear cached data button and the feed URLs to the settings screen, plus a
+  Settings link on the Plugins screen and a setup notice until a key is saved.
+* Saving an invalid organization key no longer discards the working one.
+* Deleting the plugin now removes its settings and cached feed data.
+* Fixed calendar controls inheriting theme link styles, which removed the primary
+  button's contrast against its accent fill.
+* Improved accessibility: today is marked in month view, the month grid is
+  reachable by keyboard, controls have visible focus styles, and cancelled events
+  no longer rely on a low-contrast opacity.
 
 = 0.1.0 =
 

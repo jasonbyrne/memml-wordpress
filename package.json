@@ -1,6 +1,6 @@
 {
   "name": "memml-wordpress",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Memml Calendar blocks for public events and volunteer opportunities.",
   "files": [
@@ -12,7 +12,8 @@
     "LICENSE",
     "memml.php",
     "README.md",
-    "readme.txt"
+    "readme.txt",
+    "uninstall.php"
   ],
   "scripts": {
     "build": "wp-scripts build",
@@ -36,6 +37,7 @@
     "@wordpress/block-editor": "^17.0.0",
     "@wordpress/blocks": "^15.27.0",
     "@wordpress/components": "^40.0.0",
-    "@wordpress/i18n": "^6.27.0"
+    "@wordpress/i18n": "^6.27.0",
+    "@wordpress/server-side-render": "^6.30.0"
   }
 }

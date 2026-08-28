@@ -12,13 +12,35 @@
 		showingMonth: 'Showing {month}, {count} {items}.',
 	};
 
+	// Controls are real links, so the calendar works without JavaScript. Only
+	// take over plain activations; modified clicks keep the browser's own
+	// behaviour, such as opening the view in a new tab.
+	const takesOver = function ( event ) {
+		return (
+			! event.defaultPrevented &&
+			( ! event.button || 0 === event.button ) &&
+			! event.altKey &&
+			! event.ctrlKey &&
+			! event.metaKey &&
+			! event.shiftKey
+		);
+	};
+
+	const setCurrent = function ( element, isCurrent ) {
+		if ( isCurrent ) {
+			element.setAttribute( 'aria-current', 'true' );
+		} else {
+			element.removeAttribute( 'aria-current' );
+		}
+	};
+
 	const formatMessage = function ( template, values ) {
 		return Object.keys( values ).reduce( function ( message, key ) {
 			return message.replace( '{' + key + '}', values[ key ] );
 		}, template );
 	};
 
-	const updateUrl = function ( prefix, changes ) {
+	const buildUrl = function ( prefix, changes ) {
 		const url = new URL( window.location.href );
 
 		Object.keys( changes ).forEach( function ( name ) {
@@ -32,7 +54,11 @@
 			}
 		} );
 
-		const nextUrl = url.pathname + url.search + url.hash;
+		return url.pathname + url.search + url.hash;
+	};
+
+	const updateUrl = function ( prefix, changes ) {
+		const nextUrl = buildUrl( prefix, changes );
 		const currentUrl =
 			window.location.pathname +
 			window.location.search +
@@ -87,10 +113,7 @@
 						candidate.getAttribute( 'aria-controls' )
 					);
 
-					candidate.setAttribute(
-						'aria-pressed',
-						isActive ? 'true' : 'false'
-					);
+					setCurrent( candidate, isActive );
 					if ( panel ) {
 						panel.hidden = ! isActive;
 					}
@@ -104,11 +127,9 @@
 
 				calendar.dataset.layout = layout;
 				layoutButtons.forEach( function ( candidate ) {
-					candidate.setAttribute(
-						'aria-pressed',
+					setCurrent(
+						candidate,
 						candidate.dataset.memmlLayout === layout
-							? 'true'
-							: 'false'
 					);
 				} );
 				layoutPanels.forEach( function ( panel ) {
@@ -127,11 +148,9 @@
 
 				calendar.dataset.period = period;
 				periodButtons.forEach( function ( candidate ) {
-					candidate.setAttribute(
-						'aria-pressed',
+					setCurrent(
+						candidate,
 						candidate.dataset.memmlPeriod === period
-							? 'true'
-							: 'false'
 					);
 				} );
 				periodPanels.forEach( function ( panel ) {
@@ -141,7 +160,7 @@
 
 			const getSourceScope = function () {
 				const activeSource = calendar.querySelector(
-					'[data-memml-view][aria-pressed="true"]'
+					'[data-memml-view][aria-current="true"]'
 				);
 
 				if ( activeSource ) {
@@ -227,7 +246,13 @@
 			};
 
 			sourceButtons.forEach( function ( button ) {
-				button.addEventListener( 'click', function () {
+				button.addEventListener( 'click', function ( event ) {
+					if ( ! takesOver( event ) ) {
+						return;
+					}
+
+					event.preventDefault();
+
 					const source = button.dataset.memmlView;
 					const changes = { calendar: source };
 
@@ -240,7 +265,13 @@
 			} );
 
 			layoutButtons.forEach( function ( button ) {
-				button.addEventListener( 'click', function () {
+				button.addEventListener( 'click', function ( event ) {
+					if ( ! takesOver( event ) ) {
+						return;
+					}
+
+					event.preventDefault();
+
 					const layout = button.dataset.memmlLayout;
 					const changes = { view: layout };
 
@@ -253,7 +284,13 @@
 			} );
 
 			periodButtons.forEach( function ( button ) {
-				button.addEventListener( 'click', function () {
+				button.addEventListener( 'click', function ( event ) {
+					if ( ! takesOver( event ) ) {
+						return;
+					}
+
+					event.preventDefault();
+
 					const period = button.dataset.memmlPeriod;
 
 					showPeriod( period );
@@ -298,6 +335,31 @@
 				? panels[ current ].dataset.month
 				: '';
 
+			// Anchors cannot be disabled, and an anchor without an href leaves
+			// the accessibility tree. An unreachable month therefore keeps a
+			// link to the month already shown and is marked aria-disabled,
+			// matching the server output.
+			const setMonthLink = function ( link, index ) {
+				if ( ! link ) {
+					return;
+				}
+
+				const panel = panels[ index ] || panels[ current ];
+
+				if ( panels[ index ] ) {
+					link.removeAttribute( 'aria-disabled' );
+				} else {
+					link.setAttribute( 'aria-disabled', 'true' );
+				}
+
+				if ( panel ) {
+					link.setAttribute(
+						'href',
+						buildUrl( prefix, { month: panel.dataset.month } )
+					);
+				}
+			};
+
 			const showMonth = function ( index, updateHistory ) {
 				current = Math.max( 0, Math.min( panels.length - 1, index ) );
 
@@ -309,13 +371,8 @@
 					label.textContent = panels[ current ].dataset.monthLabel;
 				}
 
-				if ( previous ) {
-					previous.disabled = 0 === current;
-				}
-
-				if ( next ) {
-					next.disabled = current === panels.length - 1;
-				}
+				setMonthLink( previous, current - 1 );
+				setMonthLink( next, current + 1 );
 
 				if ( updateHistory && panels[ current ] ) {
 					updateUrl( prefix, {
@@ -338,17 +395,28 @@
 				showMonth( index < 0 ? 0 : index, false );
 			};
 
-			if ( previous ) {
-				previous.addEventListener( 'click', function () {
-					showMonth( current - 1, true );
-				} );
-			}
+			const navigate = function ( link, step ) {
+				if ( ! link ) {
+					return;
+				}
 
-			if ( next ) {
-				next.addEventListener( 'click', function () {
-					showMonth( current + 1, true );
+				link.addEventListener( 'click', function ( event ) {
+					if ( ! takesOver( event ) ) {
+						return;
+					}
+
+					event.preventDefault();
+
+					if ( link.hasAttribute( 'aria-disabled' ) ) {
+						return;
+					}
+
+					showMonth( current + step, true );
 				} );
-			}
+			};
+
+			navigate( previous, -1 );
+			navigate( next, 1 );
 
 			showMonth( current, false );
 			monthControllers.push( { initialMonth, prefix, showMonthKey } );

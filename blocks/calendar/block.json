@@ -2,7 +2,7 @@
   "$schema": "https://schemas.wp.org/trunk/block.json",
   "apiVersion": 3,
   "name": "memml/calendar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "title": "Memml Calendar",
   "category": "widgets",
   "icon": "calendar",
@@ -10,6 +10,8 @@
   "keywords": ["events", "calendar", "volunteer"],
   "textdomain": "memml",
   "editorScript": "memml-block-editor",
+  "editorStyle": "memml-calendar",
+  "style": "memml-calendar",
   "attributes": {
     "calendar": {
       "type": "string",
@@ -29,6 +31,10 @@
     "urlKey": {
       "type": "string",
       "default": ""
+    },
+    "limit": {
+      "type": "number",
+      "default": 0
     }
   },
   "supports": {

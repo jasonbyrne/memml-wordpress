@@ -1,13 +1,33 @@
+/* Every custom property below can be overridden by a theme, either on
+   .memml-calendar or on any ancestor, to match the surrounding design. */
 :where(.memml-calendar) {
 	--memml-accent: #2563eb;
 	--memml-accent-contrast: #fff;
 	--memml-border: #d7dce2;
 	--memml-card-background: #fff;
+	--memml-cancelled: #8a1c1c;
+	--memml-cancelled-background: #fdeaea;
+	--memml-focus: #1d4ed8;
 	--memml-muted: #5d6673;
 	--memml-radius: 0.5rem;
 	--memml-shadow: 0 1px 3px rgb(0 0 0 / 10%);
 	--memml-spacing: 1rem;
+	--memml-text: #1f2430;
+	--memml-warning: #6b4f00;
+	--memml-warning-background: #fff4cc;
 	color: inherit;
+}
+
+/* The rules below set `display` at zero specificity, which still beats
+   the user-agent [hidden] rule. Restore it so panels toggled by script
+   stay hidden. */
+:where(.memml-calendar) [hidden] {
+	display: none;
+}
+
+:where(.memml-calendar) :is(button, a, [tabindex]):focus-visible {
+	outline: 2px solid var(--memml-focus);
+	outline-offset: 2px;
 }
 
 :where(.memml-calendar__toolbar) {
@@ -40,23 +60,31 @@
 }
 
 :where(.memml-calendar__filter-button) {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.75rem;
 	padding: 0.55rem 0.85rem;
 	border: 0;
 	border-radius: calc(var(--memml-radius) * 0.75);
 	background: transparent;
-	color: inherit;
 	cursor: pointer;
 	font: inherit;
+	text-align: center;
 }
 
-:where(.memml-calendar__filter-button[aria-pressed="true"]) {
+:where(.memml-calendar__filter-button:hover) {
+	background: color-mix(in srgb, var(--memml-card-background) 60%, transparent);
+}
+
+:where(.memml-calendar__filter-button[aria-current="true"]) {
 	background: var(--memml-card-background);
 	box-shadow: var(--memml-shadow);
+	font-weight: 650;
 }
 
 :where(.memml-calendar__grid) {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
 	gap: var(--memml-spacing);
 }
 
@@ -66,10 +94,17 @@
 	border-radius: var(--memml-radius);
 	background: var(--memml-card-background);
 	box-shadow: var(--memml-shadow);
+	color: var(--memml-text);
 }
 
+/* Cancelled events stay fully legible; the badge and strikethrough carry the
+   meaning instead of a blanket opacity that would fail contrast. */
 :where(.memml-calendar__card--cancelled) {
-	opacity: 0.65;
+	border-style: dashed;
+}
+
+:where(.memml-calendar__card--cancelled .memml-calendar__image) {
+	filter: grayscale(1);
 }
 
 :where(.memml-calendar__card--cancelled .memml-calendar__title) {
@@ -146,8 +181,13 @@
 }
 
 :where(.memml-calendar__status--postponed, .memml-calendar__status--needed) {
-	background: #fff4cc;
-	color: #6b4f00;
+	background: var(--memml-warning-background);
+	color: var(--memml-warning);
+}
+
+:where(.memml-calendar__status--cancelled) {
+	background: var(--memml-cancelled-background);
+	color: var(--memml-cancelled);
 }
 
 :where(.memml-calendar__actions) {
@@ -163,14 +203,46 @@
 	padding: 0.55rem 0.8rem;
 	border: 1px solid var(--memml-border);
 	border-radius: calc(var(--memml-radius) * 0.75);
+}
+
+/* The controls below are anchors so they work without JavaScript. Themes
+   colour and underline bare `a` elements through global styles at (0,1,0),
+   printed after plugin styles, so these rules are deliberately not wrapped in
+   :where() and must out-rank that tie -- otherwise the calendar's controls
+   render as ordinary body links, and the primary button loses its contrast
+   against the accent fill. "Add to calendar" is intentionally left alone so it
+   keeps the theme's link styling. */
+.memml-calendar a.memml-calendar__button,
+.memml-calendar a.memml-calendar__filter-button,
+.memml-calendar a.memml-calendar__month-button {
 	color: inherit;
 	text-decoration: none;
+}
+
+.memml-calendar a.memml-calendar__filter-button[aria-current="true"] {
+	color: var(--memml-text);
+}
+
+.memml-calendar a.memml-calendar__button:hover {
+	color: var(--memml-accent);
+}
+
+.memml-calendar a.memml-calendar__button--primary,
+.memml-calendar a.memml-calendar__button--primary:hover {
+	color: var(--memml-accent-contrast);
+}
+
+:where(.memml-calendar__button:hover) {
+	border-color: var(--memml-accent);
 }
 
 :where(.memml-calendar__button--primary) {
 	border-color: var(--memml-accent);
 	background: var(--memml-accent);
-	color: var(--memml-accent-contrast);
+}
+
+:where(.memml-calendar__button--primary:hover) {
+	background: color-mix(in srgb, var(--memml-accent) 85%, #000);
 }
 
 :where(.memml-calendar__calendar-link) {
@@ -199,17 +271,18 @@
 	border: 1px solid var(--memml-border);
 	border-radius: var(--memml-radius);
 	background: var(--memml-card-background);
-	color: inherit;
 	cursor: pointer;
 	font: inherit;
 	font-size: 1.5rem;
+	text-decoration: none;
 }
 
-:where(.memml-calendar__month-button:disabled) {
+:where(.memml-calendar__month-button[aria-disabled="true"]) {
 	cursor: default;
 	opacity: 0.4;
 }
 
+/* Focusable so the grid can be scrolled by keyboard on narrow screens. */
 :where(.memml-calendar__month-scroll) {
 	overflow-x: auto;
 }
@@ -236,7 +309,12 @@
 	border-block-start: 1px solid var(--memml-border);
 	border-inline-start: 1px solid var(--memml-border);
 	background: var(--memml-card-background);
+	color: var(--memml-text);
 	vertical-align: top;
+}
+
+:where(.memml-calendar__month-day.is-today) {
+	background: color-mix(in srgb, var(--memml-accent) 10%, var(--memml-card-background));
 }
 
 :where(.memml-calendar__month-day:nth-child(7)) {
@@ -257,6 +335,16 @@
 	color: var(--memml-muted);
 	font-size: 0.8em;
 	font-weight: 700;
+}
+
+:where(.memml-calendar__month-day.is-today .memml-calendar__day-number) {
+	display: inline-grid;
+	min-width: 1.6rem;
+	min-height: 1.6rem;
+	place-items: center;
+	border-radius: 999px;
+	background: var(--memml-accent);
+	color: var(--memml-accent-contrast);
 }
 
 :where(.memml-calendar__month-entry) {
@@ -291,7 +379,7 @@
 }
 
 :where(.memml-calendar__month-status--postponed) {
-	color: #6b4f00;
+	color: var(--memml-warning);
 }
 
 :where(.memml-calendar__month-entry .memml-calendar__actions) {
@@ -319,5 +407,6 @@
 	padding: var(--memml-spacing);
 	border: 1px solid var(--memml-border);
 	border-radius: var(--memml-radius);
+	background: var(--memml-card-background);
 	color: var(--memml-muted);
 }

@@ -4,7 +4,7 @@ Memml Calendar is a WordPress plugin that displays a nonprofit's public events a
 
 ## Requirements
 
-- WordPress 6.2 or newer
+- WordPress 6.6 or newer
 - PHP 7.4 or newer
 - A Memml organization with public feeds enabled
 
@@ -26,15 +26,64 @@ Memml Calendar is a WordPress plugin that displays a nonprofit's public events a
 
 The organization key is configured once for the WordPress site. Blocks and shortcodes only control the initially selected calendar, layout, and date filter.
 
+## Cached feed data
+
+Successful Memml responses are cached for about ten minutes and revalidated with
+ETags. After a failed request the plugin waits a short backoff period before
+trying again, serving the last known-good response in the meantime, so an
+unreachable Memml service cannot slow down every page view.
+
+**Settings → Memml Calendar → Cached feed data** lists the feed URLs this site
+reads and provides a **Clear cached data** button for publishing a Memml change
+immediately. Saving a new organization key or base URL clears the cache
+automatically.
+
+Three filters adjust the timings: `memml_feed_cache_ttl`,
+`memml_feed_stale_ttl`, and `memml_feed_failure_ttl`.
+
+## Theming
+
+The front-end stylesheet is written with `:where()` so theme rules win by
+default. Colors, spacing, and radii are exposed as custom properties that a
+theme can redefine on `.memml-calendar` or any ancestor:
+
+```css
+.memml-calendar {
+	--memml-accent: #b91c1c;
+	--memml-card-background: #1c1f26;
+	--memml-text: #f4f6fa;
+	--memml-border: #333a45;
+	--memml-muted: #aab2bf;
+}
+```
+
+See `assets/calendar.css` for the full list.
+
 ## Shortcodes
 
 ```text
-[memml_calendar calendar="events" view="list" period="upcoming" url_key="main"]
-[memml_events view="list" period="upcoming" url_key="events"]
+[memml_calendar calendar="events" view="list" period="upcoming" limit="0" url_key="main"]
+[memml_events view="list" period="upcoming" limit="3" url_key="events"]
 [memml_volunteers view="month" url_key="volunteers"]
 ```
 
 Visitors can change the calendar, List/Month layout, Upcoming/Past list filter, and displayed month. Those changes are stored in instance-scoped query parameters so the resulting URL can be shared.
+
+`limit` caps how many items each list shows, which suits a sidebar or a "next few
+events" section. `0`, the default, shows every item. Month view always shows every
+item, because a month grid with items missing would misrepresent the calendar.
+
+Every control is a real link. The calendar therefore keeps working with
+JavaScript disabled, and visitors can middle-click or right-click a view to open
+it in a new tab. When JavaScript is available the same click is handled in place,
+without a page load.
+
+## Block previews
+
+The blocks preview themselves in the editor with the same server-side renderer
+visitors get, so the layout, filters, and item limit can be checked without
+leaving the post. Previews are non-interactive, and a block shows an actionable
+placeholder instead when no organization key has been saved yet.
 
 ## Updating a manual installation
 
