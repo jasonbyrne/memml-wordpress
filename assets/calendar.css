@@ -16,6 +16,33 @@
 	--memml-warning: #6b4f00;
 	--memml-warning-background: #fff4cc;
 	color: inherit;
+	font-size: 1rem;
+	line-height: 1.5;
+}
+
+/* Headings inside the calendar are compact labels, not article headings.
+   Themes size h3/h4 through element and content-area selectors that beat
+   zero-specificity rules, so these sizes are deliberately not wrapped in
+   :where() -- otherwise card titles render at article-heading scale. */
+.memml-calendar .memml-calendar__title,
+.memml-calendar .memml-calendar__details-title {
+	margin: 0;
+	font-size: 1.15rem;
+	font-weight: 650;
+	line-height: 1.3;
+}
+
+.memml-calendar .memml-calendar__month-label {
+	margin: 0;
+	font-size: 1.35rem;
+	line-height: 1.3;
+}
+
+.memml-calendar .memml-calendar__month-title {
+	margin: 0;
+	font-size: 1em;
+	font-weight: 650;
+	line-height: 1.25;
 }
 
 /* The rules below set `display` at zero specificity, which still beats
@@ -51,10 +78,8 @@
 	margin-inline-start: auto;
 }
 
-:where(.memml-calendar__period-filter) {
-	margin-block-end: var(--memml-spacing);
-}
-
+/* The period filter sits in the toolbar with the other pills; when the
+   month layout hides it, the toolbar simply closes the gap. */
 :where(.memml-calendar__period-filter[hidden]) {
 	display: none;
 }
@@ -88,7 +113,49 @@
 	gap: var(--memml-spacing);
 }
 
+/* The rows list style stacks compact full-width items, memml.com-style. */
+:where(.memml-calendar__grid--rows) {
+	grid-template-columns: 1fr;
+	gap: calc(var(--memml-spacing) * 0.75);
+}
+
+/* The count caption is a paragraph, so the margin must out-rank theme `p`
+   rules; hence no :where(). */
+.memml-calendar .memml-calendar__count {
+	margin: 0 0 calc(var(--memml-spacing) * 0.75);
+	color: var(--memml-muted);
+	font-size: 0.8em;
+	font-weight: 650;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+:where(.memml-calendar__subscribe) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem var(--memml-spacing);
+	margin-block-end: var(--memml-spacing);
+	padding: 0.6rem var(--memml-spacing);
+	border: 1px solid var(--memml-border);
+	border-radius: var(--memml-radius);
+	background: color-mix(in srgb, var(--memml-border) 18%, transparent);
+}
+
+:where(.memml-calendar__subscribe-label) {
+	color: var(--memml-muted);
+	font-size: 0.85em;
+	font-weight: 650;
+}
+
+:where(.memml-calendar__subscribe .memml-calendar__actions) {
+	margin-block-start: 0;
+	margin-inline-start: auto;
+}
+
 :where(.memml-calendar__card) {
+	display: flex;
+	flex-direction: column;
 	overflow: hidden;
 	border: 1px solid var(--memml-border);
 	border-radius: var(--memml-radius);
@@ -116,6 +183,30 @@
 	background: var(--memml-border);
 }
 
+/* Declared after the base card and image rules so the row overrides win
+   the equal-specificity cascade. */
+:where(.memml-calendar__grid--rows > .memml-calendar__card) {
+	flex-direction: row;
+}
+
+:where(.memml-calendar__grid--rows .memml-calendar__image) {
+	width: 9rem;
+	flex-shrink: 0;
+	aspect-ratio: auto;
+}
+
+@media (max-width: 30rem) {
+
+	:where(.memml-calendar__grid--rows > .memml-calendar__card) {
+		flex-direction: column;
+	}
+
+	:where(.memml-calendar__grid--rows .memml-calendar__image) {
+		width: auto;
+		aspect-ratio: 16 / 9;
+	}
+}
+
 :where(.memml-calendar__image img) {
 	display: block;
 	width: 100%;
@@ -124,13 +215,26 @@
 }
 
 :where(.memml-calendar__card-body) {
-	display: grid;
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
 	gap: calc(var(--memml-spacing) * 0.75);
 	padding: var(--memml-spacing);
 }
 
 :where(.memml-calendar__title, .memml-calendar__description) {
 	margin: 0;
+}
+
+/* Long descriptions are clamped on cards; the details dialog shows the
+   full text. Not :where()-wrapped so theme `p` rules cannot undo the
+   clamp's display mode. */
+.memml-calendar .memml-calendar__card-body > .memml-calendar__description {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	overflow: hidden;
 }
 
 :where(.memml-calendar__meta) {
@@ -172,6 +276,7 @@
 }
 
 :where(.memml-calendar__status) {
+	align-self: start;
 	justify-self: start;
 	padding: 0.2rem 0.5rem;
 	border-radius: 999px;
@@ -196,6 +301,14 @@
 	align-items: center;
 	gap: 0.6rem;
 	margin-block-start: 0.25rem;
+}
+
+/* Cards in one grid row share a height, so pinning the actions to the
+   bottom edge lines the buttons up across neighbouring cards. Declared
+   after the base actions rule so the auto margin wins the cascade. */
+:where(.memml-calendar__card-body > .memml-calendar__actions) {
+	margin-block-start: auto;
+	padding-block-start: 0.25rem;
 }
 
 :where(.memml-calendar__button) {
@@ -249,16 +362,31 @@
 	font-size: 0.9em;
 }
 
-:where(.memml-calendar__month-header) {
-	display: grid;
-	grid-template-columns: auto 1fr auto;
+:where(.memml-calendar__add-links) {
+	display: inline-flex;
+	flex-wrap: wrap;
 	align-items: center;
+	gap: 0.5rem;
+}
+
+:where(.memml-calendar__add-label) {
+	color: var(--memml-muted);
+	font-size: 0.9em;
+}
+
+/* The month arrows sit next to the centred label instead of at the far
+   edges of the container, so both controls stay near the pointer. The
+   label keeps a minimum width so the arrows do not shift between months. */
+:where(.memml-calendar__month-header) {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	gap: var(--memml-spacing);
 	margin-block-end: var(--memml-spacing);
 }
 
 :where(.memml-calendar__month-label) {
-	grid-column: 2;
+	min-width: 12ch;
 	margin: 0;
 	text-align: center;
 }
@@ -382,6 +510,22 @@
 	color: var(--memml-warning);
 }
 
+/* Crowded days collapse extra items behind a native disclosure. */
+:where(.memml-calendar__month-more) {
+	margin-block-start: 0.35rem;
+}
+
+:where(.memml-calendar__month-more > summary) {
+	color: var(--memml-accent);
+	cursor: pointer;
+	font-size: 0.78em;
+	font-weight: 650;
+}
+
+:where(.memml-calendar__month-more > summary:hover) {
+	text-decoration: underline;
+}
+
 :where(.memml-calendar__month-entry .memml-calendar__actions) {
 	gap: 0.35rem;
 	margin-block-start: 0.15rem;
@@ -390,6 +534,97 @@
 :where(.memml-calendar__month-entry .memml-calendar__button) {
 	padding: 0.2rem 0.35rem;
 	font-size: 0.9em;
+}
+
+/* Items that carry a details panel open it in a modal dialog. The hover
+   treatment signals that the whole item is clickable. */
+:where(.memml-calendar__item--openable) {
+	cursor: pointer;
+}
+
+:where(.memml-calendar__card.memml-calendar__item--openable) {
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+:where(.memml-calendar__card.memml-calendar__item--openable:hover) {
+	border-color: color-mix(in srgb, var(--memml-accent) 40%, var(--memml-border));
+	box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
+}
+
+:where(.memml-calendar__month-entry.memml-calendar__item--openable) {
+	transition: background-color 0.15s ease;
+}
+
+:where(.memml-calendar__month-entry.memml-calendar__item--openable:hover) {
+	background: color-mix(in srgb, var(--memml-accent) 16%, var(--memml-card-background));
+}
+
+/* The title opener and dialog close are real buttons injected by script.
+   Themes style `button` through element selectors, so these rules are not
+   :where()-wrapped -- otherwise the titles render as theme-styled buttons. */
+.memml-calendar .memml-calendar__title-button {
+	display: inline;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: none;
+	color: inherit;
+	cursor: pointer;
+	font: inherit;
+	text-align: inherit;
+}
+
+.memml-calendar .memml-calendar__title-button:hover {
+	color: var(--memml-accent);
+	text-decoration: underline;
+}
+
+:where(.memml-calendar__dialog) {
+	width: min(36rem, calc(100vw - 2rem));
+	max-height: calc(100vh - 4rem);
+	padding: calc(var(--memml-spacing) * 1.5);
+	overflow-y: auto;
+	border: 1px solid var(--memml-border);
+	border-radius: var(--memml-radius);
+	background: var(--memml-card-background);
+	box-shadow: 0 10px 40px rgb(0 0 0 / 25%);
+	color: var(--memml-text);
+}
+
+:where(.memml-calendar__dialog)::backdrop {
+	background: rgb(15 18 25 / 55%);
+}
+
+:where(.memml-calendar__dialog .memml-calendar__details) {
+	display: grid;
+	gap: calc(var(--memml-spacing) * 0.75);
+}
+
+:where(.memml-calendar__dialog .memml-calendar__status) {
+	justify-self: start;
+}
+
+.memml-calendar .memml-calendar__dialog-close {
+	position: absolute;
+	inset-block-start: 0.6rem;
+	inset-inline-end: 0.6rem;
+	display: inline-grid;
+	width: 2.25rem;
+	height: 2.25rem;
+	padding: 0;
+	place-items: center;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--memml-muted);
+	cursor: pointer;
+	font-size: 1.4rem;
+	line-height: 1;
+}
+
+.memml-calendar .memml-calendar__dialog-close:hover {
+	background: color-mix(in srgb, var(--memml-border) 45%, transparent);
+	color: var(--memml-text);
 }
 
 :where(.memml-calendar .screen-reader-text) {

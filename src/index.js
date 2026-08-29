@@ -9,6 +9,7 @@ import {
 	SelectControl,
 	Spinner,
 	TextControl,
+	ToggleControl,
 } from '@wordpress/components';
 import ServerSideRender from '@wordpress/server-side-render';
 import { __ } from '@wordpress/i18n';
@@ -27,6 +28,34 @@ const LayoutControl = ( { value, onChange } ) => (
 			{ label: __( 'List', 'memml' ), value: 'list' },
 			{ label: __( 'Month', 'memml' ), value: 'month' },
 		] }
+		onChange={ onChange }
+	/>
+);
+
+const ListStyleControl = ( { value, onChange } ) => (
+	<SelectControl
+		label={ __( 'List style', 'memml' ) }
+		help={ __(
+			'Cards arrange items in a grid; rows stack compact full-width items.',
+			'memml'
+		) }
+		value={ value }
+		options={ [
+			{ label: __( 'Cards', 'memml' ), value: 'grid' },
+			{ label: __( 'Compact rows', 'memml' ), value: 'rows' },
+		] }
+		onChange={ onChange }
+	/>
+);
+
+const SubscribeControl = ( { value, onChange } ) => (
+	<ToggleControl
+		label={ __( 'Show subscribe links', 'memml' ) }
+		help={ __(
+			'Offer Google Calendar, Apple / Outlook, and RSS subscription links.',
+			'memml'
+		) }
+		checked={ !! value }
 		onChange={ onChange }
 	/>
 );
@@ -159,6 +188,12 @@ const createFeedEdit = ( metadata, icon, label ) =>
 							value={ attributes.view }
 							onChange={ ( view ) => setAttributes( { view } ) }
 						/>
+						<ListStyleControl
+							value={ attributes.listStyle }
+							onChange={ ( listStyle ) =>
+								setAttributes( { listStyle } )
+							}
+						/>
 						<PeriodControl
 							value={ attributes.period }
 							onChange={ ( period ) =>
@@ -168,6 +203,12 @@ const createFeedEdit = ( metadata, icon, label ) =>
 						<LimitControl
 							value={ attributes.limit }
 							onChange={ ( limit ) => setAttributes( { limit } ) }
+						/>
+						<SubscribeControl
+							value={ attributes.subscribe }
+							onChange={ ( subscribe ) =>
+								setAttributes( { subscribe } )
+							}
 						/>
 						<UrlKeyControl
 							value={ attributes.urlKey }
@@ -209,6 +250,10 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 					value={ attributes.view }
 					onChange={ ( view ) => setAttributes( { view } ) }
 				/>
+				<ListStyleControl
+					value={ attributes.listStyle }
+					onChange={ ( listStyle ) => setAttributes( { listStyle } ) }
+				/>
 				<PeriodControl
 					value={ attributes.period }
 					onChange={ ( period ) => setAttributes( { period } ) }
@@ -216,6 +261,10 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 				<LimitControl
 					value={ attributes.limit }
 					onChange={ ( limit ) => setAttributes( { limit } ) }
+				/>
+				<SubscribeControl
+					value={ attributes.subscribe }
+					onChange={ ( subscribe ) => setAttributes( { subscribe } ) }
 				/>
 				<UrlKeyControl
 					value={ attributes.urlKey }

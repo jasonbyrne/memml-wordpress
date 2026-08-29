@@ -10,6 +10,7 @@
 		opportunities: 'volunteer opportunities',
 		showing: 'Showing {count} {items}.',
 		showingMonth: 'Showing {month}, {count} {items}.',
+		close: 'Close',
 	};
 
 	// Controls are real links, so the calendar works without JavaScript. Only
@@ -473,6 +474,122 @@
 		applyUrlState( '*' );
 	} );
 	applyUrlState( '' );
+
+	// Each item carries a hidden panel with its full details. Clicking the
+	// item (or its title, which becomes a real button for keyboard and
+	// assistive-technology users) opens those details in a modal dialog.
+	// Without JavaScript nothing is wired up and the summaries stand alone.
+	document
+		.querySelectorAll( '[data-memml-calendar]' )
+		.forEach( function ( calendar ) {
+			if ( ! window.HTMLDialogElement ) {
+				return;
+			}
+
+			let dialog = null;
+			let content = null;
+
+			const ensureDialog = function () {
+				if ( dialog ) {
+					return;
+				}
+
+				dialog = document.createElement( 'dialog' );
+				dialog.className = 'memml-calendar__dialog';
+
+				const close = document.createElement( 'button' );
+
+				close.type = 'button';
+				close.className = 'memml-calendar__dialog-close';
+				close.setAttribute( 'aria-label', messages.close || 'Close' );
+				close.innerHTML = '&times;';
+				close.addEventListener( 'click', function () {
+					dialog.close();
+				} );
+
+				// A click on the backdrop lands on the dialog element itself;
+				// clicks inside land on its children.
+				dialog.addEventListener( 'click', function ( event ) {
+					if ( event.target === dialog ) {
+						dialog.close();
+					}
+				} );
+
+				content = document.createElement( 'div' );
+				content.className = 'memml-calendar__dialog-content';
+
+				dialog.append( close, content );
+				calendar.append( dialog );
+			};
+
+			const openDetails = function ( item ) {
+				const details = item.querySelector( '[data-memml-details]' );
+
+				if ( ! details ) {
+					return;
+				}
+
+				ensureDialog();
+
+				const clone = details.cloneNode( true );
+				const heading = clone.querySelector(
+					'.memml-calendar__details-title'
+				);
+
+				clone.removeAttribute( 'hidden' );
+				content.replaceChildren( clone );
+				if ( heading ) {
+					dialog.setAttribute( 'aria-label', heading.textContent );
+				}
+				dialog.showModal();
+			};
+
+			calendar
+				.querySelectorAll( '[data-memml-item]' )
+				.forEach( function ( item ) {
+					if ( ! item.querySelector( '[data-memml-details]' ) ) {
+						return;
+					}
+
+					const title = item.querySelector(
+						'.memml-calendar__title, .memml-calendar__month-title'
+					);
+
+					if ( title && ! title.querySelector( 'button' ) ) {
+						const opener = document.createElement( 'button' );
+
+						opener.type = 'button';
+						opener.className = 'memml-calendar__title-button';
+						opener.append( ...title.childNodes );
+						title.append( opener );
+					}
+
+					item.classList.add( 'memml-calendar__item--openable' );
+					item.addEventListener( 'click', function ( event ) {
+						const interactive = event.target.closest( 'a, button' );
+
+						if (
+							interactive &&
+							! interactive.classList.contains(
+								'memml-calendar__title-button'
+							)
+						) {
+							return;
+						}
+
+						// Releasing a text selection also fires a click;
+						// opening the dialog would discard the selection.
+						const selection =
+							item.ownerDocument.defaultView.getSelection();
+
+						if ( selection && 'Range' === selection.type ) {
+							return;
+						}
+
+						openDetails( item );
+					} );
+				} );
+		} );
 
 	document
 		.querySelectorAll( '.memml-calendar__image img' )

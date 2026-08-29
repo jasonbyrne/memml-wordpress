@@ -148,13 +148,15 @@ final class Memml_Plugin {
 	 * @return string
 	 */
 	public function render_calendar_block( $attributes ) {
-		$calendar = isset( $attributes['calendar'] ) ? $attributes['calendar'] : 'events';
-		$layout   = isset( $attributes['view'] ) ? $attributes['view'] : 'list';
-		$period   = isset( $attributes['period'] ) ? $attributes['period'] : 'upcoming';
-		$url_key  = isset( $attributes['urlKey'] ) ? $attributes['urlKey'] : '';
-		$limit    = isset( $attributes['limit'] ) ? $attributes['limit'] : 0;
+		$calendar   = isset( $attributes['calendar'] ) ? $attributes['calendar'] : 'events';
+		$layout     = isset( $attributes['view'] ) ? $attributes['view'] : 'list';
+		$period     = isset( $attributes['period'] ) ? $attributes['period'] : 'upcoming';
+		$url_key    = isset( $attributes['urlKey'] ) ? $attributes['urlKey'] : '';
+		$limit      = isset( $attributes['limit'] ) ? $attributes['limit'] : 0;
+		$list_style = isset( $attributes['listStyle'] ) ? $attributes['listStyle'] : 'grid';
+		$subscribe  = ! isset( $attributes['subscribe'] ) || (bool) $attributes['subscribe'];
 
-		return $this->renderer->render_calendar( $calendar, $layout, $period, $url_key, $limit );
+		return $this->renderer->render_calendar( $calendar, $layout, $period, $url_key, $limit, $list_style, $subscribe );
 	}
 
 	/**
@@ -166,11 +168,13 @@ final class Memml_Plugin {
 	public function render_calendar_shortcode( $attributes ) {
 		$attributes = shortcode_atts(
 			array(
-				'calendar' => 'events',
-				'limit'    => 0,
-				'period'   => 'upcoming',
-				'url_key'  => '',
-				'view'     => 'list',
+				'calendar'   => 'events',
+				'limit'      => 0,
+				'list_style' => 'grid',
+				'period'     => 'upcoming',
+				'subscribe'  => 'yes',
+				'url_key'    => '',
+				'view'       => 'list',
 			),
 			is_array( $attributes ) ? $attributes : array(),
 			'memml_calendar'
@@ -181,7 +185,9 @@ final class Memml_Plugin {
 			$attributes['view'],
 			$attributes['period'],
 			$attributes['url_key'],
-			$attributes['limit']
+			$attributes['limit'],
+			$attributes['list_style'],
+			! in_array( strtolower( (string) $attributes['subscribe'] ), array( '', '0', 'false', 'no' ), true )
 		);
 	}
 }

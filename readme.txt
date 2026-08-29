@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -25,6 +25,13 @@ Choose the calendar that belongs on each page:
 Set the block's Maximum items setting, or the shortcode `limit` property, to show
 only the next few items in a list. The default, 0, shows every item. Month view
 always shows every item.
+
+Set the block's List style setting, or the shortcode `list_style="rows"` property,
+to stack compact full-width items instead of the default card grid. Subscription
+links (Google Calendar, Apple / Outlook, RSS) appear above each calendar; turn
+them off with the block's Show subscribe links toggle or `subscribe="no"`.
+Clicking an item opens its full details in a pop-up, and events offer per-event
+Apple / Outlook and Google add-to-calendar links.
 
 The blocks preview themselves in the editor using the same server-side renderer
 visitors get, so layouts and filters can be checked without leaving the post.
@@ -121,6 +128,19 @@ Yes. The URL updates as visitors change the calendar, layout, or displayed month
 Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.3.0 =
+
+* Added optional calendar subscription links for Google Calendar, Apple / Outlook,
+  and RSS, with block and shortcode controls for hiding them.
+* Added a compact row presentation alongside the existing card-grid list style.
+* Calendar items now open full details in an accessible dialog while keeping
+  registration and add-to-calendar actions directly available.
+* Added per-event Google Calendar links and improved event date presentation.
+* Lists now show item counts, card summaries are clamped for consistent layouts,
+  and controls are grouped into a more compact toolbar.
+* Crowded month cells now collapse additional items behind a disclosure control.
+* Improved compatibility with theme typography and button styles.
 
 = 0.2.0 =
 

@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Memml Calendar visual preview</title>
+		<link rel="stylesheet" href="/assets/calendar.css" />
+		<style>
+			/* Deliberately hostile theme styles, matching what real themes do,
+			   to prove the plugin rules hold up. */
+			body { margin: 0; padding: 2rem; font-family: -apple-system, "Segoe UI", sans-serif; font-size: 1.25rem; background: #fff; color: #1f2430; }
+			h3 { font-size: 2.25rem; margin: 1em 0; }
+			h4 { font-size: 1.8rem; margin: 1em 0; }
+			p { margin: 0 0 1.5em; }
+			button { background: #ff00aa; color: #fff; border: 3px dotted lime; padding: 1rem; }
+			a { color: #a00; text-decoration: underline; }
+		</style>
+	</head>
+	<body>
+		<div class="memml-calendar" data-memml-calendar data-memml-url-prefix="memml_p_" data-feed="events" data-layout="list" data-period="upcoming">
+			<div class="memml-calendar__toolbar">
+				<div class="memml-calendar__filter" role="group" aria-label="Choose a calendar"><a class="memml-calendar__filter-button" aria-current="true" href="#e">Events</a><a class="memml-calendar__filter-button" href="#v">Volunteer Opportunities</a></div>
+				<div class="memml-calendar__filter memml-calendar__period-filter" role="group" aria-label="Filter by date"><a class="memml-calendar__filter-button" aria-current="true" href="#u">Upcoming</a><a class="memml-calendar__filter-button" href="#p">Past</a></div>
+				<div class="memml-calendar__filter memml-calendar__layout-filter" role="group" aria-label="Choose a display view"><a class="memml-calendar__filter-button" aria-current="true" href="#l">List</a><a class="memml-calendar__filter-button" href="#m">Month</a></div>
+			</div>
+			<div class="memml-calendar__subscribe"><span class="memml-calendar__subscribe-label">Subscribe to events</span><div class="memml-calendar__actions"><a class="memml-calendar__button" href="#g">Google Calendar</a><a class="memml-calendar__button" href="#w">Apple / Outlook</a><a class="memml-calendar__calendar-link" href="#r">RSS</a></div></div>
+			<div data-memml-layout-panel="list">
+				<div data-memml-period-panel="upcoming">
+					<p class="memml-calendar__count">3 upcoming events</p>
+					<div class="memml-calendar__grid">
+						<article class="memml-calendar__card memml-calendar__card--scheduled" data-memml-item>
+							<div class="memml-calendar__card-body">
+								<h3 class="memml-calendar__title">September 2026 Car Show</h3>
+								<div class="memml-calendar__meta">
+									<time class="memml-calendar__date"><span aria-hidden="true" class="memml-calendar__date-chip"><span>Sep</span><strong>12</strong></span><span class="memml-calendar__date-label">Saturday · 4:00 PM–8:00 PM</span></time>
+									<span class="memml-calendar__location">Historic Civic Center</span>
+								</div>
+								<p class="memml-calendar__description">Join us for the monthly car show. Volunteers needed! This description keeps going and going with lots of extra detail about parking, vendors, food trucks, live music, the judging schedule, trophy categories, and everything else an organizer might paste in.</p>
+								<div class="memml-calendar__actions"><a class="memml-calendar__button" href="#v">Volunteer</a><span class="memml-calendar__add-links"><span class="memml-calendar__add-label">Add to calendar:</span><a class="memml-calendar__calendar-link" href="#i">Apple / Outlook</a><a class="memml-calendar__calendar-link" href="#g">Google</a></span></div>
+							</div>
+							<div class="memml-calendar__details" data-memml-details hidden>
+								<h3 class="memml-calendar__details-title">September 2026 Car Show</h3>
+								<div class="memml-calendar__meta">
+									<time class="memml-calendar__date"><span aria-hidden="true" class="memml-calendar__date-chip"><span>Sep</span><strong>12</strong></span><span class="memml-calendar__date-label">Saturday, 09/12/2026 · 4:00 PM–8:00 PM</span></time>
+									<span class="memml-calendar__location">Historic Civic Center</span>
+								</div>
+								<p class="memml-calendar__description">Join us for the monthly car show. Volunteers needed! This description keeps going and going with lots of extra detail about parking, vendors, food trucks, live music, the judging schedule, trophy categories, and everything else an organizer might paste in.</p>
+								<div class="memml-calendar__actions"><a class="memml-calendar__button" href="#v">Volunteer</a><span class="memml-calendar__add-links"><span class="memml-calendar__add-label">Add to calendar:</span><a class="memml-calendar__calendar-link" href="#i">Apple / Outlook</a><a class="memml-calendar__calendar-link" href="#g">Google</a></span></div>
+							</div>
+						</article>
+						<article class="memml-calendar__card memml-calendar__card--scheduled" data-memml-item>
+							<div class="memml-calendar__card-body">
+								<h3 class="memml-calendar__title">Board Meeting – September 2026</h3>
+								<div class="memml-calendar__meta">
+									<time class="memml-calendar__date"><span aria-hidden="true" class="memml-calendar__date-chip"><span>Sep</span><strong>8</strong></span><span class="memml-calendar__date-label">Tuesday · 7:00 PM–8:00 PM</span></time>
+									<span class="memml-calendar__location">Virtual Meeting</span>
+								</div>
+								<div class="memml-calendar__actions"><span class="memml-calendar__add-links"><span class="memml-calendar__add-label">Add to calendar:</span><a class="memml-calendar__calendar-link" href="#i">Apple / Outlook</a><a class="memml-calendar__calendar-link" href="#g">Google</a></span></div>
+							</div>
+							<div class="memml-calendar__details" data-memml-details hidden>
+								<h3 class="memml-calendar__details-title">Board Meeting – September 2026</h3>
+								<div class="memml-calendar__meta"><span class="memml-calendar__location">Virtual Meeting</span></div>
+								<div class="memml-calendar__actions"><span class="memml-calendar__add-links"><span class="memml-calendar__add-label">Add to calendar:</span><a class="memml-calendar__calendar-link" href="#i">Apple / Outlook</a><a class="memml-calendar__calendar-link" href="#g">Google</a></span></div>
+							</div>
+						</article>
+						<article class="memml-calendar__card memml-calendar__card--scheduled" data-memml-item>
+							<div class="memml-calendar__card-body">
+								<h3 class="memml-calendar__title">Monster Dash 5K – Race Day</h3>
+								<div class="memml-calendar__meta">
+									<time class="memml-calendar__date"><span aria-hidden="true" class="memml-calendar__date-chip"><span>Oct</span><strong>31</strong></span><span class="memml-calendar__date-label">Saturday · 6:00 AM–10:00 AM</span></time>
+								</div>
+								<p class="memml-calendar__description">6:00 – Volunteer Check-In/Setup
+7:00 – Late Packet Pick-Up Starts, DJ Starts Music
+7:40 – Opening Ceremonies</p>
+								<div class="memml-calendar__actions"><a class="memml-calendar__button memml-calendar__button--primary" href="#r">Register</a><span class="memml-calendar__add-links"><span class="memml-calendar__add-label">Add to calendar:</span><a class="memml-calendar__calendar-link" href="#i">Apple / Outlook</a><a class="memml-calendar__calendar-link" href="#g">Google</a></span></div>
+							</div>
+							<div class="memml-calendar__details" data-memml-details hidden>
+								<h3 class="memml-calendar__details-title">Monster Dash 5K – Race Day</h3>
+								<div class="memml-calendar__meta">
+									<time class="memml-calendar__date"><span aria-hidden="true" class="memml-calendar__date-chip"><span>Oct</span><strong>31</strong></span><span class="memml-calendar__date-label">Saturday, 10/31/2026 · 6:00 AM–10:00 AM</span></time>
+								</div>
+								<p class="memml-calendar__description">6:00 – Volunteer Check-In/Setup<br>7:00 – Late Packet Pick-Up Starts, DJ Starts Music<br>7:40 – Opening Ceremonies<br>7:45 – Kid's Dash<br>8:00 – 5K Start</p>
+								<div class="memml-calendar__actions"><a class="memml-calendar__button memml-calendar__button--primary" href="#r">Register</a><span class="memml-calendar__add-links"><span class="memml-calendar__add-label">Add to calendar:</span><a class="memml-calendar__calendar-link" href="#i">Apple / Outlook</a><a class="memml-calendar__calendar-link" href="#g">Google</a></span></div>
+							</div>
+						</article>
+					</div>
+				</div>
+				<div data-memml-period-panel="past" hidden></div>
+			</div>
+			<div data-memml-layout-panel="month" hidden></div>
+			<p aria-live="polite" data-memml-status></p>
+		</div>
+
+		<h3>Compact rows style</h3>
+		<div class="memml-calendar" data-memml-calendar data-memml-url-prefix="memml_r_" data-feed="volunteers" data-layout="list" data-period="upcoming">
+			<div class="memml-calendar__subscribe"><span class="memml-calendar__subscribe-label">Subscribe to volunteer opportunities</span><div class="memml-calendar__actions"><a class="memml-calendar__button" href="#g">Google Calendar</a><a class="memml-calendar__button" href="#w">Apple / Outlook</a></div></div>
+			<div data-memml-layout-panel="list">
+				<div data-memml-period-panel="upcoming">
+					<p class="memml-calendar__count">2 upcoming volunteer opportunities</p>
+					<div class="memml-calendar__grid memml-calendar__grid--rows">
+						<article class="memml-calendar__card memml-calendar__card--volunteer" data-memml-item>
+							<div class="memml-calendar__image"><img alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='120'%3E%3Crect width='160' height='120' fill='%23a3b8d0'/%3E%3C/svg%3E"></div>
+							<div class="memml-calendar__card-body">
+								<span class="memml-calendar__status memml-calendar__status--needed">Volunteers needed</span>
+								<h3 class="memml-calendar__title">September 2026 Car Show</h3>
+								<div class="memml-calendar__meta">
+									<time class="memml-calendar__date"><span aria-hidden="true" class="memml-calendar__date-chip"><span>Sep</span><strong>12</strong></span><span class="memml-calendar__date-label">Saturday · 4:00 PM–8:00 PM</span></time>
+									<span class="memml-calendar__location">Historic Civic Center</span>
+									<span class="memml-calendar__spots">10 spots remaining</span>
+								</div>
+								<p class="memml-calendar__description">Join us for the monthly car show. Volunteers needed!</p>
+								<div class="memml-calendar__actions"><a class="memml-calendar__button memml-calendar__button--primary" href="#v">Volunteer</a></div>
+							</div>
+							<div class="memml-calendar__details" data-memml-details hidden>
+								<h3 class="memml-calendar__details-title">September 2026 Car Show</h3>
+								<p class="memml-calendar__description">Join us for the monthly car show. Volunteers needed!</p>
+							</div>
+						</article>
+						<article class="memml-calendar__card memml-calendar__card--volunteer" data-memml-item>
+							<div class="memml-calendar__card-body">
+								<h3 class="memml-calendar__title">Monster Dash 5K – Early Packet Pickup</h3>
+								<div class="memml-calendar__meta">
+									<time class="memml-calendar__date"><span aria-hidden="true" class="memml-calendar__date-chip"><span>Oct</span><strong>30</strong></span><span class="memml-calendar__date-label">Friday · 10:00 AM</span></time>
+									<span class="memml-calendar__spots">12 spots remaining</span>
+								</div>
+								<div class="memml-calendar__actions"><a class="memml-calendar__button memml-calendar__button--primary" href="#v">Volunteer</a></div>
+							</div>
+							<div class="memml-calendar__details" data-memml-details hidden>
+								<h3 class="memml-calendar__details-title">Monster Dash 5K – Early Packet Pickup</h3>
+							</div>
+						</article>
+					</div>
+				</div>
+				<div data-memml-period-panel="past" hidden></div>
+			</div>
+			<div data-memml-layout-panel="month" hidden></div>
+			<p aria-live="polite" data-memml-status></p>
+		</div>
+
+		<h3>Month grid with a crowded day</h3>
+		<div class="memml-calendar" data-memml-calendar data-memml-url-prefix="memml_q_" data-feed="events" data-layout="month" data-period="upcoming">
+			<div data-memml-layout-panel="month">
+				<div class="memml-calendar__month" data-memml-month-calendar data-month-count="1">
+					<div class="memml-calendar__month-header"><a class="memml-calendar__month-button" aria-label="Previous month" href="#pm">‹</a><h3 aria-live="polite" class="memml-calendar__month-label" data-memml-month-label>September 2026</h3><a class="memml-calendar__month-button" aria-label="Next month" href="#nm">›</a></div>
+					<section class="memml-calendar__month-panel" data-memml-month-index="0" data-month="2026-09" data-month-label="September 2026">
+						<div class="memml-calendar__month-scroll" role="region" tabindex="0" aria-label="September 2026">
+							<table class="memml-calendar__month-table">
+								<thead><tr><th>Sun</th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th></tr></thead>
+								<tbody><tr>
+									<td class="memml-calendar__month-day"><span class="memml-calendar__day-number">6</span></td>
+									<td class="memml-calendar__month-day"><span class="memml-calendar__day-number">7</span></td>
+									<td class="memml-calendar__month-day has-items"><span class="memml-calendar__day-number">8</span>
+										<article class="memml-calendar__month-entry" data-memml-item>
+											<h4 class="memml-calendar__month-title">Board Meeting</h4>
+											<time class="memml-calendar__month-time">7:00 PM</time>
+											<div class="memml-calendar__details" data-memml-details hidden>
+												<h3 class="memml-calendar__details-title">Board Meeting</h3>
+												<p class="memml-calendar__description">Monthly board meeting.</p>
+											</div>
+										</article>
+										<article class="memml-calendar__month-entry" data-memml-item>
+											<h4 class="memml-calendar__month-title">Garden Tour</h4>
+											<time class="memml-calendar__month-time">10:00 AM</time>
+											<div class="memml-calendar__details" data-memml-details hidden>
+												<h3 class="memml-calendar__details-title">Garden Tour</h3>
+											</div>
+										</article>
+										<details class="memml-calendar__month-more"><summary>+2 more</summary>
+											<article class="memml-calendar__month-entry" data-memml-item>
+												<h4 class="memml-calendar__month-title">Bake Sale</h4>
+												<time class="memml-calendar__month-time">12:00 PM</time>
+												<div class="memml-calendar__details" data-memml-details hidden>
+													<h3 class="memml-calendar__details-title">Bake Sale</h3>
+												</div>
+											</article>
+											<article class="memml-calendar__month-entry" data-memml-item>
+												<h4 class="memml-calendar__month-title">Archive Hours</h4>
+												<time class="memml-calendar__month-time">2:00 PM</time>
+												<div class="memml-calendar__details" data-memml-details hidden>
+													<h3 class="memml-calendar__details-title">Archive Hours</h3>
+												</div>
+											</article>
+										</details>
+									</td>
+									<td class="memml-calendar__month-day"><span class="memml-calendar__day-number">9</span></td>
+									<td class="memml-calendar__month-day"><span class="memml-calendar__day-number">10</span></td>
+									<td class="memml-calendar__month-day"><span class="memml-calendar__day-number">11</span></td>
+									<td class="memml-calendar__month-day"><span class="memml-calendar__day-number">12</span></td>
+								</tr></tbody>
+							</table>
+						</div>
+					</section>
+				</div>
+			</div>
+			<p aria-live="polite" data-memml-status></p>
+		</div>
+
+		<script src="/assets/calendar.js"></script>
+	</body>
+</html>

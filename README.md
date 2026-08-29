@@ -63,8 +63,8 @@ See `assets/calendar.css` for the full list.
 
 ```text
 [memml_calendar calendar="events" view="list" period="upcoming" limit="0" url_key="main"]
-[memml_events view="list" period="upcoming" limit="3" url_key="events"]
-[memml_volunteers view="month" url_key="volunteers"]
+[memml_events view="list" list_style="rows" period="upcoming" limit="3" url_key="events"]
+[memml_volunteers view="month" subscribe="no" url_key="volunteers"]
 ```
 
 Visitors can change the calendar, List/Month layout, Upcoming/Past list filter, and displayed month. Those changes are stored in instance-scoped query parameters so the resulting URL can be shared.
@@ -72,6 +72,15 @@ Visitors can change the calendar, List/Month layout, Upcoming/Past list filter, 
 `limit` caps how many items each list shows, which suits a sidebar or a "next few
 events" section. `0`, the default, shows every item. Month view always shows every
 item, because a month grid with items missing would misrepresent the calendar.
+
+`list_style` chooses how lists render: `grid`, the default, arranges cards in
+columns; `rows` stacks compact full-width items, which suits a narrow column or
+a text-heavy feed. `subscribe` controls the Google Calendar / Apple / Outlook /
+RSS subscription links shown above the calendar; it defaults to `yes`.
+
+Every item opens a pop-up with its full details — including the complete
+description, which list cards clamp after a few lines — and events offer
+per-event Apple / Outlook and Google add-to-calendar links.
 
 Every control is a real link. The calendar therefore keeps working with
 JavaScript disabled, and visitors can middle-click or right-click a view to open

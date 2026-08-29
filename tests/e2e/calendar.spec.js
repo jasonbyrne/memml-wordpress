@@ -60,6 +60,33 @@ test( 'applies independently scoped direct-link parameters', async ( {
 	await expect( sidebar ).toHaveAttribute( 'data-period', 'past' );
 } );
 
+test( 'opens an item’s full details in a modal dialog', async ( { page } ) => {
+	await page.goto( '/tests/e2e/fixture.html' );
+
+	const main = page.locator( '[data-memml-url-prefix="memml_main_"]' );
+	const dialog = main.locator( 'dialog.memml-calendar__dialog' );
+
+	// The item title becomes a real button, so keyboard users can open it.
+	await main.getByRole( 'button', { name: 'Upcoming event' } ).click();
+	await expect( dialog ).toBeVisible();
+	await expect( dialog ).toContainText(
+		'Full event description shown in the dialog.'
+	);
+
+	await page.keyboard.press( 'Escape' );
+	await expect( dialog ).toBeHidden();
+
+	// Clicking anywhere on the card, not just the title, opens it too.
+	await main
+		.locator( '[data-memml-period-panel="upcoming"] [data-memml-item]' )
+		.first()
+		.click( { position: { x: 5, y: 5 } } );
+	await expect( dialog ).toBeVisible();
+
+	await dialog.getByRole( 'button', { name: 'Close' } ).click();
+	await expect( dialog ).toBeHidden();
+} );
+
 test( 'exposes every control as a shareable link and handles clicks in place', async ( {
 	page,
 } ) => {

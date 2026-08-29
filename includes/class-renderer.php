@@ -63,7 +63,9 @@ final class Memml_Renderer {
 			$this->get_layout_from_attributes( $attributes ),
 			$this->get_period_from_attributes( $attributes ),
 			$this->get_url_key_from_attributes( $attributes ),
-			$this->get_limit_from_attributes( $attributes )
+			$this->get_limit_from_attributes( $attributes ),
+			$this->get_list_style_from_attributes( $attributes ),
+			$this->get_subscribe_from_attributes( $attributes )
 		);
 	}
 
@@ -81,21 +83,25 @@ final class Memml_Renderer {
 			$this->get_layout_from_attributes( $attributes ),
 			$this->get_period_from_attributes( $attributes ),
 			$this->get_url_key_from_attributes( $attributes ),
-			$this->get_limit_from_attributes( $attributes )
+			$this->get_limit_from_attributes( $attributes ),
+			$this->get_list_style_from_attributes( $attributes ),
+			$this->get_subscribe_from_attributes( $attributes )
 		);
 	}
 
 	/**
 	 * Renders a visitor-facing calendar switcher.
 	 *
-	 * @param string $calendar Initial calendar: events or volunteers.
-	 * @param string $layout   Initial display layout: list or month.
-	 * @param string $period   Initial list period: upcoming or past.
-	 * @param string $url_key  Optional stable share-link identifier.
-	 * @param int    $limit    Maximum list items per period, or 0 for every item.
+	 * @param string $calendar   Initial calendar: events or volunteers.
+	 * @param string $layout     Initial display layout: list or month.
+	 * @param string $period     Initial list period: upcoming or past.
+	 * @param string $url_key    Optional stable share-link identifier.
+	 * @param int    $limit      Maximum list items per period, or 0 for every item.
+	 * @param string $list_style List presentation: grid or rows.
+	 * @param bool   $subscribe  Whether to offer calendar subscription links.
 	 * @return string
 	 */
-	public function render_calendar( $calendar = 'events', $layout = 'list', $period = 'upcoming', $url_key = '', $limit = 0 ) {
+	public function render_calendar( $calendar = 'events', $layout = 'list', $period = 'upcoming', $url_key = '', $limit = 0, $list_style = 'grid', $subscribe = true ) {
 		$this->enqueue_assets();
 		++self::$calendar_instance;
 
@@ -107,8 +113,10 @@ final class Memml_Renderer {
 			'instance_id'  => 'memml-calendar-' . self::$calendar_instance,
 			'layout'       => $this->get_initial_layout( $layout, $query_prefix ),
 			'limit'        => max( 0, (int) $limit ),
+			'list_style'   => $this->normalize_list_style( $list_style ),
 			'period'       => $this->get_initial_period( $period, $query_prefix ),
 			'query_prefix' => $query_prefix,
+			'subscribe'    => (bool) $subscribe,
 		);
 
 		$events_id         = $context['instance_id'] . '-events';
@@ -121,16 +129,15 @@ final class Memml_Renderer {
 			$this->render_control_link( $context, 'data-memml-view', 'events', __( 'Events', 'memml' ), $events_id, 'events' === $calendar, array( 'calendar' => 'events' ) ),
 			$this->render_control_link( $context, 'data-memml-view', 'volunteers', __( 'Volunteer Opportunities', 'memml' ), $volunteers_id, 'volunteers' === $calendar, array( 'calendar' => 'volunteers' ) )
 		);
-		$toolbar           = '<div class="memml-calendar__toolbar">' . $source_controls . $this->render_layout_controls( $context ) . '</div>';
+		$toolbar           = '<div class="memml-calendar__toolbar">' . $source_controls . $this->render_period_controls( $context ) . $this->render_layout_controls( $context ) . '</div>';
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--switchable" data-memml-calendar data-memml-url-prefix="%1$s" data-calendar="%2$s" data-layout="%3$s" data-period="%4$s">%5$s%6$s<div class="memml-calendar__panel" id="%7$s"%8$s>%9$s</div><div class="memml-calendar__panel" id="%10$s"%11$s>%12$s</div>%13$s</div>',
+			'<div class="memml-calendar memml-calendar--switchable" data-memml-calendar data-memml-url-prefix="%1$s" data-calendar="%2$s" data-layout="%3$s" data-period="%4$s">%5$s<div class="memml-calendar__panel" id="%6$s"%7$s>%8$s</div><div class="memml-calendar__panel" id="%9$s"%10$s>%11$s</div>%12$s</div>',
 			esc_attr( $query_prefix ),
 			esc_attr( $calendar ),
 			esc_attr( $context['layout'] ),
 			esc_attr( $context['period'] ),
 			$toolbar,
-			$this->render_period_controls( $context ),
 			esc_attr( $events_id ),
 			'events' === $calendar ? '' : ' hidden',
 			$events_layouts,
@@ -144,14 +151,16 @@ final class Memml_Renderer {
 	/**
 	 * Renders a fixed feed with a visitor-facing layout switcher.
 	 *
-	 * @param string $feed    Feed identifier.
-	 * @param string $layout  Initial display layout.
-	 * @param string $period  Initial list period.
-	 * @param string $url_key Optional stable share-link identifier.
-	 * @param int    $limit   Maximum list items per period, or 0 for every item.
+	 * @param string $feed       Feed identifier.
+	 * @param string $layout     Initial display layout.
+	 * @param string $period     Initial list period.
+	 * @param string $url_key    Optional stable share-link identifier.
+	 * @param int    $limit      Maximum list items per period, or 0 for every item.
+	 * @param string $list_style List presentation: grid or rows.
+	 * @param bool   $subscribe  Whether to offer calendar subscription links.
 	 * @return string
 	 */
-	private function render_single_feed( $feed, $layout, $period, $url_key = '', $limit = 0 ) {
+	private function render_single_feed( $feed, $layout, $period, $url_key = '', $limit = 0, $list_style = 'grid', $subscribe = true ) {
 		++self::$calendar_instance;
 
 		$url_key      = $this->get_unique_url_key( $url_key );
@@ -161,18 +170,20 @@ final class Memml_Renderer {
 			'instance_id'  => 'memml-calendar-' . self::$calendar_instance,
 			'layout'       => $this->get_initial_layout( $layout, $query_prefix ),
 			'limit'        => max( 0, (int) $limit ),
+			'list_style'   => $this->normalize_list_style( $list_style ),
 			'period'       => $this->get_initial_period( $period, $query_prefix ),
 			'query_prefix' => $query_prefix,
+			'subscribe'    => (bool) $subscribe,
 		);
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--%1$s" data-memml-calendar data-memml-url-prefix="%2$s" data-feed="%1$s" data-layout="%3$s" data-period="%4$s"><div class="memml-calendar__toolbar">%5$s</div>%6$s%7$s%8$s</div>',
+			'<div class="memml-calendar memml-calendar--%1$s" data-memml-calendar data-memml-url-prefix="%2$s" data-feed="%1$s" data-layout="%3$s" data-period="%4$s"><div class="memml-calendar__toolbar">%5$s%6$s</div>%7$s%8$s</div>',
 			esc_attr( $feed ),
 			esc_attr( $query_prefix ),
 			esc_attr( $context['layout'] ),
 			esc_attr( $context['period'] ),
-			$this->render_layout_controls( $context ),
 			$this->render_period_controls( $context ),
+			$this->render_layout_controls( $context ),
 			$this->render_layout_panels( $feed, $context, $this->get_client_result( $feed ) ),
 			$this->render_live_region()
 		);
@@ -282,8 +293,9 @@ final class Memml_Renderer {
 		$month_id   = $context['instance_id'] . '-' . $feed . '-month';
 		$list_html  = $this->render_period_panels( $feed, $context, $result );
 		$month_html = $this->render_feed_panel( $feed, 'month', $result, 'upcoming', $context );
+		$subscribe  = empty( $context['subscribe'] ) ? '' : $this->render_subscribe_row( $feed, $result );
 
-		return sprintf(
+		return $subscribe . sprintf(
 			'<div data-memml-layout-panel="list" id="%1$s"%2$s>%3$s</div><div data-memml-layout-panel="month" id="%4$s"%5$s>%6$s</div>',
 			esc_attr( $list_id ),
 			'list' === $context['layout'] ? '' : ' hidden',
@@ -291,6 +303,56 @@ final class Memml_Renderer {
 			esc_attr( $month_id ),
 			'month' === $context['layout'] ? '' : ' hidden',
 			$month_html
+		);
+	}
+
+	/**
+	 * Renders calendar subscription links for one feed.
+	 *
+	 * The feed envelope advertises its own ICS and RSS URLs, so visitors can
+	 * follow the calendar from their own calendar application instead of
+	 * saving one event at a time.
+	 *
+	 * @param string         $feed   Feed identifier.
+	 * @param array|WP_Error $result Feed client result.
+	 * @return string
+	 */
+	private function render_subscribe_row( $feed, $result ) {
+		if ( is_wp_error( $result ) || ! isset( $result['data']['links'] ) || ! is_array( $result['data']['links'] ) ) {
+			return '';
+		}
+
+		$links = $result['data']['links'];
+		$ics   = isset( $links['ics'] ) ? (string) $links['ics'] : '';
+
+		if ( 0 !== strpos( $ics, 'http' ) ) {
+			return '';
+		}
+
+		$webcal  = preg_replace( '#^https?://#', 'webcal://', $ics );
+		$google  = 'https://calendar.google.com/calendar/render?cid=' . rawurlencode( $ics );
+		$buttons = sprintf(
+			'<a class="memml-calendar__button" href="%1$s" rel="noopener" target="_blank">%2$s</a><a class="memml-calendar__button" href="%3$s">%4$s</a>',
+			esc_url( $google ),
+			esc_html__( 'Google Calendar', 'memml' ),
+			esc_url( $webcal, array( 'webcal', 'https', 'http' ) ),
+			esc_html__( 'Apple / Outlook', 'memml' )
+		);
+
+		if ( ! empty( $links['rss'] ) ) {
+			$buttons .= sprintf(
+				'<a class="memml-calendar__calendar-link" href="%1$s">%2$s</a>',
+				esc_url( $links['rss'] ),
+				esc_html__( 'RSS', 'memml' )
+			);
+		}
+
+		return sprintf(
+			'<div class="memml-calendar__subscribe"><span class="memml-calendar__subscribe-label">%1$s</span><div class="memml-calendar__actions">%2$s</div></div>',
+			'volunteers' === $feed
+				? esc_html__( 'Subscribe to volunteer opportunities', 'memml' )
+				: esc_html__( 'Subscribe to events', 'memml' ),
+			$buttons
 		);
 	}
 
@@ -372,14 +434,25 @@ final class Memml_Renderer {
 		}
 
 		$cards = '';
+		$count = 0;
 
 		foreach ( $events as $event ) {
 			if ( is_array( $event ) ) {
 				$cards .= $this->render_event_card( $event, $timezone, 'past' === $period );
+				++$count;
 			}
 		}
 
-		return '<div class="memml-calendar__grid">' . $cards . '</div>';
+		$caption = sprintf(
+			'past' === $period
+				/* translators: %d: Number of events shown. */
+				? _n( '%d past event', '%d past events', $count, 'memml' )
+				/* translators: %d: Number of events shown. */
+				: _n( '%d upcoming event', '%d upcoming events', $count, 'memml' ),
+			$count
+		);
+
+		return $this->render_count_caption( $caption ) . '<div class="' . esc_attr( $this->get_grid_class( $context ) ) . '">' . $cards . '</div>';
 	}
 
 	/**
@@ -426,14 +499,47 @@ final class Memml_Renderer {
 		}
 
 		$cards = '';
+		$count = 0;
 
 		foreach ( $opportunities as $opportunity ) {
 			if ( is_array( $opportunity ) ) {
 				$cards .= $this->render_volunteer_card( $opportunity, $timezone, 'past' === $period );
+				++$count;
 			}
 		}
 
-		return '<div class="memml-calendar__grid">' . $cards . '</div>';
+		$caption = sprintf(
+			'past' === $period
+				/* translators: %d: Number of volunteer opportunities shown. */
+				? _n( '%d past volunteer opportunity', '%d past volunteer opportunities', $count, 'memml' )
+				/* translators: %d: Number of volunteer opportunities shown. */
+				: _n( '%d upcoming volunteer opportunity', '%d upcoming volunteer opportunities', $count, 'memml' ),
+			$count
+		);
+
+		return $this->render_count_caption( $caption ) . '<div class="' . esc_attr( $this->get_grid_class( $context ) ) . '">' . $cards . '</div>';
+	}
+
+	/**
+	 * Renders the item-count caption shown above a list.
+	 *
+	 * @param string $caption Caption text.
+	 * @return string
+	 */
+	private function render_count_caption( $caption ) {
+		return '<p class="memml-calendar__count">' . esc_html( $caption ) . '</p>';
+	}
+
+	/**
+	 * Gets the list container class for the configured list style.
+	 *
+	 * @param array $context Instance render context.
+	 * @return string
+	 */
+	private function get_grid_class( $context ) {
+		return 'rows' === ( isset( $context['list_style'] ) ? $context['list_style'] : 'grid' )
+			? 'memml-calendar__grid memml-calendar__grid--rows'
+			: 'memml-calendar__grid';
 	}
 
 	/**
@@ -668,8 +774,37 @@ final class Memml_Renderer {
 				}
 
 				if ( ! empty( $month['days'][ $day ] ) ) {
-					foreach ( $month['days'][ $day ] as $item ) {
-						$entries .= $this->render_month_entry( $item, $feed, $timezone );
+					$day_items = array_values( $month['days'][ $day ] );
+					$total     = count( $day_items );
+
+					// A crowded day keeps its row height in check: beyond
+					// three items, two stay visible and the rest collapse
+					// behind a native disclosure that works without script.
+					$shown    = $total > 3 ? 2 : $total;
+					$overflow = '';
+
+					foreach ( $day_items as $item_index => $item ) {
+						$entry = $this->render_month_entry( $item, $feed, $timezone );
+
+						if ( $item_index < $shown ) {
+							$entries .= $entry;
+						} else {
+							$overflow .= $entry;
+						}
+					}
+
+					if ( '' !== $overflow ) {
+						$entries .= sprintf(
+							'<details class="memml-calendar__month-more"><summary>%1$s</summary>%2$s</details>',
+							esc_html(
+								sprintf(
+									/* translators: %d: Number of additional items on the same day. */
+									_n( '+%d more', '+%d more', $total - $shown, 'memml' ),
+									$total - $shown
+								)
+							),
+							$overflow
+						);
 					}
 				}
 
@@ -750,12 +885,13 @@ final class Memml_Renderer {
 		}
 
 		return sprintf(
-			'<article class="memml-calendar__month-entry" data-memml-item>%1$s<h4 class="memml-calendar__month-title">%2$s</h4>%3$s%4$s%5$s</article>',
+			'<article class="memml-calendar__month-entry" data-memml-item>%1$s<h4 class="memml-calendar__month-title">%2$s</h4>%3$s%4$s%5$s%6$s</article>',
 			$status,
 			esc_html( $title ),
 			$time,
 			$details,
-			$actions
+			$actions,
+			$this->render_details( $item, $feed, $timezone, $is_past )
 		);
 	}
 
@@ -925,6 +1061,54 @@ final class Memml_Renderer {
 		}
 
 		return isset( $attributes['url_key'] ) ? sanitize_key( $attributes['url_key'] ) : '';
+	}
+
+	/**
+	 * Gets a safe list style from block or shortcode attributes.
+	 *
+	 * @param array|string $attributes Block or shortcode attributes.
+	 * @return string
+	 */
+	private function get_list_style_from_attributes( $attributes ) {
+		if ( ! is_array( $attributes ) ) {
+			return 'grid';
+		}
+
+		if ( isset( $attributes['listStyle'] ) ) {
+			return $this->normalize_list_style( $attributes['listStyle'] );
+		}
+
+		return $this->normalize_list_style( isset( $attributes['list_style'] ) ? $attributes['list_style'] : 'grid' );
+	}
+
+	/**
+	 * Normalizes a list presentation style.
+	 *
+	 * @param string $style Candidate style.
+	 * @return string
+	 */
+	private function normalize_list_style( $style ) {
+		return 'rows' === $style ? 'rows' : 'grid';
+	}
+
+	/**
+	 * Gets the subscribe-links preference from block or shortcode attributes.
+	 *
+	 * @param array|string $attributes Block or shortcode attributes.
+	 * @return bool
+	 */
+	private function get_subscribe_from_attributes( $attributes ) {
+		if ( ! is_array( $attributes ) || ! isset( $attributes['subscribe'] ) ) {
+			return true;
+		}
+
+		$value = $attributes['subscribe'];
+
+		if ( is_string( $value ) ) {
+			return ! in_array( strtolower( $value ), array( '', '0', 'false', 'no' ), true );
+		}
+
+		return (bool) $value;
 	}
 
 	/**
@@ -1099,20 +1283,51 @@ final class Memml_Renderer {
 	 * @return string
 	 */
 	private function render_event_card( $event, $timezone, $is_past = false ) {
-		$title       = isset( $event['title'] ) ? (string) $event['title'] : '';
-		$status      = isset( $event['status'] ) ? (string) $event['status'] : 'scheduled';
-		$status      = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
-		$status_html = '';
+		$title  = isset( $event['title'] ) ? (string) $event['title'] : '';
+		$status = isset( $event['status'] ) ? (string) $event['status'] : 'scheduled';
+		$status = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
 
-		if ( 'cancelled' === $status || 'postponed' === $status ) {
-			$status_html = sprintf(
-				'<span class="memml-calendar__status memml-calendar__status--%1$s">%2$s</span>',
-				esc_attr( $status ),
-				'cancelled' === $status ? esc_html__( 'Cancelled', 'memml' ) : esc_html__( 'Postponed', 'memml' )
-			);
+		return sprintf(
+			'<article class="memml-calendar__card memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__card-body">%3$s<h3 class="memml-calendar__title">%4$s</h3><div class="memml-calendar__meta">%5$s</div>%6$s%7$s</div>%8$s</article>',
+			esc_attr( $status ),
+			$this->render_image( isset( $event['imageUrl'] ) ? $event['imageUrl'] : '', $title ),
+			$this->render_status_badge( $status ),
+			esc_html( $title ),
+			$this->render_event_meta( $event, $timezone, $is_past ? 'full' : 'compact' ),
+			$this->render_description( isset( $event['description'] ) ? $event['description'] : '' ),
+			$is_past ? '' : $this->render_event_actions( $event ),
+			$this->render_details( $event, 'events', $timezone, $is_past )
+		);
+	}
+
+	/**
+	 * Renders a status badge for a cancelled or postponed event.
+	 *
+	 * @param string $status Normalized event status.
+	 * @return string
+	 */
+	private function render_status_badge( $status ) {
+		if ( 'cancelled' !== $status && 'postponed' !== $status ) {
+			return '';
 		}
 
-		$meta = $this->render_datetime( $event, $timezone );
+		return sprintf(
+			'<span class="memml-calendar__status memml-calendar__status--%1$s">%2$s</span>',
+			esc_attr( $status ),
+			'cancelled' === $status ? esc_html__( 'Cancelled', 'memml' ) : esc_html__( 'Postponed', 'memml' )
+		);
+	}
+
+	/**
+	 * Renders the date, location, and cost line for one event.
+	 *
+	 * @param array        $event    Event feed record.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @param string       $style    Datetime label style: compact or full.
+	 * @return string
+	 */
+	private function render_event_meta( $event, $timezone, $style = 'full' ) {
+		$meta = $this->render_datetime( $event, $timezone, $style );
 
 		if ( ! empty( $event['location'] ) ) {
 			$meta .= '<span class="memml-calendar__location">' . esc_html( $event['location'] ) . '</span>';
@@ -1122,29 +1337,19 @@ final class Memml_Renderer {
 			$meta .= '<span class="memml-calendar__cost">' . esc_html( $event['cost'] ) . '</span>';
 		}
 
-		return sprintf(
-			'<article class="memml-calendar__card memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__card-body">%3$s<h3 class="memml-calendar__title">%4$s</h3><div class="memml-calendar__meta">%5$s</div>%6$s%7$s</div></article>',
-			esc_attr( $status ),
-			$this->render_image( isset( $event['imageUrl'] ) ? $event['imageUrl'] : '', $title ),
-			$status_html,
-			esc_html( $title ),
-			$meta,
-			$this->render_description( isset( $event['description'] ) ? $event['description'] : '' ),
-			$is_past ? '' : $this->render_event_actions( $event )
-		);
+		return $meta;
 	}
 
 	/**
-	 * Renders one volunteer opportunity card.
+	 * Renders the date, location, and open-spots line for one opportunity.
 	 *
 	 * @param array        $opportunity Opportunity feed record.
 	 * @param DateTimeZone $timezone    Organization timezone.
-	 * @param bool         $is_past     Whether the opportunity is in the Past list.
+	 * @param string       $style       Datetime label style: compact or full.
 	 * @return string
 	 */
-	private function render_volunteer_card( $opportunity, $timezone, $is_past = false ) {
-		$title = isset( $opportunity['title'] ) ? (string) $opportunity['title'] : '';
-		$meta  = $this->render_datetime( $opportunity, $timezone );
+	private function render_volunteer_meta( $opportunity, $timezone, $style = 'full' ) {
+		$meta = $this->render_datetime( $opportunity, $timezone, $style );
 
 		if ( ! empty( $opportunity['location'] ) ) {
 			$meta .= '<span class="memml-calendar__location">' . esc_html( $opportunity['location'] ) . '</span>';
@@ -1164,27 +1369,90 @@ final class Memml_Renderer {
 			);
 		}
 
-		$needs_more = ! $is_past && ! empty( $opportunity['needsMore'] )
-			? '<span class="memml-calendar__status memml-calendar__status--needed">' . esc_html__( 'Volunteers needed', 'memml' ) . '</span>'
-			: '';
-		$actions    = '';
+		return $meta;
+	}
 
-		if ( ! $is_past && ! empty( $opportunity['url'] ) ) {
-			$actions = sprintf(
-				'<div class="memml-calendar__actions"><a class="memml-calendar__button memml-calendar__button--primary" href="%1$s">%2$s</a></div>',
-				esc_url( $opportunity['url'] ),
-				esc_html__( 'Volunteer', 'memml' )
-			);
+	/**
+	 * Renders an item's full details for the pop-up dialog.
+	 *
+	 * The panel stays hidden in the page; calendar.js clones it into a modal
+	 * dialog when a visitor opens the item, so the month grid and clamped list
+	 * cards can stay compact without losing any information.
+	 *
+	 * @param array        $item     Feed record.
+	 * @param string       $feed     Feed identifier.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @param bool         $is_past  Whether the item is in the past.
+	 * @return string
+	 */
+	private function render_details( $item, $feed, $timezone, $is_past ) {
+		$title = isset( $item['title'] ) ? (string) $item['title'] : '';
+
+		if ( 'events' === $feed ) {
+			$status  = isset( $item['status'] ) ? (string) $item['status'] : 'scheduled';
+			$status  = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
+			$badge   = $this->render_status_badge( $status );
+			$meta    = $this->render_event_meta( $item, $timezone );
+			$actions = $is_past ? '' : $this->render_event_actions( $item );
+		} else {
+			$badge   = ! $is_past && ! empty( $item['needsMore'] )
+				? '<span class="memml-calendar__status memml-calendar__status--needed">' . esc_html__( 'Volunteers needed', 'memml' ) . '</span>'
+				: '';
+			$meta    = $this->render_volunteer_meta( $item, $timezone );
+			$actions = $is_past ? '' : $this->render_volunteer_actions( $item );
 		}
 
 		return sprintf(
-			'<article class="memml-calendar__card memml-calendar__card--volunteer" data-memml-item>%1$s<div class="memml-calendar__card-body">%2$s<h3 class="memml-calendar__title">%3$s</h3><div class="memml-calendar__meta">%4$s</div>%5$s%6$s</div></article>',
+			'<div class="memml-calendar__details" data-memml-details hidden>%1$s<h3 class="memml-calendar__details-title">%2$s</h3><div class="memml-calendar__meta">%3$s</div>%4$s%5$s</div>',
+			$badge,
+			esc_html( $title ),
+			$meta,
+			$this->render_description( isset( $item['description'] ) ? $item['description'] : '' ),
+			$actions
+		);
+	}
+
+	/**
+	 * Renders one volunteer opportunity card.
+	 *
+	 * @param array        $opportunity Opportunity feed record.
+	 * @param DateTimeZone $timezone    Organization timezone.
+	 * @param bool         $is_past     Whether the opportunity is in the Past list.
+	 * @return string
+	 */
+	private function render_volunteer_card( $opportunity, $timezone, $is_past = false ) {
+		$title      = isset( $opportunity['title'] ) ? (string) $opportunity['title'] : '';
+		$needs_more = ! $is_past && ! empty( $opportunity['needsMore'] )
+			? '<span class="memml-calendar__status memml-calendar__status--needed">' . esc_html__( 'Volunteers needed', 'memml' ) . '</span>'
+			: '';
+
+		return sprintf(
+			'<article class="memml-calendar__card memml-calendar__card--volunteer" data-memml-item>%1$s<div class="memml-calendar__card-body">%2$s<h3 class="memml-calendar__title">%3$s</h3><div class="memml-calendar__meta">%4$s</div>%5$s%6$s</div>%7$s</article>',
 			$this->render_image( isset( $opportunity['imageUrl'] ) ? $opportunity['imageUrl'] : '', $title ),
 			$needs_more,
 			esc_html( $title ),
-			$meta,
+			$this->render_volunteer_meta( $opportunity, $timezone, $is_past ? 'full' : 'compact' ),
 			$this->render_description( isset( $opportunity['description'] ) ? $opportunity['description'] : '' ),
-			$actions
+			$is_past ? '' : $this->render_volunteer_actions( $opportunity ),
+			$this->render_details( $opportunity, 'volunteers', $timezone, $is_past )
+		);
+	}
+
+	/**
+	 * Renders volunteer opportunity action links.
+	 *
+	 * @param array $opportunity Opportunity feed record.
+	 * @return string
+	 */
+	private function render_volunteer_actions( $opportunity ) {
+		if ( empty( $opportunity['url'] ) ) {
+			return '';
+		}
+
+		return sprintf(
+			'<div class="memml-calendar__actions"><a class="memml-calendar__button memml-calendar__button--primary" href="%1$s">%2$s</a></div>',
+			esc_url( $opportunity['url'] ),
+			esc_html__( 'Volunteer', 'memml' )
 		);
 	}
 
@@ -1213,15 +1481,88 @@ final class Memml_Renderer {
 			);
 		}
 
+		$add_links = '';
+
 		if ( ! empty( $event['icsUrl'] ) ) {
-			$actions .= sprintf(
+			$add_links .= sprintf(
 				'<a class="memml-calendar__calendar-link" href="%1$s">%2$s</a>',
 				esc_url( $event['icsUrl'] ),
-				esc_html__( 'Add to calendar', 'memml' )
+				esc_html__( 'Apple / Outlook', 'memml' )
+			);
+		}
+
+		$google = $this->build_google_event_url( $event );
+
+		if ( '' !== $google ) {
+			$add_links .= sprintf(
+				'<a class="memml-calendar__calendar-link" href="%1$s" rel="noopener" target="_blank">%2$s</a>',
+				esc_url( $google ),
+				esc_html__( 'Google', 'memml' )
+			);
+		}
+
+		if ( '' !== $add_links ) {
+			$actions .= sprintf(
+				'<span class="memml-calendar__add-links"><span class="memml-calendar__add-label">%1$s</span>%2$s</span>',
+				esc_html__( 'Add to calendar:', 'memml' ),
+				$add_links
 			);
 		}
 
 		return '' === $actions ? '' : '<div class="memml-calendar__actions">' . $actions . '</div>';
+	}
+
+	/**
+	 * Builds a Google Calendar event template URL, matching memml.com's own
+	 * event pages.
+	 *
+	 * @param array $event Event feed record.
+	 * @return string
+	 */
+	private function build_google_event_url( $event ) {
+		if ( empty( $event['title'] ) || empty( $event['startsAt'] ) ) {
+			return '';
+		}
+
+		$start = strtotime( $event['startsAt'] );
+
+		if ( false === $start ) {
+			return '';
+		}
+
+		$end = empty( $event['endsAt'] ) ? false : strtotime( $event['endsAt'] );
+
+		if ( false === $end || $end < $start ) {
+			$end = $start + HOUR_IN_SECONDS;
+		}
+
+		$dates = empty( $event['allDay'] )
+			? gmdate( 'Ymd\THis\Z', $start ) . '/' . gmdate( 'Ymd\THis\Z', $end )
+			: gmdate( 'Ymd', $start ) . '/' . gmdate( 'Ymd', $end + DAY_IN_SECONDS );
+
+		$arguments = array(
+			'action' => 'TEMPLATE',
+			'text'   => rawurlencode( (string) $event['title'] ),
+			'dates'  => rawurlencode( $dates ),
+		);
+
+		if ( ! empty( $event['description'] ) ) {
+			$details = (string) $event['description'];
+
+			// Long descriptions would produce URLs beyond what browsers and
+			// Google reliably accept, so the link carries a capped excerpt.
+			if ( strlen( $details ) > 1000 ) {
+				$details = ( function_exists( 'mb_substr' ) ? mb_substr( $details, 0, 1000 ) : substr( $details, 0, 1000 ) ) . '…';
+			}
+
+			$arguments['details'] = rawurlencode( $details );
+		}
+
+		if ( ! empty( $event['location'] ) ) {
+			$arguments['location'] = rawurlencode( (string) $event['location'] );
+		}
+
+		return add_query_arg( $arguments, 'https://calendar.google.com/calendar/render' );
 	}
 
 	/**
@@ -1262,11 +1603,17 @@ final class Memml_Renderer {
 	/**
 	 * Formats feed timestamps in the organization timezone.
 	 *
+	 * The compact style leads with the weekday and leaves the calendar date to
+	 * the adjacent date chip, which is easier to scan for near-term items. The
+	 * full style spells out weekday and date, for past items and the details
+	 * dialog where the year matters.
+	 *
 	 * @param array        $item     Event or opportunity.
 	 * @param DateTimeZone $timezone Organization timezone.
+	 * @param string       $style    Label style: compact or full.
 	 * @return string
 	 */
-	private function render_datetime( $item, $timezone ) {
+	private function render_datetime( $item, $timezone, $style = 'full' ) {
 		if ( empty( $item['startsAt'] ) ) {
 			return '';
 		}
@@ -1277,7 +1624,9 @@ final class Memml_Renderer {
 			return '';
 		}
 
+		$weekday    = wp_date( 'l', $start_timestamp, $timezone );
 		$date       = wp_date( get_option( 'date_format' ), $start_timestamp, $timezone );
+		$day_label  = 'compact' === $style ? $weekday : $weekday . ', ' . $date;
 		$date_chip  = sprintf(
 			'<span aria-hidden="true" class="memml-calendar__date-chip"><span>%1$s</span><strong>%2$s</strong></span>',
 			esc_html( wp_date( 'M', $start_timestamp, $timezone ) ),
@@ -1286,7 +1635,12 @@ final class Memml_Renderer {
 		$label_open = '<span class="memml-calendar__date-label">';
 
 		if ( ! empty( $item['allDay'] ) ) {
-			return '<time class="memml-calendar__date" datetime="' . esc_attr( $item['startsAt'] ) . '">' . $date_chip . $label_open . esc_html( $date ) . '</span></time>';
+			$label = 'compact' === $style
+				/* translators: %s: Weekday name. */
+				? sprintf( __( '%s · All day', 'memml' ), $weekday )
+				: $day_label;
+
+			return '<time class="memml-calendar__date" datetime="' . esc_attr( $item['startsAt'] ) . '">' . $date_chip . $label_open . esc_html( $label ) . '</span></time>';
 		}
 
 		$time = wp_date( get_option( 'time_format' ), $start_timestamp, $timezone );
@@ -1299,7 +1653,7 @@ final class Memml_Renderer {
 			}
 		}
 
-		return '<time class="memml-calendar__date" datetime="' . esc_attr( $item['startsAt'] ) . '">' . $date_chip . $label_open . esc_html( $date . ' · ' . $time ) . '</span></time>';
+		return '<time class="memml-calendar__date" datetime="' . esc_attr( $item['startsAt'] ) . '">' . $date_chip . $label_open . esc_html( $day_label . ' · ' . $time ) . '</span></time>';
 	}
 
 	/**
@@ -1387,6 +1741,7 @@ final class Memml_Renderer {
 				'opportunities' => __( 'volunteer opportunities', 'memml' ),
 				'showing'       => __( 'Showing {count} {items}.', 'memml' ),
 				'showingMonth'  => __( 'Showing {month}, {count} {items}.', 'memml' ),
+				'close'         => __( 'Close', 'memml' ),
 			)
 		);
 		wp_script_add_data( self::ASSET_HANDLE, 'strategy', 'defer' );
