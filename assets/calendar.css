@@ -183,30 +183,6 @@
 	background: var(--memml-border);
 }
 
-/* Declared after the base card and image rules so the row overrides win
-   the equal-specificity cascade. */
-:where(.memml-calendar__grid--rows > .memml-calendar__card) {
-	flex-direction: row;
-}
-
-:where(.memml-calendar__grid--rows .memml-calendar__image) {
-	width: 9rem;
-	flex-shrink: 0;
-	aspect-ratio: auto;
-}
-
-@media (max-width: 30rem) {
-
-	:where(.memml-calendar__grid--rows > .memml-calendar__card) {
-		flex-direction: column;
-	}
-
-	:where(.memml-calendar__grid--rows .memml-calendar__image) {
-		width: auto;
-		aspect-ratio: 16 / 9;
-	}
-}
-
 :where(.memml-calendar__image img) {
 	display: block;
 	width: 100%;
@@ -536,17 +512,94 @@
 	font-size: 0.9em;
 }
 
+/* The rows list style is a memml.com-style item: date chip on the left,
+   content beside it, and the status badge and actions in a right-hand
+   column. Declared after the base card, meta, status, and actions rules so
+   its overrides win the equal-specificity cascade. */
+:where(.memml-calendar__row) {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--memml-spacing);
+	padding: var(--memml-spacing);
+	border: 1px solid var(--memml-border);
+	border-radius: var(--memml-radius);
+	background: var(--memml-card-background);
+	box-shadow: var(--memml-shadow);
+	color: var(--memml-text);
+}
+
+:where(.memml-calendar__row-body) {
+	display: grid;
+	flex: 1;
+	gap: 0.4rem;
+	min-width: 0;
+}
+
+:where(.memml-calendar__row-aside) {
+	display: grid;
+	flex-shrink: 0;
+	gap: 0.5rem;
+	align-content: start;
+	justify-items: end;
+}
+
+:where(.memml-calendar__row-aside .memml-calendar__status) {
+	justify-self: end;
+}
+
+:where(.memml-calendar__row-aside .memml-calendar__actions) {
+	margin-block-start: 0;
+	justify-content: flex-end;
+}
+
+:where(.memml-calendar__meta--inline) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.25rem 1rem;
+}
+
+/* Rows keep descriptions to two lines; the details dialog shows the rest. */
+.memml-calendar .memml-calendar__row-body > .memml-calendar__description {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+}
+
+@media (max-width: 30rem) {
+
+	:where(.memml-calendar__row) {
+		flex-wrap: wrap;
+	}
+
+	:where(.memml-calendar__row-aside) {
+		justify-items: start;
+	}
+
+	:where(.memml-calendar__row-aside .memml-calendar__status) {
+		justify-self: start;
+	}
+
+	:where(.memml-calendar__row-aside .memml-calendar__actions) {
+		justify-content: flex-start;
+	}
+}
+
 /* Items that carry a details panel open it in a modal dialog. The hover
    treatment signals that the whole item is clickable. */
 :where(.memml-calendar__item--openable) {
 	cursor: pointer;
 }
 
-:where(.memml-calendar__card.memml-calendar__item--openable) {
+:where(.memml-calendar__card.memml-calendar__item--openable),
+:where(.memml-calendar__row.memml-calendar__item--openable) {
 	transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-:where(.memml-calendar__card.memml-calendar__item--openable:hover) {
+:where(.memml-calendar__card.memml-calendar__item--openable:hover),
+:where(.memml-calendar__row.memml-calendar__item--openable:hover) {
 	border-color: color-mix(in srgb, var(--memml-accent) 40%, var(--memml-border));
 	box-shadow: 0 4px 16px rgb(0 0 0 / 12%);
 }

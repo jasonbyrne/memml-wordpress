@@ -73,10 +73,16 @@ Visitors can change the calendar, List/Month layout, Upcoming/Past list filter, 
 events" section. `0`, the default, shows every item. Month view always shows every
 item, because a month grid with items missing would misrepresent the calendar.
 
-`list_style` chooses how lists render: `grid`, the default, arranges cards in
-columns; `rows` stacks compact full-width items, which suits a narrow column or
-a text-heavy feed. `subscribe` controls the Google Calendar / Apple / Outlook /
-RSS subscription links shown above the calendar; it defaults to `yes`.
+`list_style` chooses how lists render: `grid` arranges cards in columns; `rows`
+stacks compact full-width items — date chip, details, and actions in one line —
+which suits a narrow column or a text-heavy feed. `subscribe` controls the
+Google Calendar / Apple / Outlook / RSS subscription links shown above the
+calendar (`yes` or `no`).
+
+Site-wide defaults for the initial view, list style, and subscribe links live
+under Settings → Memml Calendar → Display defaults. A block or shortcode only
+overrides a default when it sets that option explicitly, so most placements can
+leave these attributes off entirely.
 
 Every item opens a pop-up with its full details — including the complete
 description, which list cards clamp after a few lines — and events offer

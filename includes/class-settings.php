@@ -199,9 +199,15 @@ final class Memml_Settings {
 			$client->flush_cache( $saved['organization_key'] );
 		}
 
+		$default_view       = isset( $input['default_view'] ) ? $input['default_view'] : '';
+		$default_list_style = isset( $input['default_list_style'] ) ? $input['default_list_style'] : '';
+
 		return array(
-			'organization_key' => $organization_key,
-			'base_url'         => $base_url,
+			'organization_key'   => $organization_key,
+			'base_url'           => $base_url,
+			'default_view'       => 'month' === $default_view ? 'month' : 'list',
+			'default_list_style' => 'rows' === $default_list_style ? 'rows' : 'grid',
+			'subscribe_links'    => ! empty( $input['subscribe_links'] ),
 		);
 	}
 
@@ -256,6 +262,55 @@ final class Memml_Settings {
 								);
 								?>
 							</p>
+						</td>
+					</tr>
+				</table>
+				<h2><?php echo esc_html__( 'Display defaults', 'memml' ); ?></h2>
+				<p class="description">
+					<?php echo esc_html__( 'Calendars use these settings unless a block or shortcode sets its own.', 'memml' ); ?>
+				</p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row">
+							<label for="memml-default-view"><?php echo esc_html__( 'Initial view', 'memml' ); ?></label>
+						</th>
+						<td>
+							<select
+								id="memml-default-view"
+								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_view]"
+							>
+								<option value="list" <?php selected( 'month' !== $options['default_view'] ); ?>><?php echo esc_html__( 'List', 'memml' ); ?></option>
+								<option value="month" <?php selected( 'month' === $options['default_view'] ); ?>><?php echo esc_html__( 'Month', 'memml' ); ?></option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label for="memml-default-list-style"><?php echo esc_html__( 'List style', 'memml' ); ?></label>
+						</th>
+						<td>
+							<select
+								id="memml-default-list-style"
+								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_list_style]"
+							>
+								<option value="grid" <?php selected( 'rows' !== $options['default_list_style'] ); ?>><?php echo esc_html__( 'Cards', 'memml' ); ?></option>
+								<option value="rows" <?php selected( 'rows' === $options['default_list_style'] ); ?>><?php echo esc_html__( 'Compact rows', 'memml' ); ?></option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Subscribe links', 'memml' ); ?></th>
+						<td>
+							<label for="memml-subscribe-links">
+								<input
+									id="memml-subscribe-links"
+									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[subscribe_links]"
+									type="checkbox"
+									value="1"
+									<?php checked( ! empty( $options['subscribe_links'] ) ); ?>
+								/>
+								<?php echo esc_html__( 'Offer Google Calendar, Apple / Outlook, and RSS subscription links above each calendar.', 'memml' ); ?>
+							</label>
 						</td>
 					</tr>
 				</table>
@@ -429,8 +484,11 @@ final class Memml_Settings {
 	 */
 	private static function get_defaults() {
 		return array(
-			'organization_key' => '',
-			'base_url'         => Memml_Feed_Client::DEFAULT_BASE_URL,
+			'organization_key'   => '',
+			'base_url'           => Memml_Feed_Client::DEFAULT_BASE_URL,
+			'default_view'       => 'list',
+			'default_list_style' => 'grid',
+			'subscribe_links'    => true,
 		);
 	}
 }

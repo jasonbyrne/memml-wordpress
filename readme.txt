@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.3.0
+Stable tag: 0.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -29,9 +29,13 @@ always shows every item.
 Set the block's List style setting, or the shortcode `list_style="rows"` property,
 to stack compact full-width items instead of the default card grid. Subscription
 links (Google Calendar, Apple / Outlook, RSS) appear above each calendar; turn
-them off with the block's Show subscribe links toggle or `subscribe="no"`.
+them off with the block's Subscribe links setting or `subscribe="no"`.
 Clicking an item opens its full details in a pop-up, and events offer per-event
 Apple / Outlook and Google add-to-calendar links.
+
+Settings > Memml Calendar > Display defaults sets the site-wide initial view,
+list style, and subscribe-links behaviour. Blocks and shortcodes follow those
+defaults unless one sets its own value.
 
 The blocks preview themselves in the editor using the same server-side renderer
 visitors get, so layouts and filters can be checked without leaving the post.
@@ -128,6 +132,16 @@ Yes. The URL updates as visitors change the calendar, layout, or displayed month
 Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.4.0 =
+
+* Added site-wide display defaults (initial view, list style, subscribe links)
+  under Settings > Memml Calendar. Blocks and shortcodes follow those defaults
+  unless they choose their own value, and their view, list style, and subscribe
+  settings now offer an explicit Site default choice.
+* Redesigned the compact rows list style to match memml.com's lists: the date
+  chip, item details, and the status badge or actions now share one compact
+  full-width row instead of a stretched card.
 
 = 0.3.0 =
 

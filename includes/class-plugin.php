@@ -149,12 +149,12 @@ final class Memml_Plugin {
 	 */
 	public function render_calendar_block( $attributes ) {
 		$calendar   = isset( $attributes['calendar'] ) ? $attributes['calendar'] : 'events';
-		$layout     = isset( $attributes['view'] ) ? $attributes['view'] : 'list';
+		$layout     = isset( $attributes['view'] ) ? $attributes['view'] : '';
 		$period     = isset( $attributes['period'] ) ? $attributes['period'] : 'upcoming';
 		$url_key    = isset( $attributes['urlKey'] ) ? $attributes['urlKey'] : '';
 		$limit      = isset( $attributes['limit'] ) ? $attributes['limit'] : 0;
-		$list_style = isset( $attributes['listStyle'] ) ? $attributes['listStyle'] : 'grid';
-		$subscribe  = ! isset( $attributes['subscribe'] ) || (bool) $attributes['subscribe'];
+		$list_style = isset( $attributes['listStyle'] ) ? $attributes['listStyle'] : '';
+		$subscribe  = isset( $attributes['subscribe'] ) ? $attributes['subscribe'] : null;
 
 		return $this->renderer->render_calendar( $calendar, $layout, $period, $url_key, $limit, $list_style, $subscribe );
 	}
@@ -170,11 +170,11 @@ final class Memml_Plugin {
 			array(
 				'calendar'   => 'events',
 				'limit'      => 0,
-				'list_style' => 'grid',
+				'list_style' => '',
 				'period'     => 'upcoming',
-				'subscribe'  => 'yes',
+				'subscribe'  => '',
 				'url_key'    => '',
-				'view'       => 'list',
+				'view'       => '',
 			),
 			is_array( $attributes ) ? $attributes : array(),
 			'memml_calendar'
@@ -187,7 +187,7 @@ final class Memml_Plugin {
 			$attributes['url_key'],
 			$attributes['limit'],
 			$attributes['list_style'],
-			! in_array( strtolower( (string) $attributes['subscribe'] ), array( '', '0', 'false', 'no' ), true )
+			$attributes['subscribe']
 		);
 	}
 }

@@ -57,6 +57,11 @@ final class Memml_Renderer_Test extends TestCase {
 				return $date->setTimezone( $timezone ? $timezone : new DateTimeZone( 'UTC' ) )->format( $format );
 			}
 		);
+		Functions\when( 'wp_parse_args' )->alias(
+			static function ( $args, $defaults ) {
+				return array_merge( $defaults, (array) $args );
+			}
+		);
 		Functions\when( 'apply_filters' )->alias(
 			static function ( $hook, $value ) {
 				unset( $hook );
@@ -131,6 +136,36 @@ final class Memml_Renderer_Test extends TestCase {
 		$this->assertFalse( $this->call_renderer( 'get_subscribe_from_attributes', array( 'subscribe' => 'no' ) ) );
 		$this->assertFalse( $this->call_renderer( 'get_subscribe_from_attributes', array( 'subscribe' => 'false' ) ) );
 		$this->assertFalse( $this->call_renderer( 'get_subscribe_from_attributes', array( 'subscribe' => '0' ) ) );
+	}
+
+	/**
+	 * Unset attributes fall back to the saved site-wide display defaults.
+	 *
+	 * @return void
+	 */
+	public function test_unset_attributes_follow_admin_display_defaults() {
+		Functions\when( 'get_option' )->alias(
+			static function ( $name, $default_value = false ) {
+				if ( Memml_Settings::OPTION_NAME === $name ) {
+					return array(
+						'default_view'       => 'month',
+						'default_list_style' => 'rows',
+						'subscribe_links'    => false,
+					);
+				}
+
+				return $default_value;
+			}
+		);
+
+		$this->assertSame( 'month', $this->call_renderer( 'resolve_layout', '' ) );
+		$this->assertSame( 'rows', $this->call_renderer( 'get_list_style_from_attributes', array() ) );
+		$this->assertFalse( $this->call_renderer( 'get_subscribe_from_attributes', array() ) );
+
+		// Explicit block or shortcode values still win over the site default.
+		$this->assertSame( 'list', $this->call_renderer( 'resolve_layout', 'list' ) );
+		$this->assertSame( 'grid', $this->call_renderer( 'get_list_style_from_attributes', array( 'listStyle' => 'grid' ) ) );
+		$this->assertTrue( $this->call_renderer( 'get_subscribe_from_attributes', array( 'subscribe' => 'yes' ) ) );
 	}
 
 	/**
@@ -326,6 +361,44 @@ final class Memml_Renderer_Test extends TestCase {
 		$this->assertStringContainsString( 'Add to calendar:', $card );
 		$this->assertStringContainsString( 'https://memml.com/api/public/v1/org/events/1.ics', $card );
 		$this->assertStringContainsString( 'https://calendar.google.com/calendar/render?action=TEMPLATE', $card );
+	}
+
+	/**
+	 * The rows list style renders chip, body, and aside columns.
+	 *
+	 * @return void
+	 */
+	public function test_volunteer_row_renders_chip_body_and_aside() {
+		$timezone = new DateTimeZone( 'America/New_York' );
+		$row      = $this->call_renderer(
+			'render_volunteer_row',
+			array(
+				'title'          => 'September 2026 Car Show',
+				'description'    => 'Join us for the monthly car show.',
+				'location'       => 'Historic Civic Center',
+				'spotsRemaining' => 10,
+				'needsMore'      => 5,
+				'startsAt'       => '2026-09-12T20:00:00.000Z',
+				'endsAt'         => '2026-09-13T00:00:00.000Z',
+				'url'            => 'https://memml.com/volunteer/org/v-1',
+			),
+			$timezone,
+			false
+		);
+
+		$this->assertStringContainsString( '<article class="memml-calendar__row memml-calendar__card--volunteer" data-memml-item>', $row );
+		$this->assertStringContainsString( '<span aria-hidden="true" class="memml-calendar__date-chip"><span>Sep</span><strong>12</strong></span><div class="memml-calendar__row-body">', $row );
+		$this->assertStringContainsString( 'memml-calendar__meta memml-calendar__meta--inline', $row );
+		$this->assertStringContainsString( 'Saturday · 4:00 PM–8:00 PM', $row );
+		$this->assertStringContainsString( '<div class="memml-calendar__row-aside"><span class="memml-calendar__status memml-calendar__status--needed">', $row );
+		$this->assertStringContainsString( 'https://memml.com/volunteer/org/v-1', $row );
+		$this->assertStringContainsString( 'data-memml-details hidden', $row );
+		// The chip lives at row level, so the visible meta line must not
+		// repeat it; the hidden details panel keeps its own for the dialog.
+		$body_start = strpos( $row, 'memml-calendar__row-body' );
+		$body       = substr( $row, $body_start, strpos( $row, 'memml-calendar__row-aside' ) - $body_start );
+
+		$this->assertStringNotContainsString( 'memml-calendar__date-chip', $body );
 	}
 
 	/**

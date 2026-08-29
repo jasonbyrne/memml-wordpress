@@ -9,7 +9,6 @@ import {
 	SelectControl,
 	Spinner,
 	TextControl,
-	ToggleControl,
 } from '@wordpress/components';
 import ServerSideRender from '@wordpress/server-side-render';
 import { __ } from '@wordpress/i18n';
@@ -25,6 +24,7 @@ const LayoutControl = ( { value, onChange } ) => (
 		label={ __( 'Initially selected view', 'memml' ) }
 		value={ value }
 		options={ [
+			{ label: __( 'Site default', 'memml' ), value: '' },
 			{ label: __( 'List', 'memml' ), value: 'list' },
 			{ label: __( 'Month', 'memml' ), value: 'month' },
 		] }
@@ -41,6 +41,7 @@ const ListStyleControl = ( { value, onChange } ) => (
 		) }
 		value={ value }
 		options={ [
+			{ label: __( 'Site default', 'memml' ), value: '' },
 			{ label: __( 'Cards', 'memml' ), value: 'grid' },
 			{ label: __( 'Compact rows', 'memml' ), value: 'rows' },
 		] }
@@ -49,13 +50,18 @@ const ListStyleControl = ( { value, onChange } ) => (
 );
 
 const SubscribeControl = ( { value, onChange } ) => (
-	<ToggleControl
-		label={ __( 'Show subscribe links', 'memml' ) }
+	<SelectControl
+		label={ __( 'Subscribe links', 'memml' ) }
 		help={ __(
-			'Offer Google Calendar, Apple / Outlook, and RSS subscription links.',
+			'Google Calendar, Apple / Outlook, and RSS subscription links above the calendar.',
 			'memml'
 		) }
-		checked={ !! value }
+		value={ value }
+		options={ [
+			{ label: __( 'Site default', 'memml' ), value: '' },
+			{ label: __( 'Show', 'memml' ), value: 'yes' },
+			{ label: __( 'Hide', 'memml' ), value: 'no' },
+		] }
 		onChange={ onChange }
 	/>
 );
