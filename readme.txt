@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.0
+Stable tag: 0.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -32,6 +32,10 @@ links (Google Calendar, Apple / Outlook, RSS) appear above each calendar; turn
 them off with the block's Subscribe links setting or `subscribe="no"`.
 Clicking an item opens its full details in a pop-up, and events offer per-event
 Apple / Outlook and Google add-to-calendar links.
+Events with structured venue data show the venue name and address separately,
+link complete addresses to Google Maps, and include any supplied venue contact,
+parking, and arrival details in the pop-up. Legacy location text remains fully
+supported.
 
 Settings > Memml Calendar > Display defaults sets the site-wide initial view,
 list style, and subscribe-links behaviour. Blocks and shortcodes follow those
@@ -132,6 +136,11 @@ Yes. The URL updates as visitors change the calendar, layout, or displayed month
 Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.4.1 =
+
+* Added richer structured venue displays, including Google Maps links for full
+  addresses and optional venue details in event pop-ups.
 
 = 0.4.0 =
 

@@ -3,6 +3,7 @@
 	<head>
 		<meta charset="utf-8" />
 		<title>Memml Calendar browser fixture</title>
+		<link rel="stylesheet" href="/assets/calendar.css" />
 	</head>
 	<body>
 		<div
@@ -27,7 +28,17 @@
 			</div>
 			<div id="main-events">
 				<div data-memml-layout-panel="list">
-					<div data-memml-period-panel="upcoming"><article data-memml-item><h3 class="memml-calendar__title">Upcoming event</h3><div class="memml-calendar__details" data-memml-details hidden><h3 class="memml-calendar__details-title">Upcoming event</h3><p class="memml-calendar__description">Full event description shown in the dialog.</p></div></article></div>
+					<div data-memml-period-panel="upcoming">
+						<article class="memml-calendar__card" data-memml-item>
+							<div class="memml-calendar__card-body">
+								<h3 class="memml-calendar__title">Upcoming event</h3>
+								<div class="memml-calendar__meta">
+									<span class="memml-calendar__venue-list"><span class="memml-calendar__venue memml-calendar__venue--enhanced"><span class="memml-calendar__venue-name">Longwood Historic Civic Center</span><span class="memml-calendar__venue-address">135 W Church Ave, Longwood, FL 32750, US</span><a class="memml-calendar__venue-link" href="https://www.google.com/maps/search/?api=1&amp;query=Longwood%20Historic%20Civic%20Center%2C%20135%20W%20Church%20Ave%2C%20Longwood%2C%20FL%2032750%2C%20US" target="_blank" rel="noopener noreferrer">View on Google Maps</a></span></span>
+								</div>
+							</div>
+							<div class="memml-calendar__details" data-memml-details hidden><h3 class="memml-calendar__details-title">Upcoming event</h3><div class="memml-calendar__meta"><span class="memml-calendar__venue-list"><span class="memml-calendar__venue memml-calendar__venue--enhanced"><span class="memml-calendar__venue-name">Longwood Historic Civic Center</span><span class="memml-calendar__venue-address">135 W Church Ave, Longwood, FL 32750, US</span><a class="memml-calendar__venue-link" href="https://www.google.com/maps/search/?api=1&amp;query=Longwood%20Historic%20Civic%20Center%2C%20135%20W%20Church%20Ave%2C%20Longwood%2C%20FL%2032750%2C%20US" target="_blank" rel="noopener noreferrer">View on Google Maps</a><span class="memml-calendar__venue-detail"><strong>Parking:</strong> Use the lot behind the building.</span></span></span></div><p class="memml-calendar__description">Full event description shown in the dialog.</p></div>
+						</article>
+					</div>
 					<div data-memml-period-panel="past" hidden><article data-memml-item>Past event</article></div>
 				</div>
 				<div data-memml-layout-panel="month" hidden>

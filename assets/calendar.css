@@ -220,6 +220,41 @@
 	font-size: 0.925em;
 }
 
+/* Structured venues are a richer display variant than the legacy location
+   string. The nested layout keeps the name, address, links, and optional
+   arrival details readable in both cards and dialogs. */
+:where(.memml-calendar__venue-list, .memml-calendar__venue) {
+	display: grid;
+	gap: 0.2rem;
+}
+
+:where(.memml-calendar__venue-list) {
+	gap: 0.6rem;
+}
+
+:where(.memml-calendar__venue-name) {
+	color: var(--memml-text);
+	font-weight: 650;
+}
+
+:where(.memml-calendar__venue-address) {
+	font-style: normal;
+}
+
+.memml-calendar a.memml-calendar__venue-link {
+	justify-self: start;
+	font-size: 0.9em;
+}
+
+:where(.memml-calendar__venue-description) {
+	margin-block-start: 0.2rem;
+	color: var(--memml-text);
+}
+
+:where(.memml-calendar__venue-detail strong) {
+	color: var(--memml-text);
+}
+
 :where(.memml-calendar__date) {
 	display: flex;
 	align-items: center;

@@ -364,6 +364,95 @@ final class Memml_Renderer_Test extends TestCase {
 	}
 
 	/**
+	 * Structured venue records render richer details and a map destination.
+	 *
+	 * @return void
+	 */
+	public function test_structured_event_venue_renders_enhanced_variant() {
+		$event = array(
+			'location' => 'Longwood Historic Civic Center — 135 W Church Ave, Longwood FL 32750, US',
+			'venues'   => array(
+				array(
+					'name'                => 'Longwood Historic Civic Center',
+					'description'         => 'A restored civic building.',
+					'streetAddress'       => '135 W Church Ave',
+					'streetAddress2'      => 'Second floor',
+					'city'                => 'Longwood',
+					'stateCode'           => 'FL',
+					'postalCode'          => '32750',
+					'countryCode'         => 'US',
+					'websiteUrl'          => 'https://historiclongwood.example/venue',
+					'phone'               => '(407) 555-0123',
+					'parkingInformation'  => 'Use the lot behind the building.',
+					'arrivalInstructions' => 'Enter through the west doors.',
+				),
+			),
+		);
+
+		$compact = $this->call_renderer( 'render_event_location', $event );
+		$full    = $this->call_renderer( 'render_event_location', $event, true );
+		$card    = $this->call_renderer(
+			'render_event_card',
+			array_merge(
+				$event,
+				array(
+					'title'    => 'September 2026 Car Show',
+					'status'   => 'scheduled',
+					'startsAt' => '2026-09-12T20:00:00.000Z',
+					'endsAt'   => '2026-09-13T00:00:00.000Z',
+				)
+			),
+			new DateTimeZone( 'America/New_York' ),
+			false
+		);
+
+		$this->assertStringContainsString( 'memml-calendar__venue--enhanced', $compact );
+		$this->assertStringContainsString( 'Longwood Historic Civic Center', $compact );
+		$this->assertStringContainsString( '135 W Church Ave, Second floor, Longwood, FL 32750, US', $compact );
+		$this->assertStringContainsString( 'https://www.google.com/maps/search/?api=1&query=Longwood%20Historic%20Civic%20Center%2C%20135%20W%20Church%20Ave%2C%20Second%20floor%2C%20Longwood%2C%20FL%2032750%2C%20US', $compact );
+		$this->assertStringNotContainsString( 'Use the lot behind the building.', $compact );
+		$this->assertStringContainsString( 'A restored civic building.', $full );
+		$this->assertStringContainsString( 'href="tel:4075550123"', $full );
+		$this->assertStringContainsString( 'https://historiclongwood.example/venue', $full );
+		$this->assertStringContainsString( '<strong>Parking:</strong> Use the lot behind the building.', $full );
+		$this->assertStringContainsString( '<strong>Arrival:</strong> Enter through the west doors.', $full );
+		$this->assertStringContainsString( 'data-memml-details hidden', $card );
+		$this->assertStringContainsString( '<strong>Parking:</strong> Use the lot behind the building.', $card );
+	}
+
+	/**
+	 * Legacy and incomplete venue records do not gain misleading map links.
+	 *
+	 * @return void
+	 */
+	public function test_event_venue_falls_back_and_requires_full_address_for_maps() {
+		$legacy     = $this->call_renderer(
+			'render_event_location',
+			array(
+				'location' => 'Historic Civic Center',
+				'venues'   => array(),
+			)
+		);
+		$incomplete = $this->call_renderer(
+			'render_event_location',
+			array(
+				'location' => 'Longwood Historic Civic Center',
+				'venues'   => array(
+					array(
+						'name'          => 'Longwood Historic Civic Center',
+						'streetAddress' => '135 W Church Ave',
+						'city'          => 'Longwood',
+					),
+				),
+			)
+		);
+
+		$this->assertSame( '<span class="memml-calendar__location">Historic Civic Center</span>', $legacy );
+		$this->assertStringContainsString( 'memml-calendar__venue--enhanced', $incomplete );
+		$this->assertStringNotContainsString( 'google.com/maps', $incomplete );
+	}
+
+	/**
 	 * The rows list style renders chip, body, and aside columns.
 	 *
 	 * @return void

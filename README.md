@@ -88,6 +88,12 @@ Every item opens a pop-up with its full details — including the complete
 description, which list cards clamp after a few lines — and events offer
 per-event Apple / Outlook and Google add-to-calendar links.
 
+Events with structured venue data show the venue name and formatted address as
+a richer location variant. Complete street addresses link to Google Maps, and
+the details pop-up also includes any venue description, website, phone number,
+parking information, and arrival instructions supplied by the feed. Older
+events that only provide a `location` string continue to display that text.
+
 Every control is a real link. The calendar therefore keeps working with
 JavaScript disabled, and visitors can middle-click or right-click a view to open
 it in a new tab. When JavaScript is available the same click is handled in place,

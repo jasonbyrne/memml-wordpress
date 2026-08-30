@@ -1422,26 +1422,210 @@ final class Memml_Renderer {
 	}
 
 	/**
-	 * Renders the date, location, and cost line for one event.
+	 * Renders the date, venue, and cost line for one event.
 	 *
 	 * @param array        $event     Event feed record.
 	 * @param DateTimeZone $timezone  Organization timezone.
 	 * @param string       $style     Datetime label style: compact or full.
 	 * @param bool         $with_chip Whether the datetime includes the date chip.
+	 * @param bool         $with_venue_details Whether to include optional structured venue details.
 	 * @return string
 	 */
-	private function render_event_meta( $event, $timezone, $style = 'full', $with_chip = true ) {
-		$meta = $this->render_datetime( $event, $timezone, $style, $with_chip );
-
-		if ( ! empty( $event['location'] ) ) {
-			$meta .= '<span class="memml-calendar__location">' . esc_html( $event['location'] ) . '</span>';
-		}
+	private function render_event_meta( $event, $timezone, $style = 'full', $with_chip = true, $with_venue_details = false ) {
+		$meta  = $this->render_datetime( $event, $timezone, $style, $with_chip );
+		$meta .= $this->render_event_location( $event, $with_venue_details );
 
 		if ( isset( $event['cost'] ) && null !== $event['cost'] && '' !== $event['cost'] ) {
 			$meta .= '<span class="memml-calendar__cost">' . esc_html( $event['cost'] ) . '</span>';
 		}
 
 		return $meta;
+	}
+
+	/**
+	 * Renders either structured venue data or the legacy location string.
+	 *
+	 * Structured venues are deliberately recognizable in the markup so themes
+	 * can treat the richer feed variant differently. The compact form includes
+	 * the venue name, address, and map link; optional operational details are
+	 * reserved for the event dialog.
+	 *
+	 * @param array $event        Event feed record.
+	 * @param bool  $with_details Whether to include optional venue details.
+	 * @return string
+	 */
+	private function render_event_location( $event, $with_details = false ) {
+		$venues = isset( $event['venues'] ) && is_array( $event['venues'] )
+			? array_filter( $event['venues'], 'is_array' )
+			: array();
+
+		if ( empty( $venues ) ) {
+			return empty( $event['location'] )
+				? ''
+				: '<span class="memml-calendar__location">' . esc_html( $event['location'] ) . '</span>';
+		}
+
+		$rendered = '';
+
+		foreach ( $venues as $venue ) {
+			$name    = isset( $venue['name'] ) ? trim( (string) $venue['name'] ) : '';
+			$address = $this->format_venue_address( $venue );
+			$content = '';
+
+			if ( '' !== $name ) {
+				$content .= '<span class="memml-calendar__venue-name">' . esc_html( $name ) . '</span>';
+			}
+
+			if ( '' !== $address ) {
+				$content .= '<span class="memml-calendar__venue-address">' . esc_html( $address ) . '</span>';
+			}
+
+			$map_url = $this->build_google_maps_url( $venue );
+
+			if ( '' !== $map_url ) {
+				$map_label = '' !== $name
+					? sprintf(
+						/* translators: %s: Venue name. */
+						__( 'View %s on Google Maps', 'memml' ),
+						$name
+					)
+					: __( 'View address on Google Maps', 'memml' );
+
+				$content .= sprintf(
+					'<a class="memml-calendar__venue-link" href="%1$s" aria-label="%2$s" rel="noopener noreferrer" target="_blank">%3$s</a>',
+					esc_url( $map_url ),
+					esc_attr( $map_label ),
+					esc_html__( 'View on Google Maps', 'memml' )
+				);
+			}
+
+			if ( $with_details ) {
+				$content .= $this->render_venue_details( $venue, $name );
+			}
+
+			if ( '' !== $content ) {
+				$rendered .= '<span class="memml-calendar__venue memml-calendar__venue--enhanced">' . $content . '</span>';
+			}
+		}
+
+		if ( '' !== $rendered ) {
+			return '<span class="memml-calendar__venue-list">' . $rendered . '</span>';
+		}
+
+		return empty( $event['location'] )
+			? ''
+			: '<span class="memml-calendar__location">' . esc_html( $event['location'] ) . '</span>';
+	}
+
+	/**
+	 * Formats the address fields supplied by a structured venue.
+	 *
+	 * @param array $venue Structured venue record.
+	 * @return string
+	 */
+	private function format_venue_address( $venue ) {
+		$street = array();
+
+		foreach ( array( 'streetAddress', 'streetAddress2' ) as $field ) {
+			if ( ! empty( $venue[ $field ] ) ) {
+				$street[] = trim( (string) $venue[ $field ] );
+			}
+		}
+
+		$locality     = isset( $venue['city'] ) ? trim( (string) $venue['city'] ) : '';
+		$state_postal = trim(
+			( isset( $venue['stateCode'] ) ? (string) $venue['stateCode'] : '' ) . ' ' .
+			( isset( $venue['postalCode'] ) ? (string) $venue['postalCode'] : '' )
+		);
+		$country      = isset( $venue['countryCode'] ) ? trim( (string) $venue['countryCode'] ) : '';
+		$parts        = array_filter( array_merge( $street, array( $locality, $state_postal, $country ) ) );
+
+		return implode( ', ', $parts );
+	}
+
+	/**
+	 * Builds a Google Maps search URL when a venue has a complete address.
+	 *
+	 * @param array $venue Structured venue record.
+	 * @return string
+	 */
+	private function build_google_maps_url( $venue ) {
+		foreach ( array( 'streetAddress', 'city', 'stateCode', 'postalCode' ) as $required_field ) {
+			if ( empty( $venue[ $required_field ] ) ) {
+				return '';
+			}
+		}
+
+		$query = $this->format_venue_address( $venue );
+
+		if ( ! empty( $venue['name'] ) ) {
+			$query = trim( (string) $venue['name'] ) . ', ' . $query;
+		}
+
+		return 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode( $query );
+	}
+
+	/**
+	 * Renders optional details exposed by a structured venue.
+	 *
+	 * @param array  $venue Structured venue record.
+	 * @param string $name  Venue name for accessible link labels.
+	 * @return string
+	 */
+	private function render_venue_details( $venue, $name ) {
+		$details = '';
+
+		if ( ! empty( $venue['description'] ) ) {
+			$details .= '<span class="memml-calendar__venue-description">' . esc_html( $venue['description'] ) . '</span>';
+		}
+
+		if ( ! empty( $venue['phone'] ) ) {
+			$phone        = trim( (string) $venue['phone'] );
+			$phone_target = preg_replace( '/[^0-9+]/', '', $phone );
+
+			if ( '' !== $phone_target ) {
+				$details .= sprintf(
+					'<span class="memml-calendar__venue-detail"><strong>%1$s</strong> <a href="tel:%2$s">%3$s</a></span>',
+					esc_html__( 'Phone:', 'memml' ),
+					esc_attr( $phone_target ),
+					esc_html( $phone )
+				);
+			}
+		}
+
+		if ( ! empty( $venue['websiteUrl'] ) ) {
+			$website_label = '' !== $name
+				? sprintf(
+					/* translators: %s: Venue name. */
+					__( 'Visit the %s website', 'memml' ),
+					$name
+				)
+				: __( 'Visit the venue website', 'memml' );
+
+			$details .= sprintf(
+				'<a class="memml-calendar__venue-link" href="%1$s" aria-label="%2$s" rel="noopener noreferrer" target="_blank">%3$s</a>',
+				esc_url( $venue['websiteUrl'] ),
+				esc_attr( $website_label ),
+				esc_html__( 'Venue website', 'memml' )
+			);
+		}
+
+		foreach (
+			array(
+				'parkingInformation'  => __( 'Parking:', 'memml' ),
+				'arrivalInstructions' => __( 'Arrival:', 'memml' ),
+			) as $field => $label
+		) {
+			if ( ! empty( $venue[ $field ] ) ) {
+				$details .= sprintf(
+					'<span class="memml-calendar__venue-detail"><strong>%1$s</strong> %2$s</span>',
+					esc_html( $label ),
+					esc_html( $venue[ $field ] )
+				);
+			}
+		}
+
+		return $details;
 	}
 
 	/**
@@ -1497,7 +1681,7 @@ final class Memml_Renderer {
 			$status  = isset( $item['status'] ) ? (string) $item['status'] : 'scheduled';
 			$status  = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
 			$badge   = $this->render_status_badge( $status );
-			$meta    = $this->render_event_meta( $item, $timezone );
+			$meta    = $this->render_event_meta( $item, $timezone, 'full', true, true );
 			$actions = $is_past ? '' : $this->render_event_actions( $item );
 		} else {
 			$badge   = ! $is_past && ! empty( $item['needsMore'] )

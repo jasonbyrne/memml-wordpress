@@ -72,6 +72,7 @@ test( 'opens an item’s full details in a modal dialog', async ( { page } ) => 
 	await expect( dialog ).toContainText(
 		'Full event description shown in the dialog.'
 	);
+	await expect( dialog ).toContainText( 'Use the lot behind the building.' );
 
 	await page.keyboard.press( 'Escape' );
 	await expect( dialog ).toBeHidden();
@@ -84,6 +85,34 @@ test( 'opens an item’s full details in a modal dialog', async ( { page } ) => 
 	await expect( dialog ).toBeVisible();
 
 	await dialog.getByRole( 'button', { name: 'Close' } ).click();
+	await expect( dialog ).toBeHidden();
+} );
+
+test( 'renders structured venue data without turning its map link into a dialog opener', async ( {
+	page,
+} ) => {
+	await page.goto( '/tests/e2e/fixture.html' );
+
+	const main = page.locator( '[data-memml-url-prefix="memml_main_"]' );
+	const venue = main.locator( '.memml-calendar__venue--enhanced' ).first();
+	const mapLink = venue.getByRole( 'link', { name: 'View on Google Maps' } );
+	const dialog = main.locator( 'dialog.memml-calendar__dialog' );
+
+	await expect( venue ).toContainText( 'Longwood Historic Civic Center' );
+	await expect( venue ).toContainText(
+		'135 W Church Ave, Longwood, FL 32750, US'
+	);
+	await expect( mapLink ).toHaveAttribute(
+		'href',
+		/^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/
+	);
+
+	await mapLink.evaluate( ( link ) => {
+		link.addEventListener( 'click', ( event ) => event.preventDefault(), {
+			once: true,
+		} );
+	} );
+	await mapLink.click();
 	await expect( dialog ).toBeHidden();
 } );
 

@@ -3,7 +3,7 @@
  * Plugin Name:       Memml Calendar
  * Plugin URI:        https://memml.com/
  * Description:       Display your nonprofit's Memml events and volunteer opportunities in WordPress.
- * Version:           0.4.0
+ * Version:           0.4.1
  * Requires at least: 6.6
  * Requires PHP:      7.4
  * Author:            Memml
@@ -18,7 +18,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'MEMML_VERSION', '0.4.0' );
+define( 'MEMML_VERSION', '0.4.1' );
 define( 'MEMML_PLUGIN_FILE', __FILE__ );
 define( 'MEMML_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MEMML_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
