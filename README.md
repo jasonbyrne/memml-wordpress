@@ -86,7 +86,11 @@ leave these attributes off entirely.
 
 Every item opens a pop-up with its full details — including the complete
 description, which list cards clamp after a few lines — and events offer
-per-event Apple / Outlook and Google add-to-calendar links.
+per-event Apple / Outlook and Google add-to-calendar links. When the feed
+supplies an online meeting URL, current and upcoming events also show a
+**Join online** action. Registration, volunteer, online meeting, and
+add-to-calendar actions are omitted after the event date in the organization's
+timezone.
 
 Events with structured venue data show the venue name and formatted address as
 a richer location variant. Complete street addresses link to Google Maps, and

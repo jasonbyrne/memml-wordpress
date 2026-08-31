@@ -364,6 +364,56 @@ final class Memml_Renderer_Test extends TestCase {
 	}
 
 	/**
+	 * Visitor action links disappear once the event or opportunity date has passed.
+	 *
+	 * @return void
+	 */
+	public function test_expired_action_links_are_hidden_by_date() {
+		$timezone = new DateTimeZone( 'America/New_York' );
+		$today    = new DateTimeImmutable( 'today', $timezone );
+		$past     = array(
+			'title'              => 'Completed cleanup',
+			'eventDate'          => '2020-01-01',
+			'publicEventUrl'     => 'https://events.example/completed-cleanup',
+			'ctaLabel'           => 'Register',
+			'meetingUrl'         => 'https://meet.example/completed-cleanup',
+			'url'                => 'https://memml.com/volunteer/completed-cleanup',
+			'volunteerSignupUrl' => 'https://memml.com/events/completed-cleanup/volunteer',
+		);
+		$future   = array(
+			'title'              => 'Future cleanup',
+			'eventDate'          => '2099-01-01',
+			'publicEventUrl'     => 'https://events.example/future-cleanup',
+			'ctaLabel'           => 'Register',
+			'meetingUrl'         => 'https://meet.example/future-cleanup',
+			'url'                => 'https://memml.com/volunteer/future-cleanup',
+			'volunteerSignupUrl' => 'https://memml.com/events/future-cleanup/volunteer',
+		);
+		$current  = array(
+			'title'      => 'Cleanup in progress',
+			'eventDate'  => $today->format( 'Y-m-d' ),
+			'meetingUrl' => 'https://meet.example/current-cleanup',
+		);
+		$undated  = array(
+			'title'      => 'Undated cleanup',
+			'meetingUrl' => 'https://meet.example/undated-cleanup',
+		);
+
+		$this->assertSame( '', $this->call_renderer( 'render_volunteer_actions', $past, $timezone ) );
+		$this->assertSame( '', $this->call_renderer( 'render_event_actions', $past, $timezone ) );
+		$this->assertSame( '', $this->call_renderer( 'render_event_actions', $undated, $timezone ) );
+		$this->assertStringContainsString( 'Volunteer', $this->call_renderer( 'render_volunteer_actions', $future, $timezone ) );
+		$future_actions  = $this->call_renderer( 'render_event_actions', $future, $timezone );
+		$current_actions = $this->call_renderer( 'render_event_actions', $current, $timezone );
+
+		$this->assertStringContainsString( 'Register', $future_actions );
+		$this->assertStringContainsString( 'href="https://meet.example/future-cleanup"', $future_actions );
+		$this->assertStringContainsString( 'Join online', $future_actions );
+		$this->assertStringContainsString( 'Volunteer', $future_actions );
+		$this->assertStringContainsString( 'href="https://meet.example/current-cleanup"', $current_actions );
+	}
+
+	/**
 	 * Structured venue records render richer details and a map destination.
 	 *
 	 * @return void

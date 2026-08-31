@@ -30,6 +30,7 @@
       "icsUrl": "https://memml.com/api/public/v1/river-city-neighbors/events/evt_01JPASTLATER.ics",
       "publicEventUrl": "https://rivercityneighbors.example/register/school-supply-drive",
       "ctaLabel": "Register",
+      "meetingUrl": "https://meet.example/school-supply-drive",
       "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/school-supply-drive"
     },
     {
@@ -49,6 +50,7 @@
       "icsUrl": "https://memml.com/api/public/v1/river-city-neighbors/events/evt_01JPASTEARLIER.ics",
       "publicEventUrl": null,
       "ctaLabel": null,
+      "meetingUrl": null,
       "volunteerSignupUrl": null
     },
     {
@@ -68,6 +70,7 @@
       "icsUrl": "https://memml.com/api/public/v1/river-city-neighbors/events/evt_01JTESTEVENT.ics",
       "publicEventUrl": "https://rivercityneighbors.example/register/cleanup",
       "ctaLabel": "Register",
+      "meetingUrl": "https://meet.example/riverside-cleanup",
       "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/riverside-cleanup"
     },
     {
@@ -87,6 +90,7 @@
       "icsUrl": "https://memml.com/api/public/v1/river-city-neighbors/events/evt_01JPOSTPONED.ics",
       "publicEventUrl": null,
       "ctaLabel": null,
+      "meetingUrl": null,
       "volunteerSignupUrl": null
     }
   ]

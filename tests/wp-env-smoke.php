@@ -185,6 +185,14 @@ try {
 		throw new RuntimeException( 'Expired actions were rendered for a past event.' );
 	}
 
+	if ( false !== strpos( $past_segment, 'meet.example/school-supply-drive' ) ) {
+		throw new RuntimeException( 'An expired online meeting link was rendered for a past event.' );
+	}
+
+	if ( false === strpos( $upcoming_segment, 'meet.example/riverside-cleanup' ) ) {
+		throw new RuntimeException( 'An upcoming online meeting link was not rendered.' );
+	}
+
 	$_GET['memml_shared_calendar'] = 'events';
 	$_GET['memml_shared_view']     = 'month';
 	$_GET['memml_shared_month']    = '2026-10';

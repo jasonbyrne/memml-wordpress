@@ -868,7 +868,7 @@ final class Memml_Renderer {
 				);
 			}
 
-			$actions = $is_past ? '' : $this->render_event_actions( $item );
+			$actions = $is_past ? '' : $this->render_event_actions( $item, $timezone );
 		} else {
 			if ( isset( $item['spotsRemaining'] ) ) {
 				$spots   = max( 0, (int) $item['spotsRemaining'] );
@@ -881,7 +881,7 @@ final class Memml_Renderer {
 				) . '</span>';
 			}
 
-			if ( ! $is_past && ! empty( $item['url'] ) ) {
+			if ( $this->is_item_actionable( $item, $timezone ) && ! empty( $item['url'] ) ) {
 				$actions = sprintf(
 					'<div class="memml-calendar__actions"><a class="memml-calendar__calendar-link" href="%1$s">%2$s</a></div>',
 					esc_url( $item['url'] ),
@@ -971,6 +971,19 @@ final class Memml_Renderer {
 		$date = $this->get_item_datetime( $item, $timezone );
 
 		return $date && $date->format( 'Y-m-d' ) < $this->get_today( $timezone )->format( 'Y-m-d' );
+	}
+
+	/**
+	 * Determines whether an item's visitor actions are still timely.
+	 *
+	 * @param array        $item     Event or opportunity feed record.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return bool
+	 */
+	private function is_item_actionable( $item, $timezone ) {
+		$date = $this->get_item_datetime( $item, $timezone );
+
+		return $date && $date->format( 'Y-m-d' ) >= $this->get_today( $timezone )->format( 'Y-m-d' );
 	}
 
 	/**
@@ -1343,7 +1356,7 @@ final class Memml_Renderer {
 			esc_html( $title ),
 			$this->render_event_meta( $event, $timezone, $is_past ? 'full' : 'compact' ),
 			$this->render_description( isset( $event['description'] ) ? $event['description'] : '' ),
-			$is_past ? '' : $this->render_event_actions( $event ),
+			$is_past ? '' : $this->render_event_actions( $event, $timezone ),
 			$this->render_details( $event, 'events', $timezone, $is_past )
 		);
 	}
@@ -1372,7 +1385,7 @@ final class Memml_Renderer {
 			$this->render_event_meta( $event, $timezone, $is_past ? 'full' : 'compact', false ),
 			$this->render_description( isset( $event['description'] ) ? $event['description'] : '' ),
 			$this->render_status_badge( $status ),
-			$is_past ? '' : $this->render_event_actions( $event ),
+			$is_past ? '' : $this->render_event_actions( $event, $timezone ),
 			$this->render_details( $event, 'events', $timezone, $is_past )
 		);
 	}
@@ -1398,7 +1411,7 @@ final class Memml_Renderer {
 			$this->render_volunteer_meta( $opportunity, $timezone, $is_past ? 'full' : 'compact', false ),
 			$this->render_description( isset( $opportunity['description'] ) ? $opportunity['description'] : '' ),
 			$needs_more,
-			$is_past ? '' : $this->render_volunteer_actions( $opportunity ),
+			$is_past ? '' : $this->render_volunteer_actions( $opportunity, $timezone ),
 			$this->render_details( $opportunity, 'volunteers', $timezone, $is_past )
 		);
 	}
@@ -1682,13 +1695,13 @@ final class Memml_Renderer {
 			$status  = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
 			$badge   = $this->render_status_badge( $status );
 			$meta    = $this->render_event_meta( $item, $timezone, 'full', true, true );
-			$actions = $is_past ? '' : $this->render_event_actions( $item );
+			$actions = $is_past ? '' : $this->render_event_actions( $item, $timezone );
 		} else {
 			$badge   = ! $is_past && ! empty( $item['needsMore'] )
 				? '<span class="memml-calendar__status memml-calendar__status--needed">' . esc_html__( 'Volunteers needed', 'memml' ) . '</span>'
 				: '';
 			$meta    = $this->render_volunteer_meta( $item, $timezone );
-			$actions = $is_past ? '' : $this->render_volunteer_actions( $item );
+			$actions = $is_past ? '' : $this->render_volunteer_actions( $item, $timezone );
 		}
 
 		return sprintf(
@@ -1722,7 +1735,7 @@ final class Memml_Renderer {
 			esc_html( $title ),
 			$this->render_volunteer_meta( $opportunity, $timezone, $is_past ? 'full' : 'compact' ),
 			$this->render_description( isset( $opportunity['description'] ) ? $opportunity['description'] : '' ),
-			$is_past ? '' : $this->render_volunteer_actions( $opportunity ),
+			$is_past ? '' : $this->render_volunteer_actions( $opportunity, $timezone ),
 			$this->render_details( $opportunity, 'volunteers', $timezone, $is_past )
 		);
 	}
@@ -1730,11 +1743,12 @@ final class Memml_Renderer {
 	/**
 	 * Renders volunteer opportunity action links.
 	 *
-	 * @param array $opportunity Opportunity feed record.
+	 * @param array        $opportunity Opportunity feed record.
+	 * @param DateTimeZone $timezone    Organization timezone.
 	 * @return string
 	 */
-	private function render_volunteer_actions( $opportunity ) {
-		if ( empty( $opportunity['url'] ) ) {
+	private function render_volunteer_actions( $opportunity, $timezone ) {
+		if ( ! $this->is_item_actionable( $opportunity, $timezone ) || empty( $opportunity['url'] ) ) {
 			return '';
 		}
 
@@ -1748,13 +1762,15 @@ final class Memml_Renderer {
 	/**
 	 * Renders event action links.
 	 *
-	 * @param array $event Event feed record.
+	 * @param array        $event    Event feed record.
+	 * @param DateTimeZone $timezone Organization timezone.
 	 * @return string
 	 */
-	private function render_event_actions( $event ) {
-		$actions = '';
+	private function render_event_actions( $event, $timezone ) {
+		$actions       = '';
+		$is_actionable = $this->is_item_actionable( $event, $timezone );
 
-		if ( ! empty( $event['publicEventUrl'] ) && ! empty( $event['ctaLabel'] ) ) {
+		if ( $is_actionable && ! empty( $event['publicEventUrl'] ) && ! empty( $event['ctaLabel'] ) ) {
 			$actions .= sprintf(
 				'<a class="memml-calendar__button memml-calendar__button--primary" href="%1$s">%2$s</a>',
 				esc_url( $event['publicEventUrl'] ),
@@ -1762,7 +1778,15 @@ final class Memml_Renderer {
 			);
 		}
 
-		if ( ! empty( $event['volunteerSignupUrl'] ) ) {
+		if ( $is_actionable && ! empty( $event['meetingUrl'] ) ) {
+			$actions .= sprintf(
+				'<a class="memml-calendar__button" href="%1$s" rel="noopener noreferrer" target="_blank">%2$s</a>',
+				esc_url( $event['meetingUrl'] ),
+				esc_html__( 'Join online', 'memml' )
+			);
+		}
+
+		if ( $is_actionable && ! empty( $event['volunteerSignupUrl'] ) ) {
 			$actions .= sprintf(
 				'<a class="memml-calendar__button" href="%1$s">%2$s</a>',
 				esc_url( $event['volunteerSignupUrl'] ),

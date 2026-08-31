@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.1
+Stable tag: 0.4.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -31,7 +31,8 @@ to stack compact full-width items instead of the default card grid. Subscription
 links (Google Calendar, Apple / Outlook, RSS) appear above each calendar; turn
 them off with the block's Subscribe links setting or `subscribe="no"`.
 Clicking an item opens its full details in a pop-up, and events offer per-event
-Apple / Outlook and Google add-to-calendar links.
+Apple / Outlook and Google add-to-calendar links. Current and upcoming events
+also show a Join online action when the feed supplies an online meeting URL.
 Events with structured venue data show the venue name and address separately,
 link complete addresses to Google Maps, and include any supplied venue contact,
 parking, and arrival details in the pop-up. Legacy location text remains fully
@@ -67,7 +68,7 @@ when the feed spans five years or less. Wider feeds keep all populated months wh
 skipping long empty gaps to prevent excessive page markup.
 Past lists depend on the public Memml feeds retaining historical records; the plugin
 does not create or synchronize a separate history archive. Expired registration,
-volunteer, and Add to calendar actions are not shown for past items.
+volunteer, online meeting, and Add to calendar actions are not shown for past items.
 
 The plugin requests public data from memml.com, caches successful responses,
 revalidates them using ETags, and can show the last known-good response during a
@@ -136,6 +137,13 @@ Yes. The URL updates as visitors change the calendar, layout, or displayed month
 Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.4.2 =
+
+* Added Join online actions for current and upcoming events whose public feed
+  supplies a meeting URL.
+* Prevented registration, volunteer, online meeting, and add-to-calendar actions
+  from appearing after an event or volunteer opportunity date.
 
 = 0.4.1 =
 
