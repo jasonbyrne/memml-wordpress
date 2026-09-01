@@ -24,7 +24,7 @@ const LayoutControl = ( { value, onChange } ) => (
 		label={ __( 'Initially selected view', 'memml' ) }
 		value={ value }
 		options={ [
-			{ label: __( 'Site default', 'memml' ), value: '' },
+			{ label: __( 'Use site setting', 'memml' ), value: '' },
 			{ label: __( 'List', 'memml' ), value: 'list' },
 			{ label: __( 'Month', 'memml' ), value: 'month' },
 		] }
@@ -41,7 +41,7 @@ const ListStyleControl = ( { value, onChange } ) => (
 		) }
 		value={ value }
 		options={ [
-			{ label: __( 'Site default', 'memml' ), value: '' },
+			{ label: __( 'Use site setting', 'memml' ), value: '' },
 			{ label: __( 'Cards', 'memml' ), value: 'grid' },
 			{ label: __( 'Compact rows', 'memml' ), value: 'rows' },
 		] }
@@ -58,7 +58,7 @@ const SubscribeControl = ( { value, onChange } ) => (
 		) }
 		value={ value }
 		options={ [
-			{ label: __( 'Site default', 'memml' ), value: '' },
+			{ label: __( 'Use site setting', 'memml' ), value: '' },
 			{ label: __( 'Show', 'memml' ), value: 'yes' },
 			{ label: __( 'Hide', 'memml' ), value: 'no' },
 		] }
@@ -71,6 +71,7 @@ const PeriodControl = ( { value, onChange } ) => (
 		label={ __( 'Initially selected list filter', 'memml' ) }
 		value={ value }
 		options={ [
+			{ label: __( 'Use site setting', 'memml' ), value: '' },
 			{ label: __( 'Upcoming', 'memml' ), value: 'upcoming' },
 			{ label: __( 'Past', 'memml' ), value: 'past' },
 		] }
@@ -78,21 +79,39 @@ const PeriodControl = ( { value, onChange } ) => (
 	/>
 );
 
-const LimitControl = ( { value, onChange } ) => (
-	<RangeControl
-		label={ __( 'Maximum items in list view', 'memml' ) }
-		help={ __(
-			'0 shows every item. Month view always shows every item.',
-			'memml'
-		) }
-		value={ value }
-		min={ 0 }
-		max={ 50 }
-		allowReset
-		resetFallbackValue={ 0 }
-		onChange={ ( limit ) => onChange( limit || 0 ) }
-	/>
-);
+const LimitControl = ( { value, onChange } ) => {
+	const usesSiteSetting = value < 0;
+
+	return (
+		<>
+			<SelectControl
+				label={ __( 'Maximum items in list view', 'memml' ) }
+				value={ usesSiteSetting ? 'site' : 'custom' }
+				options={ [
+					{ label: __( 'Use site setting', 'memml' ), value: 'site' },
+					{
+						label: __( 'Set for this block', 'memml' ),
+						value: 'custom',
+					},
+				] }
+				onChange={ ( mode ) => onChange( mode === 'site' ? -1 : 0 ) }
+			/>
+			{ ! usesSiteSetting && (
+				<RangeControl
+					label={ __( 'Item limit', 'memml' ) }
+					help={ __(
+						'0 shows every item. Month view always shows every item.',
+						'memml'
+					) }
+					value={ value }
+					min={ 0 }
+					max={ 50 }
+					onChange={ ( limit ) => onChange( limit || 0 ) }
+				/>
+			) }
+		</>
+	);
+};
 
 const UrlKeyControl = ( { value, onChange } ) => (
 	<TextControl
@@ -244,6 +263,7 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 					label={ __( 'Initially selected calendar', 'memml' ) }
 					value={ attributes.calendar }
 					options={ [
+						{ label: __( 'Use site setting', 'memml' ), value: '' },
 						{ label: __( 'Events', 'memml' ), value: 'events' },
 						{
 							label: __( 'Volunteer Opportunities', 'memml' ),

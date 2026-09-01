@@ -92,16 +92,16 @@ final class Memml_Renderer {
 	/**
 	 * Renders a visitor-facing calendar switcher.
 	 *
-	 * @param string $calendar   Initial calendar: events or volunteers.
+	 * @param string $calendar   Initial calendar: events or volunteers, or '' for the site default.
 	 * @param string $layout     Initial display layout: list or month, or '' for the site default.
-	 * @param string $period     Initial list period: upcoming or past.
+	 * @param string $period     Initial list period: upcoming or past, or '' for the site default.
 	 * @param string $url_key    Optional stable share-link identifier.
-	 * @param int    $limit      Maximum list items per period, or 0 for every item.
+	 * @param mixed  $limit      Maximum list items per period, 0 for every item, or ''/-1 for the site default.
 	 * @param string $list_style List presentation: grid or rows, or '' for the site default.
 	 * @param mixed  $subscribe  Whether to offer subscription links; null or '' for the site default.
 	 * @return string
 	 */
-	public function render_calendar( $calendar = 'events', $layout = '', $period = 'upcoming', $url_key = '', $limit = 0, $list_style = '', $subscribe = null ) {
+	public function render_calendar( $calendar = '', $layout = '', $period = '', $url_key = '', $limit = '', $list_style = '', $subscribe = null ) {
 		$this->enqueue_assets();
 		++self::$calendar_instance;
 
@@ -112,7 +112,7 @@ final class Memml_Renderer {
 			'feeds'        => array( 'events', 'volunteers' ),
 			'instance_id'  => 'memml-calendar-' . self::$calendar_instance,
 			'layout'       => $this->get_initial_layout( $layout, $query_prefix ),
-			'limit'        => max( 0, (int) $limit ),
+			'limit'        => $this->resolve_limit( $limit ),
 			'list_style'   => $this->resolve_list_style( $list_style ),
 			'period'       => $this->get_initial_period( $period, $query_prefix ),
 			'query_prefix' => $query_prefix,
@@ -153,9 +153,9 @@ final class Memml_Renderer {
 	 *
 	 * @param string $feed       Feed identifier.
 	 * @param string $layout     Initial display layout, or '' for the site default.
-	 * @param string $period     Initial list period.
+	 * @param string $period     Initial list period, or '' for the site default.
 	 * @param string $url_key    Optional stable share-link identifier.
-	 * @param int    $limit      Maximum list items per period, or 0 for every item.
+	 * @param mixed  $limit      Maximum list items per period, 0 for every item, or ''/-1 for the site default.
 	 * @param string $list_style List presentation: grid or rows, or '' for the site default.
 	 * @param mixed  $subscribe  Whether to offer subscription links; null or '' for the site default.
 	 * @return string
@@ -169,7 +169,7 @@ final class Memml_Renderer {
 			'feeds'        => array( $feed ),
 			'instance_id'  => 'memml-calendar-' . self::$calendar_instance,
 			'layout'       => $this->get_initial_layout( $layout, $query_prefix ),
-			'limit'        => max( 0, (int) $limit ),
+			'limit'        => $this->resolve_limit( $limit ),
 			'list_style'   => $this->resolve_list_style( $list_style ),
 			'period'       => $this->get_initial_period( $period, $query_prefix ),
 			'query_prefix' => $query_prefix,
@@ -1101,15 +1101,60 @@ final class Memml_Renderer {
 	}
 
 	/**
+	 * Resolves the initial calendar, falling back to the site-wide display default.
+	 *
+	 * @param string $calendar Calendar from a block or shortcode, or '' when unset.
+	 * @return string
+	 */
+	private function resolve_calendar( $calendar ) {
+		if ( 'events' === $calendar || 'volunteers' === $calendar ) {
+			return $calendar;
+		}
+
+		return 'volunteers' === Memml_Settings::get_options()['default_calendar'] ? 'volunteers' : 'events';
+	}
+
+	/**
+	 * Resolves the initial list period, falling back to the site-wide display default.
+	 *
+	 * @param string $period Period from a block or shortcode, or '' when unset.
+	 * @return string
+	 */
+	private function resolve_period( $period ) {
+		if ( 'upcoming' === $period || 'past' === $period ) {
+			return $period;
+		}
+
+		return 'past' === Memml_Settings::get_options()['default_period'] ? 'past' : 'upcoming';
+	}
+
+	/**
+	 * Resolves a list item limit, falling back to the site-wide display default.
+	 *
+	 * Zero is an explicit, meaningful value (show all), while an empty value or
+	 * the block's -1 sentinel follows the site setting.
+	 *
+	 * @param mixed $limit Limit from a block or shortcode.
+	 * @return int
+	 */
+	private function resolve_limit( $limit ) {
+		if ( '' === $limit || null === $limit || ( is_numeric( $limit ) && -1 === (int) $limit ) ) {
+			return max( 0, (int) Memml_Settings::get_options()['default_limit'] );
+		}
+
+		return max( 0, (int) $limit );
+	}
+
+	/**
 	 * Gets a safe list period from block or shortcode attributes.
 	 *
 	 * @param array|string $attributes Block or shortcode attributes.
 	 * @return string
 	 */
 	private function get_period_from_attributes( $attributes ) {
-		$period = is_array( $attributes ) && isset( $attributes['period'] ) ? $attributes['period'] : 'upcoming';
+		$period = is_array( $attributes ) && isset( $attributes['period'] ) ? $attributes['period'] : '';
 
-		return 'past' === $period ? 'past' : 'upcoming';
+		return $this->resolve_period( $period );
 	}
 
 	/**
@@ -1180,10 +1225,10 @@ final class Memml_Renderer {
 	 */
 	private function get_limit_from_attributes( $attributes ) {
 		if ( ! is_array( $attributes ) || ! isset( $attributes['limit'] ) ) {
-			return 0;
+			return $this->resolve_limit( '' );
 		}
 
-		return max( 0, (int) $attributes['limit'] );
+		return $this->resolve_limit( $attributes['limit'] );
 	}
 
 	/**
@@ -1226,7 +1271,7 @@ final class Memml_Renderer {
 			return $query_calendar;
 		}
 
-		return 'volunteers' === $calendar ? 'volunteers' : 'events';
+		return $this->resolve_calendar( $calendar );
 	}
 
 	/**
@@ -1256,7 +1301,7 @@ final class Memml_Renderer {
 			return $query_period;
 		}
 
-		return 'past' === $period ? 'past' : 'upcoming';
+		return $this->resolve_period( $period );
 	}
 
 	/**

@@ -176,3 +176,30 @@ test( 'exposes every control as a shareable link and handles clicks in place', a
 	await expect( nextLink ).toHaveAttribute( 'aria-disabled', 'true' );
 	expect( await page.evaluate( () => window.memmlNotReloaded ) ).toBe( true );
 } );
+
+test( 'keeps add-to-calendar links grouped beneath their label', async ( {
+	page,
+} ) => {
+	await page.goto( '/tests/e2e/preview.html' );
+
+	const actionGroup = page
+		.locator( '.memml-calendar__actions' )
+		.filter( { has: page.getByRole( 'link', { name: 'Volunteer' } ) } )
+		.first();
+	const styles = await actionGroup.evaluate( ( actions ) => {
+		const addLinks = actions.querySelector( '.memml-calendar__add-links' );
+		const label = actions.querySelector( '.memml-calendar__add-label' );
+
+		return {
+			addLinksBasis: window.getComputedStyle( addLinks ).flexBasis,
+			labelBasis: window.getComputedStyle( label ).flexBasis,
+			marginTop: Number.parseFloat(
+				window.getComputedStyle( addLinks ).marginBlockStart
+			),
+		};
+	} );
+
+	expect( styles.addLinksBasis ).toBe( '100%' );
+	expect( styles.labelBasis ).toBe( '100%' );
+	expect( styles.marginTop ).toBeGreaterThan( 0 );
+} );

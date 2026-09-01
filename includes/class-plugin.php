@@ -148,11 +148,11 @@ final class Memml_Plugin {
 	 * @return string
 	 */
 	public function render_calendar_block( $attributes ) {
-		$calendar   = isset( $attributes['calendar'] ) ? $attributes['calendar'] : 'events';
+		$calendar   = isset( $attributes['calendar'] ) ? $attributes['calendar'] : '';
 		$layout     = isset( $attributes['view'] ) ? $attributes['view'] : '';
-		$period     = isset( $attributes['period'] ) ? $attributes['period'] : 'upcoming';
+		$period     = isset( $attributes['period'] ) ? $attributes['period'] : '';
 		$url_key    = isset( $attributes['urlKey'] ) ? $attributes['urlKey'] : '';
-		$limit      = isset( $attributes['limit'] ) ? $attributes['limit'] : 0;
+		$limit      = isset( $attributes['limit'] ) ? $attributes['limit'] : '';
 		$list_style = isset( $attributes['listStyle'] ) ? $attributes['listStyle'] : '';
 		$subscribe  = isset( $attributes['subscribe'] ) ? $attributes['subscribe'] : null;
 
@@ -168,10 +168,10 @@ final class Memml_Plugin {
 	public function render_calendar_shortcode( $attributes ) {
 		$attributes = shortcode_atts(
 			array(
-				'calendar'   => 'events',
-				'limit'      => 0,
+				'calendar'   => '',
+				'limit'      => '',
 				'list_style' => '',
-				'period'     => 'upcoming',
+				'period'     => '',
 				'subscribe'  => '',
 				'url_key'    => '',
 				'view'       => '',

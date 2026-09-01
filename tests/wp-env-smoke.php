@@ -278,22 +278,64 @@ try {
 		throw new RuntimeException( 'The limit attribute removed the month view.' );
 	}
 
+	update_option(
+		Memml_Settings::OPTION_NAME,
+		array(
+			'organization_key'   => 'river-city-neighbors',
+			'base_url'           => Memml_Feed_Client::DEFAULT_BASE_URL,
+			'default_calendar'   => 'volunteers',
+			'default_view'       => 'month',
+			'default_period'     => 'past',
+			'default_list_style' => 'rows',
+			'default_limit'      => 1,
+			'subscribe_links'    => false,
+		)
+	);
+
+	$inherited = do_shortcode( '[memml_calendar url_key="defaults"]' );
+	$explicit  = do_shortcode( '[memml_calendar calendar="events" view="list" period="upcoming" list_style="grid" limit="0" subscribe="yes" url_key="overrides"]' );
+
+	foreach ( array( 'data-calendar="volunteers"', 'data-layout="month"', 'data-period="past"', 'memml-calendar__grid--rows' ) as $expectation ) {
+		if ( false === strpos( $inherited, $expectation ) ) {
+			throw new RuntimeException( 'A bare shortcode did not inherit the display default: ' . $expectation );
+		}
+	}
+
+	if ( false !== strpos( $inherited, 'memml-calendar__subscribe' ) || 1 !== $count_upcoming( $inherited ) ) {
+		throw new RuntimeException( 'A bare shortcode did not inherit the subscribe or list-limit default.' );
+	}
+
+	foreach ( array( 'data-calendar="events"', 'data-layout="list"', 'data-period="upcoming"', 'memml-calendar__subscribe' ) as $expectation ) {
+		if ( false === strpos( $explicit, $expectation ) ) {
+			throw new RuntimeException( 'An explicit shortcode value did not override the display default: ' . $expectation );
+		}
+	}
+
+	if ( false !== strpos( $explicit, 'memml-calendar__grid--rows' ) || 2 !== $count_upcoming( $explicit ) ) {
+		throw new RuntimeException( 'Explicit list style or limit values did not override the display defaults.' );
+	}
+
 	wp_set_current_user( 1 );
 
 	// The editor previews blocks through the REST block renderer, so exercise
 	// the same endpoint the ServerSideRender component calls.
 	foreach ( $block_names as $block_name ) {
-		$request = new WP_REST_Request( 'GET', '/wp/v2/block-renderer/' . $block_name );
-		$request->set_param( 'context', 'edit' );
-		$request->set_param(
-			'attributes',
-			array(
-				'view'   => 'month',
-				'period' => 'upcoming',
-				'urlKey' => 'preview',
-				'limit'  => 2,
-			)
+		$request          = new WP_REST_Request( 'GET', '/wp/v2/block-renderer/' . $block_name );
+		$block_attributes = array(
+			'view'      => 'list',
+			'period'    => 'upcoming',
+			'listStyle' => 'grid',
+			'urlKey'    => 'preview',
+			'limit'     => 0,
+			'subscribe' => 'yes',
 		);
+
+		if ( 'memml/calendar' === $block_name ) {
+			$block_attributes['calendar'] = 'events';
+		}
+
+		$request->set_param( 'context', 'edit' );
+		$request->set_param( 'attributes', $block_attributes );
 
 		$response = rest_do_request( $request );
 
@@ -305,8 +347,24 @@ try {
 
 		$rendered = $response->get_data()['rendered'];
 
-		if ( false === strpos( $rendered, 'data-memml-calendar' ) ) {
-			throw new RuntimeException( 'The block renderer returned no calendar for ' . $block_name . '.' );
+		foreach ( array( 'data-memml-calendar', 'data-layout="list"', 'data-period="upcoming"' ) as $expectation ) {
+			if ( false === strpos( $rendered, $expectation ) ) {
+				throw new RuntimeException( 'The block renderer did not preserve an explicit value for ' . $block_name . ': ' . $expectation );
+			}
+		}
+
+		if ( 'memml/volunteers' !== $block_name && false === strpos( $rendered, 'memml-calendar__subscribe' ) ) {
+			throw new RuntimeException( 'The block renderer did not preserve the explicit subscribe setting for ' . $block_name . '.' );
+		}
+
+		$expected_count = 'memml/volunteers' === $block_name ? 1 : 2;
+
+		if ( false !== strpos( $rendered, 'memml-calendar__grid--rows' ) || $expected_count !== $count_upcoming( $rendered ) ) {
+			throw new RuntimeException( 'The block renderer did not preserve the explicit list style or unlimited item count for ' . $block_name . '.' );
+		}
+
+		if ( 'memml/calendar' === $block_name && false === strpos( $rendered, 'data-calendar="events"' ) ) {
+			throw new RuntimeException( 'The combined block did not preserve its explicit initial calendar.' );
 		}
 	}
 
@@ -318,6 +376,12 @@ try {
 
 	$settings_expectations = array(
 		'memml-organization-key',
+		'memml-default-calendar',
+		'memml-default-view',
+		'memml-default-period',
+		'memml-default-list-style',
+		'memml-default-limit',
+		'memml-subscribe-links',
 		'memml-test-connection',
 		'api/public/v1/river-city-neighbors/events.json',
 		'api/public/v1/river-city-neighbors/volunteer-opportunities.json',
@@ -350,7 +414,7 @@ try {
 		throw new RuntimeException( 'An invalid organization key discarded the saved key.' );
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, URL state, upcoming/past filtering, sorting, link controls, item limits, timezone, month view, settings screen, and key-retention smoke test passed.' );
+	WP_CLI::success( 'Memml Calendar activation, connection, display-default inheritance, explicit overrides, URL state, filtering, sorting, link controls, timezone, month view, settings screen, and key-retention smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
 	remove_filter( 'memml_calendar_today', $today_filter, 10 );

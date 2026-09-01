@@ -24,7 +24,9 @@ Memml Calendar is a WordPress plugin that displays a nonprofit's public events a
 7. Confirm that the connection test displays the organization's name, then save the settings.
 8. Add the **Memml Calendar**, **Memml Events**, or **Memml Volunteers** block to a page.
 
-The organization key is configured once for the WordPress site. Blocks and shortcodes only control the initially selected calendar, layout, and date filter.
+The organization key and display defaults are configured once for the WordPress
+site. Blocks and shortcodes inherit those defaults unless a placement needs an
+intentional exception.
 
 ## Cached feed data
 
@@ -62,15 +64,25 @@ See `assets/calendar.css` for the full list.
 ## Shortcodes
 
 ```text
-[memml_calendar calendar="events" view="list" period="upcoming" limit="0" url_key="main"]
-[memml_events view="list" list_style="rows" period="upcoming" limit="3" url_key="events"]
-[memml_volunteers view="month" subscribe="no" url_key="volunteers"]
+[memml_calendar]
+[memml_events]
+[memml_volunteers]
 ```
 
 Visitors can change the calendar, List/Month layout, Upcoming/Past list filter, and displayed month. Those changes are stored in instance-scoped query parameters so the resulting URL can be shared.
 
+Most calendars need no shortcode properties because they inherit **Settings →
+Memml Calendar → Display defaults**. Advanced placements can explicitly set
+`calendar` (`events` or `volunteers`), `view` (`list` or `month`), `period`
+(`upcoming` or `past`), `list_style` (`grid` or `rows`), `limit`, and `subscribe`
+(`yes` or `no`):
+
+```text
+[memml_calendar calendar="volunteers" view="list" period="upcoming" list_style="rows" limit="3" subscribe="no" url_key="main"]
+```
+
 `limit` caps how many items each list shows, which suits a sidebar or a "next few
-events" section. `0`, the default, shows every item. Month view always shows every
+events" section. A value of `0` shows every item. Month view always shows every
 item, because a month grid with items missing would misrepresent the calendar.
 
 `list_style` chooses how lists render: `grid` arranges cards in columns; `rows`
@@ -79,10 +91,11 @@ which suits a narrow column or a text-heavy feed. `subscribe` controls the
 Google Calendar / Apple / Outlook / RSS subscription links shown above the
 calendar (`yes` or `no`).
 
-Site-wide defaults for the initial view, list style, and subscribe links live
-under Settings → Memml Calendar → Display defaults. A block or shortcode only
-overrides a default when it sets that option explicitly, so most placements can
-leave these attributes off entirely.
+Site-wide defaults cover the initially selected calendar, initial view, initial
+list filter, list style, maximum list items, and subscribe links. Every matching
+block control offers **Use site setting**. Existing explicit block attributes and
+shortcode properties continue to take precedence, including `limit="0"` for an
+unlimited list.
 
 Every item opens a pop-up with its full details — including the complete
 description, which list cards clamp after a few lines — and events offer
@@ -150,6 +163,12 @@ npm run wp-env:start
 npm run test:wp-env
 npm run wp-env:stop
 ```
+
+## Product roadmap
+
+Planned work is tracked in [ROADMAP.md](ROADMAP.md). It is ordered around the
+needs of small nonprofit organizations and identifies one explicit next item so
+future development tasks can resume without relying on conversation history.
 
 ## License
 

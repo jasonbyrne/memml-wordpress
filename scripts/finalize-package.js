@@ -19,16 +19,31 @@ const readmeContents = fs.readFileSync(
 	'utf8'
 );
 const pluginVersion = pluginContents.match( /^ \* Version:\s+(.+)$/m );
+const versionConstant = pluginContents.match(
+	/^define\( 'MEMML_VERSION', '(.+)' \);$/m
+);
 const stableTag = readmeContents.match( /^Stable tag:\s+(.+)$/m );
+const blockVersions = [ 'calendar', 'events', 'volunteers' ].map(
+	( block ) =>
+		JSON.parse(
+			fs.readFileSync(
+				path.join( projectRoot, 'blocks', block, 'block.json' ),
+				'utf8'
+			)
+		).version
+);
 
 if (
 	! pluginVersion ||
+	! versionConstant ||
 	! stableTag ||
 	pluginVersion[ 1 ].trim() !== packageData.version ||
-	stableTag[ 1 ].trim() !== packageData.version
+	versionConstant[ 1 ].trim() !== packageData.version ||
+	stableTag[ 1 ].trim() !== packageData.version ||
+	blockVersions.some( ( version ) => version !== packageData.version )
 ) {
 	throw new Error(
-		'Version mismatch: package.json, memml.php, and readme.txt must match.'
+		'Version mismatch: package.json, memml.php, readme.txt, and block manifests must match.'
 	);
 }
 

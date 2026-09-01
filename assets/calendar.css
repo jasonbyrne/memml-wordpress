@@ -375,12 +375,21 @@
 
 :where(.memml-calendar__add-links) {
 	display: inline-flex;
+	flex-basis: 100%;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: 0.5rem;
+	gap: 0.1rem 0.5rem;
+	line-height: 1.25;
+}
+
+/* Keep the calendar choices visually attached to their label, while leaving
+   a clearer break between this secondary action group and any primary CTA. */
+:where(.memml-calendar__button + .memml-calendar__add-links) {
+	margin-block-start: 0.35rem;
 }
 
 :where(.memml-calendar__add-label) {
+	flex-basis: 100%;
 	color: var(--memml-muted);
 	font-size: 0.9em;
 }

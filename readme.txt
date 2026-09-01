@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.2
+Stable tag: 0.4.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,18 +18,25 @@ does not store Memml credentials.
 
 Choose the calendar that belongs on each page:
 
-* Use the Memml Calendar block or `[memml_calendar calendar="events" view="list" period="upcoming" url_key="main"]` shortcode to let visitors switch calendars and display views.
-* Use the Memml Events block or `[memml_events view="list" period="upcoming" url_key="events"]` shortcode for general events with a List/Month switcher.
-* Use the Memml Volunteers block or `[memml_volunteers view="list" period="upcoming" url_key="volunteers"]` shortcode for volunteer opportunities with a List/Month switcher.
+* Use the Memml Calendar block or `[memml_calendar]` shortcode to let visitors switch calendars and display views.
+* Use the Memml Events block or `[memml_events]` shortcode for general events with a List/Month switcher.
+* Use the Memml Volunteers block or `[memml_volunteers]` shortcode for volunteer opportunities with a List/Month switcher.
 
-Set the block's Maximum items setting, or the shortcode `limit` property, to show
-only the next few items in a list. The default, 0, shows every item. Month view
-always shows every item.
+Settings > Memml Calendar > Display defaults controls the initially selected
+calendar, initial List or Month view, initial Upcoming or Past filter, list style,
+maximum list items, and subscribe links. Blocks offer Use site setting for every
+matching preference, and shortcodes inherit the site settings when properties are
+omitted.
+
+For an intentional exception, set block controls or shortcode properties such as
+`[memml_calendar calendar="volunteers" view="list" period="upcoming" list_style="rows" limit="3" subscribe="no" url_key="main"]`.
+Explicit values continue to take precedence over site settings. A `limit` of 0
+shows every item, while Month view always shows every item.
 
 Set the block's List style setting, or the shortcode `list_style="rows"` property,
-to stack compact full-width items instead of the default card grid. Subscription
-links (Google Calendar, Apple / Outlook, RSS) appear above each calendar; turn
-them off with the block's Subscribe links setting or `subscribe="no"`.
+to stack compact full-width items instead of the card grid. Subscription links
+(Google Calendar, Apple / Outlook, RSS) can be controlled with the block's
+Subscribe links setting or the `subscribe` property.
 Clicking an item opens its full details in a pop-up, and events offer per-event
 Apple / Outlook and Google add-to-calendar links. Current and upcoming events
 also show a Join online action when the feed supplies an online meeting URL.
@@ -38,19 +45,16 @@ link complete addresses to Google Maps, and include any supplied venue contact,
 parking, and arrival details in the pop-up. Legacy location text remains fully
 supported.
 
-Settings > Memml Calendar > Display defaults sets the site-wide initial view,
-list style, and subscribe-links behaviour. Blocks and shortcodes follow those
-defaults unless one sets its own value.
-
 The blocks preview themselves in the editor using the same server-side renderer
 visitors get, so layouts and filters can be checked without leaving the post.
 
 Set `calendar="volunteers"` on `[memml_calendar]` when volunteer opportunities should
 be selected first. Set `view="month"` on any shortcode when Month should be selected
 first. These properties set the initial selections; visitors can change them.
-In List view, visitors can choose Upcoming or Past. Upcoming is selected by default;
-set `period="past"` to select Past initially. Dates and sorting use the organization's
-timezone. Upcoming is oldest-first from today onward, while Past is newest-first.
+In List view, visitors can choose Upcoming or Past. The site setting controls the
+initial selection; set `period="past"` for an explicit shortcode exception. Dates
+and sorting use the organization's timezone. Upcoming is oldest-first from today
+onward, while Past is newest-first.
 
 Every visitor control is a real link, so the calendar keeps working when
 JavaScript is unavailable and views can be opened in a new tab. When JavaScript is
@@ -128,8 +132,9 @@ Settings > Memml Calendar and select Clear cached data.
 
 = Can I show only the next few events? =
 
-Yes. Set the block's Maximum items setting or the shortcode `limit` property. It
-applies to Upcoming and Past lists; Month view always shows every item.
+Yes. Set the site-wide Maximum items default, or override it with the block's
+Maximum items setting or shortcode `limit` property. It applies to Upcoming and
+Past lists; Month view always shows every item.
 
 = Can I link directly to a selected calendar view? =
 
@@ -137,6 +142,13 @@ Yes. The URL updates as visitors change the calendar, layout, or displayed month
 Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.4.3 =
+
+* Completed the site-wide display defaults with initial calendar, Upcoming or
+  Past filter, and maximum list items. Blocks can use the site setting for every
+  preference, while explicit block and shortcode values remain unchanged.
+* Improved the spacing and wrapping of per-event Add to calendar links.
 
 = 0.4.2 =
 

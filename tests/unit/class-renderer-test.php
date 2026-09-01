@@ -26,12 +26,19 @@ final class Memml_Renderer_Test extends TestCase {
 	protected function setUp(): void {
 		parent::setUp();
 		Monkey\setUp();
+		$_GET = array();
 
 		Functions\when( '__' )->returnArg();
 		Functions\when( 'esc_attr' )->returnArg();
 		Functions\when( 'esc_html' )->returnArg();
 		Functions\when( 'esc_html__' )->returnArg();
 		Functions\when( 'esc_url' )->returnArg();
+		Functions\when( 'sanitize_key' )->alias(
+			static function ( $value ) {
+				return strtolower( preg_replace( '/[^a-z0-9_-]/i', '', (string) $value ) );
+			}
+		);
+		Functions\when( 'wp_unslash' )->returnArg();
 		Functions\when( 'is_wp_error' )->alias(
 			static function ( $value ) {
 				return $value instanceof WP_Error;
@@ -92,6 +99,7 @@ final class Memml_Renderer_Test extends TestCase {
 	 * @return void
 	 */
 	protected function tearDown(): void {
+		$_GET = array();
 		Monkey\tearDown();
 		parent::tearDown();
 	}
@@ -148,8 +156,11 @@ final class Memml_Renderer_Test extends TestCase {
 			static function ( $name, $default_value = false ) {
 				if ( Memml_Settings::OPTION_NAME === $name ) {
 					return array(
+						'default_calendar'   => 'volunteers',
 						'default_view'       => 'month',
+						'default_period'     => 'past',
 						'default_list_style' => 'rows',
+						'default_limit'      => 6,
 						'subscribe_links'    => false,
 					);
 				}
@@ -158,14 +169,69 @@ final class Memml_Renderer_Test extends TestCase {
 			}
 		);
 
+		$this->assertSame( 'volunteers', $this->call_renderer( 'resolve_calendar', '' ) );
 		$this->assertSame( 'month', $this->call_renderer( 'resolve_layout', '' ) );
+		$this->assertSame( 'past', $this->call_renderer( 'get_period_from_attributes', array() ) );
 		$this->assertSame( 'rows', $this->call_renderer( 'get_list_style_from_attributes', array() ) );
+		$this->assertSame( 6, $this->call_renderer( 'get_limit_from_attributes', array() ) );
 		$this->assertFalse( $this->call_renderer( 'get_subscribe_from_attributes', array() ) );
 
 		// Explicit block or shortcode values still win over the site default.
+		$this->assertSame( 'events', $this->call_renderer( 'resolve_calendar', 'events' ) );
 		$this->assertSame( 'list', $this->call_renderer( 'resolve_layout', 'list' ) );
+		$this->assertSame( 'upcoming', $this->call_renderer( 'get_period_from_attributes', array( 'period' => 'upcoming' ) ) );
 		$this->assertSame( 'grid', $this->call_renderer( 'get_list_style_from_attributes', array( 'listStyle' => 'grid' ) ) );
+		$this->assertSame( 0, $this->call_renderer( 'get_limit_from_attributes', array( 'limit' => 0 ) ) );
+		$this->assertSame( 3, $this->call_renderer( 'get_limit_from_attributes', array( 'limit' => '3' ) ) );
 		$this->assertTrue( $this->call_renderer( 'get_subscribe_from_attributes', array( 'subscribe' => 'yes' ) ) );
+	}
+
+	/**
+	 * Valid visitor URL state takes precedence over site display defaults.
+	 *
+	 * @return void
+	 */
+	public function test_visitor_state_wins_over_calendar_layout_and_period_defaults() {
+		Functions\when( 'get_option' )->alias(
+			static function ( $name, $default_value = false ) {
+				if ( Memml_Settings::OPTION_NAME === $name ) {
+					return array(
+						'default_calendar' => 'volunteers',
+						'default_view'     => 'month',
+						'default_period'   => 'past',
+					);
+				}
+
+				return $default_value;
+			}
+		);
+
+		$_GET['memml_main_calendar'] = 'events';
+		$_GET['memml_main_view']     = 'list';
+		$_GET['memml_main_period']   = 'upcoming';
+
+		$this->assertSame( 'events', $this->call_renderer( 'get_initial_calendar', '', 'memml_main_' ) );
+		$this->assertSame( 'list', $this->call_renderer( 'get_initial_layout', '', 'memml_main_' ) );
+		$this->assertSame( 'upcoming', $this->call_renderer( 'get_initial_period', '', 'memml_main_' ) );
+	}
+
+	/**
+	 * Every block exposes a distinct inherited state for period and list limit.
+	 *
+	 * @return void
+	 */
+	public function test_block_metadata_uses_inherited_defaults() {
+		$root = dirname( __DIR__, 2 );
+
+		foreach ( array( 'calendar', 'events', 'volunteers' ) as $block ) {
+			$metadata = json_decode( file_get_contents( $root . '/blocks/' . $block . '/block.json' ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local test fixture.
+
+			$this->assertSame( '', $metadata['attributes']['period']['default'] );
+			$this->assertSame( -1, $metadata['attributes']['limit']['default'] );
+		}
+
+		$calendar = json_decode( file_get_contents( $root . '/blocks/calendar/block.json' ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local test fixture.
+		$this->assertSame( '', $calendar['attributes']['calendar']['default'] );
 	}
 
 	/**

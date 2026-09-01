@@ -199,14 +199,20 @@ final class Memml_Settings {
 			$client->flush_cache( $saved['organization_key'] );
 		}
 
+		$default_calendar   = isset( $input['default_calendar'] ) ? $input['default_calendar'] : '';
 		$default_view       = isset( $input['default_view'] ) ? $input['default_view'] : '';
+		$default_period     = isset( $input['default_period'] ) ? $input['default_period'] : '';
 		$default_list_style = isset( $input['default_list_style'] ) ? $input['default_list_style'] : '';
+		$default_limit      = isset( $input['default_limit'] ) ? max( 0, (int) $input['default_limit'] ) : 0;
 
 		return array(
 			'organization_key'   => $organization_key,
 			'base_url'           => $base_url,
+			'default_calendar'   => 'volunteers' === $default_calendar ? 'volunteers' : 'events',
 			'default_view'       => 'month' === $default_view ? 'month' : 'list',
+			'default_period'     => 'past' === $default_period ? 'past' : 'upcoming',
 			'default_list_style' => 'rows' === $default_list_style ? 'rows' : 'grid',
+			'default_limit'      => $default_limit,
 			'subscribe_links'    => ! empty( $input['subscribe_links'] ),
 		);
 	}
@@ -272,6 +278,21 @@ final class Memml_Settings {
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row">
+							<label for="memml-default-calendar"><?php echo esc_html__( 'Initial calendar', 'memml' ); ?></label>
+						</th>
+						<td>
+							<select
+								id="memml-default-calendar"
+								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_calendar]"
+							>
+								<option value="events" <?php selected( 'volunteers' !== $options['default_calendar'] ); ?>><?php echo esc_html__( 'Events', 'memml' ); ?></option>
+								<option value="volunteers" <?php selected( 'volunteers' === $options['default_calendar'] ); ?>><?php echo esc_html__( 'Volunteer Opportunities', 'memml' ); ?></option>
+							</select>
+							<p class="description"><?php echo esc_html__( 'Used by the combined Memml Calendar until a visitor chooses another calendar.', 'memml' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
 							<label for="memml-default-view"><?php echo esc_html__( 'Initial view', 'memml' ); ?></label>
 						</th>
 						<td>
@@ -281,6 +302,20 @@ final class Memml_Settings {
 							>
 								<option value="list" <?php selected( 'month' !== $options['default_view'] ); ?>><?php echo esc_html__( 'List', 'memml' ); ?></option>
 								<option value="month" <?php selected( 'month' === $options['default_view'] ); ?>><?php echo esc_html__( 'Month', 'memml' ); ?></option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label for="memml-default-period"><?php echo esc_html__( 'Initial list filter', 'memml' ); ?></label>
+						</th>
+						<td>
+							<select
+								id="memml-default-period"
+								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_period]"
+							>
+								<option value="upcoming" <?php selected( 'past' !== $options['default_period'] ); ?>><?php echo esc_html__( 'Upcoming', 'memml' ); ?></option>
+								<option value="past" <?php selected( 'past' === $options['default_period'] ); ?>><?php echo esc_html__( 'Past', 'memml' ); ?></option>
 							</select>
 						</td>
 					</tr>
@@ -296,6 +331,23 @@ final class Memml_Settings {
 								<option value="grid" <?php selected( 'rows' !== $options['default_list_style'] ); ?>><?php echo esc_html__( 'Cards', 'memml' ); ?></option>
 								<option value="rows" <?php selected( 'rows' === $options['default_list_style'] ); ?>><?php echo esc_html__( 'Compact rows', 'memml' ); ?></option>
 							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row">
+							<label for="memml-default-limit"><?php echo esc_html__( 'Maximum items in list view', 'memml' ); ?></label>
+						</th>
+						<td>
+							<input
+								class="small-text"
+								id="memml-default-limit"
+								min="0"
+								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_limit]"
+								step="1"
+								type="number"
+								value="<?php echo esc_attr( $options['default_limit'] ); ?>"
+							/>
+							<p class="description"><?php echo esc_html__( 'Enter 0 to show every item. Month view always shows every item.', 'memml' ); ?></p>
 						</td>
 					</tr>
 					<tr>
@@ -486,8 +538,11 @@ final class Memml_Settings {
 		return array(
 			'organization_key'   => '',
 			'base_url'           => Memml_Feed_Client::DEFAULT_BASE_URL,
+			'default_calendar'   => 'events',
 			'default_view'       => 'list',
+			'default_period'     => 'upcoming',
 			'default_list_style' => 'grid',
+			'default_limit'      => 0,
 			'subscribe_links'    => true,
 		);
 	}
