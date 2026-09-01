@@ -81,7 +81,15 @@ final class Memml_Settings_Test extends TestCase {
 		$this->assertSame( 'upcoming', $options['default_period'] );
 		$this->assertSame( 'grid', $options['default_list_style'] );
 		$this->assertSame( 0, $options['default_limit'] );
+		$this->assertTrue( $options['calendar_switcher'] );
+		$this->assertTrue( $options['layout_switcher'] );
+		$this->assertTrue( $options['period_switcher'] );
 		$this->assertTrue( $options['subscribe_links'] );
+
+		foreach ( Memml_Renderer::VISIBILITY_PREFERENCES as $option_name => $attributes ) {
+			unset( $attributes );
+			$this->assertTrue( $options[ $option_name ], $option_name . ' should preserve existing output for legacy settings.' );
+		}
 	}
 
 	/**
@@ -93,14 +101,28 @@ final class Memml_Settings_Test extends TestCase {
 		$settings = new Memml_Settings();
 		$result   = $settings->sanitize(
 			array(
-				'organization_key'   => 'river-city-neighbors',
-				'base_url'           => Memml_Feed_Client::DEFAULT_BASE_URL,
-				'default_calendar'   => 'volunteers',
-				'default_view'       => 'month',
-				'default_period'     => 'past',
-				'default_list_style' => 'rows',
-				'default_limit'      => '12',
-				'subscribe_links'    => '1',
+				'organization_key'            => 'river-city-neighbors',
+				'base_url'                    => Memml_Feed_Client::DEFAULT_BASE_URL,
+				'default_calendar'            => 'volunteers',
+				'default_view'                => 'month',
+				'default_period'              => 'past',
+				'default_list_style'          => 'rows',
+				'default_limit'               => '12',
+				'calendar_switcher'           => '1',
+				'layout_switcher'             => '1',
+				'period_switcher'             => '1',
+				'subscribe_links'             => '1',
+				'show_images'                 => '1',
+				'show_descriptions'           => '1',
+				'show_item_count'             => '1',
+				'show_details'                => '1',
+				'show_venue_cost'             => '1',
+				'show_volunteer_availability' => '1',
+				'show_cancelled_events'       => '1',
+				'show_registration'           => '1',
+				'show_online'                 => '1',
+				'show_volunteer_signup'       => '1',
+				'show_add_to_calendar'        => '1',
 			)
 		);
 
@@ -109,7 +131,15 @@ final class Memml_Settings_Test extends TestCase {
 		$this->assertSame( 'past', $result['default_period'] );
 		$this->assertSame( 'rows', $result['default_list_style'] );
 		$this->assertSame( 12, $result['default_limit'] );
+		$this->assertTrue( $result['calendar_switcher'] );
+		$this->assertTrue( $result['layout_switcher'] );
+		$this->assertTrue( $result['period_switcher'] );
 		$this->assertTrue( $result['subscribe_links'] );
+
+		foreach ( Memml_Renderer::VISIBILITY_PREFERENCES as $option_name => $attributes ) {
+			unset( $attributes );
+			$this->assertTrue( $result[ $option_name ] );
+		}
 	}
 
 	/**
@@ -136,6 +166,14 @@ final class Memml_Settings_Test extends TestCase {
 		$this->assertSame( 'upcoming', $result['default_period'] );
 		$this->assertSame( 'grid', $result['default_list_style'] );
 		$this->assertSame( 0, $result['default_limit'] );
+		$this->assertFalse( $result['calendar_switcher'] );
+		$this->assertFalse( $result['layout_switcher'] );
+		$this->assertFalse( $result['period_switcher'] );
 		$this->assertFalse( $result['subscribe_links'] );
+
+		foreach ( Memml_Renderer::VISIBILITY_PREFERENCES as $option_name => $attributes ) {
+			unset( $attributes );
+			$this->assertFalse( $result[ $option_name ] );
+		}
 	}
 }

@@ -147,6 +147,46 @@ final class Memml_Renderer_Test extends TestCase {
 	}
 
 	/**
+	 * Visitor controls inherit site defaults and accept block and shortcode spellings.
+	 *
+	 * @return void
+	 */
+	public function test_visitor_controls_parse_inherited_and_explicit_values() {
+		$this->assertTrue( $this->call_renderer( 'get_control_from_attributes', array(), 'layoutSwitcher', 'layout_switcher', 'layout_switcher' ) );
+		$this->assertFalse( $this->call_renderer( 'get_control_from_attributes', array( 'layoutSwitcher' => 'no' ), 'layoutSwitcher', 'layout_switcher', 'layout_switcher' ) );
+		$this->assertFalse( $this->call_renderer( 'get_control_from_attributes', array( 'layout_switcher' => 'false' ), 'layoutSwitcher', 'layout_switcher', 'layout_switcher' ) );
+		$this->assertTrue( $this->call_renderer( 'get_control_from_attributes', array( 'layoutSwitcher' => 'yes' ), 'layoutSwitcher', 'layout_switcher', 'layout_switcher' ) );
+	}
+
+	/**
+	 * Content and action preferences inherit site defaults and accept both APIs.
+	 *
+	 * @return void
+	 */
+	public function test_visibility_preferences_parse_block_and_shortcode_attributes() {
+		$block     = $this->call_renderer(
+			'get_visibility_from_attributes',
+			array(
+				'showImages'       => 'no',
+				'showRegistration' => 'yes',
+			)
+		);
+		$shortcode = $this->call_renderer(
+			'get_visibility_from_attributes',
+			array(
+				'show_descriptions' => 'false',
+				'show_online'       => '1',
+			)
+		);
+
+		$this->assertFalse( $block['show_images'] );
+		$this->assertTrue( $block['show_registration'] );
+		$this->assertFalse( $shortcode['show_descriptions'] );
+		$this->assertTrue( $shortcode['show_online'] );
+		$this->assertTrue( $shortcode['show_details'] );
+	}
+
+	/**
 	 * Unset attributes fall back to the saved site-wide display defaults.
 	 *
 	 * @return void
@@ -156,12 +196,26 @@ final class Memml_Renderer_Test extends TestCase {
 			static function ( $name, $default_value = false ) {
 				if ( Memml_Settings::OPTION_NAME === $name ) {
 					return array(
-						'default_calendar'   => 'volunteers',
-						'default_view'       => 'month',
-						'default_period'     => 'past',
-						'default_list_style' => 'rows',
-						'default_limit'      => 6,
-						'subscribe_links'    => false,
+						'default_calendar'            => 'volunteers',
+						'default_view'                => 'month',
+						'default_period'              => 'past',
+						'default_list_style'          => 'rows',
+						'default_limit'               => 6,
+						'calendar_switcher'           => false,
+						'layout_switcher'             => false,
+						'period_switcher'             => false,
+						'subscribe_links'             => false,
+						'show_images'                 => false,
+						'show_descriptions'           => false,
+						'show_item_count'             => false,
+						'show_details'                => false,
+						'show_venue_cost'             => false,
+						'show_volunteer_availability' => false,
+						'show_cancelled_events'       => false,
+						'show_registration'           => false,
+						'show_online'                 => false,
+						'show_volunteer_signup'       => false,
+						'show_add_to_calendar'        => false,
 					);
 				}
 
@@ -174,7 +228,14 @@ final class Memml_Renderer_Test extends TestCase {
 		$this->assertSame( 'past', $this->call_renderer( 'get_period_from_attributes', array() ) );
 		$this->assertSame( 'rows', $this->call_renderer( 'get_list_style_from_attributes', array() ) );
 		$this->assertSame( 6, $this->call_renderer( 'get_limit_from_attributes', array() ) );
+		$this->assertFalse( $this->call_renderer( 'get_control_from_attributes', array(), 'calendarSwitcher', 'calendar_switcher', 'calendar_switcher' ) );
+		$this->assertFalse( $this->call_renderer( 'get_control_from_attributes', array(), 'layoutSwitcher', 'layout_switcher', 'layout_switcher' ) );
+		$this->assertFalse( $this->call_renderer( 'get_control_from_attributes', array(), 'periodSwitcher', 'period_switcher', 'period_switcher' ) );
 		$this->assertFalse( $this->call_renderer( 'get_subscribe_from_attributes', array() ) );
+
+		foreach ( $this->call_renderer( 'get_visibility_from_attributes', array() ) as $is_visible ) {
+			$this->assertFalse( $is_visible );
+		}
 
 		// Explicit block or shortcode values still win over the site default.
 		$this->assertSame( 'events', $this->call_renderer( 'resolve_calendar', 'events' ) );
@@ -183,7 +244,12 @@ final class Memml_Renderer_Test extends TestCase {
 		$this->assertSame( 'grid', $this->call_renderer( 'get_list_style_from_attributes', array( 'listStyle' => 'grid' ) ) );
 		$this->assertSame( 0, $this->call_renderer( 'get_limit_from_attributes', array( 'limit' => 0 ) ) );
 		$this->assertSame( 3, $this->call_renderer( 'get_limit_from_attributes', array( 'limit' => '3' ) ) );
+		$this->assertTrue( $this->call_renderer( 'get_control_from_attributes', array( 'calendarSwitcher' => 'yes' ), 'calendarSwitcher', 'calendar_switcher', 'calendar_switcher' ) );
+		$this->assertTrue( $this->call_renderer( 'get_control_from_attributes', array( 'layoutSwitcher' => 'yes' ), 'layoutSwitcher', 'layout_switcher', 'layout_switcher' ) );
+		$this->assertTrue( $this->call_renderer( 'get_control_from_attributes', array( 'periodSwitcher' => 'yes' ), 'periodSwitcher', 'period_switcher', 'period_switcher' ) );
 		$this->assertTrue( $this->call_renderer( 'get_subscribe_from_attributes', array( 'subscribe' => 'yes' ) ) );
+		$this->assertTrue( $this->call_renderer( 'get_visibility_from_attributes', array( 'showImages' => 'yes' ) )['show_images'] );
+		$this->assertTrue( $this->call_renderer( 'get_visibility_from_attributes', array( 'show_online' => 'yes' ) )['show_online'] );
 	}
 
 	/**
@@ -216,6 +282,21 @@ final class Memml_Renderer_Test extends TestCase {
 	}
 
 	/**
+	 * Hidden controls keep their configured state even when an old share URL disagrees.
+	 *
+	 * @return void
+	 */
+	public function test_hidden_controls_ignore_visitor_url_state() {
+		$_GET['memml_fixed_calendar'] = 'volunteers';
+		$_GET['memml_fixed_view']     = 'month';
+		$_GET['memml_fixed_period']   = 'past';
+
+		$this->assertSame( 'events', $this->call_renderer( 'get_initial_calendar', 'events', 'memml_fixed_', false ) );
+		$this->assertSame( 'list', $this->call_renderer( 'get_initial_layout', 'list', 'memml_fixed_', false ) );
+		$this->assertSame( 'upcoming', $this->call_renderer( 'get_initial_period', 'upcoming', 'memml_fixed_', false ) );
+	}
+
+	/**
 	 * Every block exposes a distinct inherited state for period and list limit.
 	 *
 	 * @return void
@@ -228,10 +309,22 @@ final class Memml_Renderer_Test extends TestCase {
 
 			$this->assertSame( '', $metadata['attributes']['period']['default'] );
 			$this->assertSame( -1, $metadata['attributes']['limit']['default'] );
+			$this->assertSame( '', $metadata['attributes']['layoutSwitcher']['default'] );
+			$this->assertSame( '', $metadata['attributes']['periodSwitcher']['default'] );
+
+			foreach ( array( 'showImages', 'showDescriptions', 'showItemCount', 'showDetails', 'showVenueCost', 'showVolunteerSignup' ) as $attribute ) {
+				$this->assertSame( '', $metadata['attributes'][ $attribute ]['default'] );
+			}
 		}
 
 		$calendar = json_decode( file_get_contents( $root . '/blocks/calendar/block.json' ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local test fixture.
 		$this->assertSame( '', $calendar['attributes']['calendar']['default'] );
+		$this->assertSame( '', $calendar['attributes']['calendarSwitcher']['default'] );
+		$this->assertSame( '', $calendar['attributes']['showVolunteerAvailability']['default'] );
+		$this->assertSame( '', $calendar['attributes']['showCancelledEvents']['default'] );
+		$this->assertSame( '', $calendar['attributes']['showRegistration']['default'] );
+		$this->assertSame( '', $calendar['attributes']['showOnline']['default'] );
+		$this->assertSame( '', $calendar['attributes']['showAddToCalendar']['default'] );
 	}
 
 	/**
@@ -477,6 +570,76 @@ final class Memml_Renderer_Test extends TestCase {
 		$this->assertStringContainsString( 'Join online', $future_actions );
 		$this->assertStringContainsString( 'Volunteer', $future_actions );
 		$this->assertStringContainsString( 'href="https://meet.example/current-cleanup"', $current_actions );
+	}
+
+	/**
+	 * Each event action can be hidden independently without affecting the others.
+	 *
+	 * @return void
+	 */
+	public function test_event_action_visibility_is_independent() {
+		$event   = array(
+			'title'              => 'Future cleanup',
+			'eventDate'          => '2099-01-01',
+			'publicEventUrl'     => 'https://events.example/register',
+			'ctaLabel'           => 'Register',
+			'meetingUrl'         => 'https://meet.example/cleanup',
+			'volunteerSignupUrl' => 'https://events.example/volunteer',
+			'icsUrl'             => 'https://events.example/cleanup.ics',
+		);
+		$context = array(
+			'show_registration'     => false,
+			'show_online'           => true,
+			'show_volunteer_signup' => false,
+			'show_add_to_calendar'  => false,
+		);
+		$actions = $this->call_renderer( 'render_event_actions', $event, new DateTimeZone( 'UTC' ), $context );
+
+		$this->assertStringNotContainsString( 'Register', $actions );
+		$this->assertStringContainsString( 'Join online', $actions );
+		$this->assertStringNotContainsString( '>Volunteer<', $actions );
+		$this->assertStringNotContainsString( 'Add to calendar:', $actions );
+	}
+
+	/**
+	 * Card-level content preferences suppress summaries while leaving the title.
+	 *
+	 * @return void
+	 */
+	public function test_card_content_visibility_can_hide_optional_output() {
+		$context = array(
+			'show_images'                 => false,
+			'show_descriptions'           => false,
+			'show_details'                => false,
+			'show_venue_cost'             => false,
+			'show_volunteer_availability' => false,
+			'show_volunteer_signup'       => false,
+		);
+		$card    = $this->call_renderer(
+			'render_volunteer_card',
+			array(
+				'title'          => 'Future cleanup',
+				'description'    => 'Bring gloves.',
+				'location'       => 'River Park',
+				'eventDate'      => '2099-01-01',
+				'spotsRemaining' => 4,
+				'needsMore'      => true,
+				'url'            => 'https://events.example/volunteer',
+				'imageUrl'       => 'https://images.example/cleanup.jpg',
+			),
+			new DateTimeZone( 'UTC' ),
+			false,
+			$context
+		);
+
+		$this->assertStringContainsString( 'Future cleanup', $card );
+		$this->assertStringNotContainsString( 'Bring gloves.', $card );
+		$this->assertStringNotContainsString( 'River Park', $card );
+		$this->assertStringNotContainsString( 'spot', $card );
+		$this->assertStringNotContainsString( 'Volunteers needed', $card );
+		$this->assertStringNotContainsString( '<img', $card );
+		$this->assertStringNotContainsString( 'data-memml-details', $card );
+		$this->assertStringNotContainsString( 'events.example/volunteer', $card );
 	}
 
 	/**

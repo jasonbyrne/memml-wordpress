@@ -161,6 +161,10 @@ try {
 		throw new RuntimeException( 'Upcoming events were not rendered in the Upcoming panel.' );
 	}
 
+	if ( false === strpos( $upcoming_segment, 'Cancelled River Walk' ) ) {
+		throw new RuntimeException( 'Cancelled events were not shown by the enabled default.' );
+	}
+
 	if ( strpos( $upcoming_segment, 'Riverside Cleanup' ) > strpos( $upcoming_segment, 'Community Dinner' ) ) {
 		throw new RuntimeException( 'Upcoming events were not sorted in ascending order.' );
 	}
@@ -266,8 +270,8 @@ try {
 		return substr_count( substr( $markup, $start, $end - $start ), 'data-memml-item' );
 	};
 
-	if ( 2 !== $count_upcoming( $unlimited ) ) {
-		throw new RuntimeException( 'The events fixture no longer renders two upcoming items.' );
+	if ( 3 !== $count_upcoming( $unlimited ) ) {
+		throw new RuntimeException( 'The events fixture no longer renders three upcoming items.' );
 	}
 
 	if ( 1 !== $count_upcoming( $limited ) ) {
@@ -281,38 +285,117 @@ try {
 	update_option(
 		Memml_Settings::OPTION_NAME,
 		array(
-			'organization_key'   => 'river-city-neighbors',
-			'base_url'           => Memml_Feed_Client::DEFAULT_BASE_URL,
-			'default_calendar'   => 'volunteers',
-			'default_view'       => 'month',
-			'default_period'     => 'past',
-			'default_list_style' => 'rows',
-			'default_limit'      => 1,
-			'subscribe_links'    => false,
+			'organization_key'            => 'river-city-neighbors',
+			'base_url'                    => Memml_Feed_Client::DEFAULT_BASE_URL,
+			'default_calendar'            => 'volunteers',
+			'default_view'                => 'month',
+			'default_period'              => 'past',
+			'default_list_style'          => 'rows',
+			'default_limit'               => 1,
+			'calendar_switcher'           => false,
+			'layout_switcher'             => false,
+			'period_switcher'             => false,
+			'subscribe_links'             => false,
+			'show_images'                 => false,
+			'show_descriptions'           => false,
+			'show_item_count'             => false,
+			'show_details'                => false,
+			'show_venue_cost'             => false,
+			'show_volunteer_availability' => false,
+			'show_cancelled_events'       => false,
+			'show_registration'           => false,
+			'show_online'                 => false,
+			'show_volunteer_signup'       => false,
+			'show_add_to_calendar'        => false,
 		)
 	);
 
-	$inherited = do_shortcode( '[memml_calendar url_key="defaults"]' );
-	$explicit  = do_shortcode( '[memml_calendar calendar="events" view="list" period="upcoming" list_style="grid" limit="0" subscribe="yes" url_key="overrides"]' );
+	$_GET['memml_defaults_calendar'] = 'events';
+	$_GET['memml_defaults_view']     = 'list';
+	$_GET['memml_defaults_period']   = 'upcoming';
 
-	foreach ( array( 'data-calendar="volunteers"', 'data-layout="month"', 'data-period="past"', 'memml-calendar__grid--rows' ) as $expectation ) {
+	$inherited         = do_shortcode( '[memml_calendar url_key="defaults"]' );
+	$inherited_list    = do_shortcode( '[memml_events view="list" url_key="fixed-list"]' );
+	$hidden_events     = do_shortcode( '[memml_events view="list" period="upcoming" limit="0" url_key="hidden-events"]' );
+	$hidden_volunteers = do_shortcode( '[memml_volunteers view="list" period="upcoming" limit="0" url_key="hidden-volunteers"]' );
+	$explicit          = do_shortcode( '[memml_calendar calendar="events" view="list" period="upcoming" list_style="grid" limit="0" subscribe="yes" calendar_switcher="yes" layout_switcher="yes" period_switcher="yes" show_images="yes" show_descriptions="yes" show_item_count="yes" show_details="yes" show_venue_cost="yes" show_volunteer_availability="yes" show_cancelled_events="yes" show_registration="yes" show_online="yes" show_volunteer_signup="yes" show_add_to_calendar="yes" url_key="overrides"]' );
+
+	foreach ( array( 'data-calendar="volunteers"', 'data-layout="month"', 'data-period="past"' ) as $expectation ) {
 		if ( false === strpos( $inherited, $expectation ) ) {
 			throw new RuntimeException( 'A bare shortcode did not inherit the display default: ' . $expectation );
 		}
 	}
 
-	if ( false !== strpos( $inherited, 'memml-calendar__subscribe' ) || 1 !== $count_upcoming( $inherited ) ) {
-		throw new RuntimeException( 'A bare shortcode did not inherit the subscribe or list-limit default.' );
+	if (
+		false !== strpos( $inherited, 'memml-calendar__subscribe' ) ||
+		false !== strpos( $inherited, 'memml-calendar__toolbar' ) ||
+		false !== strpos( $inherited, 'data-memml-view=' ) ||
+		false !== strpos( $inherited, 'data-memml-layout=' ) ||
+		false !== strpos( $inherited, 'data-memml-period=' ) ||
+		false !== strpos( $inherited, 'data-memml-layout-panel="list"' ) ||
+		false !== strpos( $inherited, '-events"' )
+	) {
+		throw new RuntimeException( 'A bare shortcode did not inherit the hidden visitor controls or fixed display state.' );
 	}
 
-	foreach ( array( 'data-calendar="events"', 'data-layout="list"', 'data-period="upcoming"', 'memml-calendar__subscribe' ) as $expectation ) {
+	if (
+		1 !== substr_count( $inherited_list, 'data-memml-item' ) ||
+		false !== strpos( $inherited_list, 'data-memml-period-panel="upcoming"' ) ||
+		false === strpos( $inherited_list, 'memml-calendar__grid--rows' )
+	) {
+		throw new RuntimeException( 'A fixed list did not inherit its selected period or list-limit default.' );
+	}
+
+	$hidden_event_output = array(
+		'Cancelled River Walk',
+		'Bring gloves and comfortable shoes.',
+		'Riverside Park, 100 River Road',
+		'memml-calendar__count',
+		'data-memml-details',
+		'cdn.memml.com/events/riverside-cleanup.jpg',
+		'rivercityneighbors.example/register/cleanup',
+		'meet.example/riverside-cleanup',
+		'events/evt_01JTESTEVENT.ics',
+		'volunteer/riverside-cleanup',
+	);
+
+	foreach ( $hidden_event_output as $unexpected ) {
+		if ( false !== strpos( $hidden_events, $unexpected ) ) {
+			throw new RuntimeException( 'An events shortcode did not inherit hidden content or actions: ' . $unexpected );
+		}
+	}
+
+	$hidden_volunteer_output = array(
+		'Sort and shelve weekly food donations.',
+		'River City Food Pantry',
+		'4 spots remaining',
+		'Volunteers needed',
+		'memml-calendar__count',
+		'data-memml-details',
+		'cdn.memml.com/volunteer/food-pantry-sorters.jpg',
+		'volunteer/vol_01JTESTVOLUNTEER',
+	);
+
+	foreach ( $hidden_volunteer_output as $unexpected ) {
+		if ( false !== strpos( $hidden_volunteers, $unexpected ) ) {
+			throw new RuntimeException( 'A volunteers shortcode did not inherit hidden content or actions: ' . $unexpected );
+		}
+	}
+
+	foreach ( array( 'data-calendar="events"', 'data-layout="list"', 'data-period="upcoming"', 'memml-calendar__subscribe', 'data-memml-view="volunteers"', 'data-memml-layout="month"', 'data-memml-period="past"' ) as $expectation ) {
 		if ( false === strpos( $explicit, $expectation ) ) {
 			throw new RuntimeException( 'An explicit shortcode value did not override the display default: ' . $expectation );
 		}
 	}
 
-	if ( false !== strpos( $explicit, 'memml-calendar__grid--rows' ) || 2 !== $count_upcoming( $explicit ) ) {
+	if ( false !== strpos( $explicit, 'memml-calendar__grid--rows' ) || 3 !== $count_upcoming( $explicit ) ) {
 		throw new RuntimeException( 'Explicit list style or limit values did not override the display defaults.' );
+	}
+
+	foreach ( array( 'Cancelled River Walk', 'Bring gloves and comfortable shoes.', 'Riverside Park, 100 River Road', 'memml-calendar__count', 'data-memml-details', 'cdn.memml.com/events/riverside-cleanup.jpg', 'rivercityneighbors.example/register/cleanup', 'meet.example/riverside-cleanup', 'events/evt_01JTESTEVENT.ics', 'volunteer/riverside-cleanup', 'Sort and shelve weekly food donations.', '4 spots remaining', 'Volunteers needed' ) as $expectation ) {
+		if ( false === strpos( $explicit, $expectation ) ) {
+			throw new RuntimeException( 'An explicit visibility override was not rendered: ' . $expectation );
+		}
 	}
 
 	wp_set_current_user( 1 );
@@ -322,16 +405,36 @@ try {
 	foreach ( $block_names as $block_name ) {
 		$request          = new WP_REST_Request( 'GET', '/wp/v2/block-renderer/' . $block_name );
 		$block_attributes = array(
-			'view'      => 'list',
-			'period'    => 'upcoming',
-			'listStyle' => 'grid',
-			'urlKey'    => 'preview',
-			'limit'     => 0,
-			'subscribe' => 'yes',
+			'view'                => 'list',
+			'period'              => 'upcoming',
+			'listStyle'           => 'grid',
+			'urlKey'              => 'preview',
+			'limit'               => 0,
+			'layoutSwitcher'      => 'yes',
+			'periodSwitcher'      => 'yes',
+			'subscribe'           => 'yes',
+			'showImages'          => 'yes',
+			'showDescriptions'    => 'yes',
+			'showItemCount'       => 'yes',
+			'showDetails'         => 'yes',
+			'showVenueCost'       => 'yes',
+			'showVolunteerSignup' => 'yes',
 		);
 
 		if ( 'memml/calendar' === $block_name ) {
-			$block_attributes['calendar'] = 'events';
+			$block_attributes['calendar']         = 'events';
+			$block_attributes['calendarSwitcher'] = 'yes';
+		}
+
+		if ( 'memml/volunteers' !== $block_name ) {
+			$block_attributes['showCancelledEvents'] = 'yes';
+			$block_attributes['showRegistration']    = 'yes';
+			$block_attributes['showOnline']          = 'yes';
+			$block_attributes['showAddToCalendar']   = 'yes';
+		}
+
+		if ( 'memml/events' !== $block_name ) {
+			$block_attributes['showVolunteerAvailability'] = 'yes';
 		}
 
 		$request->set_param( 'context', 'edit' );
@@ -357,7 +460,7 @@ try {
 			throw new RuntimeException( 'The block renderer did not preserve the explicit subscribe setting for ' . $block_name . '.' );
 		}
 
-		$expected_count = 'memml/volunteers' === $block_name ? 1 : 2;
+		$expected_count = 'memml/volunteers' === $block_name ? 1 : 3;
 
 		if ( false !== strpos( $rendered, 'memml-calendar__grid--rows' ) || $expected_count !== $count_upcoming( $rendered ) ) {
 			throw new RuntimeException( 'The block renderer did not preserve the explicit list style or unlimited item count for ' . $block_name . '.' );
@@ -365,6 +468,10 @@ try {
 
 		if ( 'memml/calendar' === $block_name && false === strpos( $rendered, 'data-calendar="events"' ) ) {
 			throw new RuntimeException( 'The combined block did not preserve its explicit initial calendar.' );
+		}
+
+		if ( false === strpos( $rendered, 'data-memml-details' ) || false === strpos( $rendered, 'memml-calendar__count' ) ) {
+			throw new RuntimeException( 'The block renderer did not preserve explicit content visibility for ' . $block_name . '.' );
 		}
 	}
 
@@ -381,7 +488,21 @@ try {
 		'memml-default-period',
 		'memml-default-list-style',
 		'memml-default-limit',
+		'memml-calendar-switcher',
+		'memml-layout-switcher',
+		'memml-period-switcher',
 		'memml-subscribe-links',
+		'memml-show-images',
+		'memml-show-descriptions',
+		'memml-show-item-count',
+		'memml-show-details',
+		'memml-show-venue-cost',
+		'memml-show-volunteer-availability',
+		'memml-show-cancelled-events',
+		'memml-show-registration',
+		'memml-show-online',
+		'memml-show-volunteer-signup',
+		'memml-show-add-to-calendar',
 		'memml-test-connection',
 		'api/public/v1/river-city-neighbors/events.json',
 		'api/public/v1/river-city-neighbors/volunteer-opportunities.json',
@@ -414,7 +535,7 @@ try {
 		throw new RuntimeException( 'An invalid organization key discarded the saved key.' );
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, display-default inheritance, explicit overrides, URL state, filtering, sorting, link controls, timezone, month view, settings screen, and key-retention smoke test passed.' );
+	WP_CLI::success( 'Memml Calendar activation, connection, display-default inheritance, visitor-control visibility, explicit overrides, URL state, filtering, sorting, link controls, timezone, month view, settings screen, and key-retention smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
 	remove_filter( 'memml_calendar_today', $today_filter, 10 );

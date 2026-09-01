@@ -51,7 +51,7 @@ const ListStyleControl = ( { value, onChange } ) => (
 
 const SubscribeControl = ( { value, onChange } ) => (
 	<SelectControl
-		label={ __( 'Subscribe links', 'memml' ) }
+		label={ __( 'Subscription row', 'memml' ) }
 		help={ __(
 			'Google Calendar, Apple / Outlook, and RSS subscription links above the calendar.',
 			'memml'
@@ -64,6 +64,101 @@ const SubscribeControl = ( { value, onChange } ) => (
 		] }
 		onChange={ onChange }
 	/>
+);
+
+const VisitorControl = ( { label, help, value, onChange } ) => (
+	<SelectControl
+		label={ label }
+		help={ help }
+		value={ value }
+		options={ [
+			{ label: __( 'Use site setting', 'memml' ), value: '' },
+			{ label: __( 'Show', 'memml' ), value: 'yes' },
+			{ label: __( 'Hide', 'memml' ), value: 'no' },
+		] }
+		onChange={ onChange }
+	/>
+);
+
+const getContentFields = ( kind ) => {
+	const fields = [
+		{ attribute: 'showImages', label: __( 'Images', 'memml' ) },
+		{
+			attribute: 'showDescriptions',
+			label: __( 'Descriptions', 'memml' ),
+		},
+		{
+			attribute: 'showItemCount',
+			label: __( 'Item count above lists', 'memml' ),
+		},
+		{
+			attribute: 'showDetails',
+			label: __( 'Clickable details dialog', 'memml' ),
+		},
+		{
+			attribute: 'showVenueCost',
+			label: __( 'Venue, location, and cost', 'memml' ),
+		},
+	];
+
+	if ( 'events' !== kind ) {
+		fields.push( {
+			attribute: 'showVolunteerAvailability',
+			label: __( 'Volunteer availability', 'memml' ),
+		} );
+	}
+
+	if ( 'volunteers' !== kind ) {
+		fields.push( {
+			attribute: 'showCancelledEvents',
+			label: __( 'Cancelled events', 'memml' ),
+		} );
+	}
+
+	return fields;
+};
+
+const getActionFields = ( kind ) => {
+	const fields = [];
+
+	if ( 'volunteers' !== kind ) {
+		fields.push(
+			{
+				attribute: 'showRegistration',
+				label: __( 'Registration actions', 'memml' ),
+			},
+			{
+				attribute: 'showOnline',
+				label: __( 'Join online actions', 'memml' ),
+			},
+			{
+				attribute: 'showAddToCalendar',
+				label: __( 'Add-to-calendar actions', 'memml' ),
+			}
+		);
+	}
+
+	fields.push( {
+		attribute: 'showVolunteerSignup',
+		label: __( 'Volunteer signup actions', 'memml' ),
+	} );
+
+	return fields;
+};
+
+const VisibilityPanel = ( { attributes, setAttributes, fields, title } ) => (
+	<PanelBody title={ title }>
+		{ fields.map( ( field ) => (
+			<VisitorControl
+				key={ field.attribute }
+				label={ field.label }
+				value={ attributes[ field.attribute ] }
+				onChange={ ( value ) =>
+					setAttributes( { [ field.attribute ]: value } )
+				}
+			/>
+		) ) }
+	</PanelBody>
 );
 
 const PeriodControl = ( { value, onChange } ) => (
@@ -205,6 +300,8 @@ const CalendarPreview = ( { name, attributes, icon, label } ) => {
 
 const createFeedEdit = ( metadata, icon, label ) =>
 	function FeedEdit( { attributes, setAttributes } ) {
+		const kind = 'memml/events' === metadata.name ? 'events' : 'volunteers';
+
 		return (
 			<>
 				<InspectorControls>
@@ -229,12 +326,6 @@ const createFeedEdit = ( metadata, icon, label ) =>
 							value={ attributes.limit }
 							onChange={ ( limit ) => setAttributes( { limit } ) }
 						/>
-						<SubscribeControl
-							value={ attributes.subscribe }
-							onChange={ ( subscribe ) =>
-								setAttributes( { subscribe } )
-							}
-						/>
 						<UrlKeyControl
 							value={ attributes.urlKey }
 							onChange={ ( urlKey ) =>
@@ -242,6 +333,48 @@ const createFeedEdit = ( metadata, icon, label ) =>
 							}
 						/>
 					</PanelBody>
+					<PanelBody title={ __( 'Visitor controls', 'memml' ) }>
+						<VisitorControl
+							label={ __( 'List/Month switcher', 'memml' ) }
+							help={ __(
+								'When hidden, the initially selected view stays fixed.',
+								'memml'
+							) }
+							value={ attributes.layoutSwitcher }
+							onChange={ ( layoutSwitcher ) =>
+								setAttributes( { layoutSwitcher } )
+							}
+						/>
+						<VisitorControl
+							label={ __( 'Upcoming/Past switcher', 'memml' ) }
+							help={ __(
+								'When hidden, the initially selected list filter stays fixed.',
+								'memml'
+							) }
+							value={ attributes.periodSwitcher }
+							onChange={ ( periodSwitcher ) =>
+								setAttributes( { periodSwitcher } )
+							}
+						/>
+						<SubscribeControl
+							value={ attributes.subscribe }
+							onChange={ ( subscribe ) =>
+								setAttributes( { subscribe } )
+							}
+						/>
+					</PanelBody>
+					<VisibilityPanel
+						attributes={ attributes }
+						setAttributes={ setAttributes }
+						fields={ getContentFields( kind ) }
+						title={ __( 'Content', 'memml' ) }
+					/>
+					<VisibilityPanel
+						attributes={ attributes }
+						setAttributes={ setAttributes }
+						fields={ getActionFields( kind ) }
+						title={ __( 'Actions', 'memml' ) }
+					/>
 				</InspectorControls>
 				<div { ...useBlockProps() }>
 					<CalendarPreview
@@ -288,15 +421,62 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 					value={ attributes.limit }
 					onChange={ ( limit ) => setAttributes( { limit } ) }
 				/>
-				<SubscribeControl
-					value={ attributes.subscribe }
-					onChange={ ( subscribe ) => setAttributes( { subscribe } ) }
-				/>
 				<UrlKeyControl
 					value={ attributes.urlKey }
 					onChange={ ( urlKey ) => setAttributes( { urlKey } ) }
 				/>
 			</PanelBody>
+			<PanelBody title={ __( 'Visitor controls', 'memml' ) }>
+				<VisitorControl
+					label={ __( 'Events/Volunteer switcher', 'memml' ) }
+					help={ __(
+						'When hidden, the initially selected calendar stays fixed.',
+						'memml'
+					) }
+					value={ attributes.calendarSwitcher }
+					onChange={ ( calendarSwitcher ) =>
+						setAttributes( { calendarSwitcher } )
+					}
+				/>
+				<VisitorControl
+					label={ __( 'List/Month switcher', 'memml' ) }
+					help={ __(
+						'When hidden, the initially selected view stays fixed.',
+						'memml'
+					) }
+					value={ attributes.layoutSwitcher }
+					onChange={ ( layoutSwitcher ) =>
+						setAttributes( { layoutSwitcher } )
+					}
+				/>
+				<VisitorControl
+					label={ __( 'Upcoming/Past switcher', 'memml' ) }
+					help={ __(
+						'When hidden, the initially selected list filter stays fixed.',
+						'memml'
+					) }
+					value={ attributes.periodSwitcher }
+					onChange={ ( periodSwitcher ) =>
+						setAttributes( { periodSwitcher } )
+					}
+				/>
+				<SubscribeControl
+					value={ attributes.subscribe }
+					onChange={ ( subscribe ) => setAttributes( { subscribe } ) }
+				/>
+			</PanelBody>
+			<VisibilityPanel
+				attributes={ attributes }
+				setAttributes={ setAttributes }
+				fields={ getContentFields( 'calendar' ) }
+				title={ __( 'Content', 'memml' ) }
+			/>
+			<VisibilityPanel
+				attributes={ attributes }
+				setAttributes={ setAttributes }
+				fields={ getActionFields( 'calendar' ) }
+				title={ __( 'Actions', 'memml' ) }
+			/>
 		</InspectorControls>
 		<div { ...useBlockProps() }>
 			<CalendarPreview

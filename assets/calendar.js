@@ -122,7 +122,14 @@
 			};
 
 			const showLayout = function ( layout ) {
-				if ( 'list' !== layout && 'month' !== layout ) {
+				const hasLayout = Array.from( layoutPanels ).some(
+					( panel ) => panel.dataset.memmlLayoutPanel === layout
+				);
+
+				if (
+					( 'list' !== layout && 'month' !== layout ) ||
+					! hasLayout
+				) {
 					return;
 				}
 
@@ -143,7 +150,14 @@
 			};
 
 			const showPeriod = function ( period ) {
-				if ( 'upcoming' !== period && 'past' !== period ) {
+				const hasPeriod = Array.from( periodPanels ).some(
+					( panel ) => panel.dataset.memmlPeriodPanel === period
+				);
+
+				if (
+					( 'upcoming' !== period && 'past' !== period ) ||
+					! hasPeriod
+				) {
 					return;
 				}
 

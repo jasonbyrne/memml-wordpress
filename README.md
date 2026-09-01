@@ -69,16 +69,19 @@ See `assets/calendar.css` for the full list.
 [memml_volunteers]
 ```
 
-Visitors can change the calendar, List/Month layout, Upcoming/Past list filter, and displayed month. Those changes are stored in instance-scoped query parameters so the resulting URL can be shared.
+By default, visitors can change the calendar, List/Month layout, Upcoming/Past
+list filter, and displayed month. Enabled controls use instance-scoped query
+parameters, so the resulting URL can be shared.
 
 Most calendars need no shortcode properties because they inherit **Settings →
-Memml Calendar → Display defaults**. Advanced placements can explicitly set
+Memml Calendar**. Advanced placements can explicitly set
 `calendar` (`events` or `volunteers`), `view` (`list` or `month`), `period`
-(`upcoming` or `past`), `list_style` (`grid` or `rows`), `limit`, and `subscribe`
-(`yes` or `no`):
+(`upcoming` or `past`), `list_style` (`grid` or `rows`), `limit`, `subscribe`,
+`calendar_switcher`, `layout_switcher`, and `period_switcher`. Boolean overrides
+accept `yes` or `no`:
 
 ```text
-[memml_calendar calendar="volunteers" view="list" period="upcoming" list_style="rows" limit="3" subscribe="no" url_key="main"]
+[memml_calendar calendar="volunteers" view="list" period="upcoming" list_style="rows" limit="3" subscribe="no" calendar_switcher="no" layout_switcher="no" period_switcher="no" url_key="main"]
 ```
 
 `limit` caps how many items each list shows, which suits a sidebar or a "next few
@@ -92,10 +95,32 @@ Google Calendar / Apple / Outlook / RSS subscription links shown above the
 calendar (`yes` or `no`).
 
 Site-wide defaults cover the initially selected calendar, initial view, initial
-list filter, list style, maximum list items, and subscribe links. Every matching
-block control offers **Use site setting**. Existing explicit block attributes and
-shortcode properties continue to take precedence, including `limit="0"` for an
-unlimited list.
+list filter, list style, maximum list items, the three visitor switchers, and the
+subscription row. Every matching block control offers **Use site setting**.
+Hiding a switcher fixes the calendar to its configured calendar, view, or list
+filter, omits the unused alternate content, and ignores conflicting visitor
+query parameters. Existing explicit block attributes and shortcode properties
+continue to take precedence, including `limit="0"` for an unlimited list.
+
+The **Content and actions** settings control images, descriptions, list item
+counts, details dialogs, venue/location and cost, volunteer availability,
+cancelled events, registration, Join online, volunteer signup, and
+add-to-calendar actions. All are enabled by default, preserving existing
+calendars. Each block groups the relevant overrides under **Content** and
+**Actions**, with **Use site setting**, **Show**, and **Hide** choices.
+
+Advanced shortcode placements can use `show_images`, `show_descriptions`,
+`show_item_count`, `show_details`, `show_venue_cost`,
+`show_volunteer_availability`, `show_cancelled_events`, `show_registration`,
+`show_online`, `show_volunteer_signup`, and `show_add_to_calendar`. For example:
+
+```text
+[memml_events show_images="no" show_descriptions="no" show_cancelled_events="no" show_registration="yes"]
+```
+
+Hiding cancelled events removes them from both List and Month views. Content
+preferences apply wherever that content is available; for example, row and
+month layouts do not introduce images when images are enabled.
 
 Every item opens a pop-up with its full details — including the complete
 description, which list cards clamp after a few lines — and events offer
@@ -111,7 +136,7 @@ the details pop-up also includes any venue description, website, phone number,
 parking information, and arrival instructions supplied by the feed. Older
 events that only provide a `location` string continue to display that text.
 
-Every control is a real link. The calendar therefore keeps working with
+Every enabled control is a real link. The calendar therefore keeps working with
 JavaScript disabled, and visitors can middle-click or right-click a view to open
 it in a new tab. When JavaScript is available the same click is handled in place,
 without a page load.

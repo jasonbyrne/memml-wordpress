@@ -206,14 +206,28 @@ final class Memml_Settings {
 		$default_limit      = isset( $input['default_limit'] ) ? max( 0, (int) $input['default_limit'] ) : 0;
 
 		return array(
-			'organization_key'   => $organization_key,
-			'base_url'           => $base_url,
-			'default_calendar'   => 'volunteers' === $default_calendar ? 'volunteers' : 'events',
-			'default_view'       => 'month' === $default_view ? 'month' : 'list',
-			'default_period'     => 'past' === $default_period ? 'past' : 'upcoming',
-			'default_list_style' => 'rows' === $default_list_style ? 'rows' : 'grid',
-			'default_limit'      => $default_limit,
-			'subscribe_links'    => ! empty( $input['subscribe_links'] ),
+			'organization_key'            => $organization_key,
+			'base_url'                    => $base_url,
+			'default_calendar'            => 'volunteers' === $default_calendar ? 'volunteers' : 'events',
+			'default_view'                => 'month' === $default_view ? 'month' : 'list',
+			'default_period'              => 'past' === $default_period ? 'past' : 'upcoming',
+			'default_list_style'          => 'rows' === $default_list_style ? 'rows' : 'grid',
+			'default_limit'               => $default_limit,
+			'calendar_switcher'           => ! empty( $input['calendar_switcher'] ),
+			'layout_switcher'             => ! empty( $input['layout_switcher'] ),
+			'period_switcher'             => ! empty( $input['period_switcher'] ),
+			'subscribe_links'             => ! empty( $input['subscribe_links'] ),
+			'show_images'                 => ! empty( $input['show_images'] ),
+			'show_descriptions'           => ! empty( $input['show_descriptions'] ),
+			'show_item_count'             => ! empty( $input['show_item_count'] ),
+			'show_details'                => ! empty( $input['show_details'] ),
+			'show_venue_cost'             => ! empty( $input['show_venue_cost'] ),
+			'show_volunteer_availability' => ! empty( $input['show_volunteer_availability'] ),
+			'show_cancelled_events'       => ! empty( $input['show_cancelled_events'] ),
+			'show_registration'           => ! empty( $input['show_registration'] ),
+			'show_online'                 => ! empty( $input['show_online'] ),
+			'show_volunteer_signup'       => ! empty( $input['show_volunteer_signup'] ),
+			'show_add_to_calendar'        => ! empty( $input['show_add_to_calendar'] ),
 		);
 	}
 
@@ -227,11 +241,26 @@ final class Memml_Settings {
 			return;
 		}
 
-		$options     = self::get_options();
-		$is_refresh  = isset( $_GET['memml-refreshed'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only flag set by an already-verified redirect.
-		$is_ready    = '' !== $options['organization_key'];
-		$feed_client = new Memml_Feed_Client( $options['base_url'] );
-		$feed_urls   = $is_ready ? $feed_client->get_feed_urls( $options['organization_key'] ) : array();
+		$options             = self::get_options();
+		$is_refresh          = isset( $_GET['memml-refreshed'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only flag set by an already-verified redirect.
+		$is_ready            = '' !== $options['organization_key'];
+		$feed_client         = new Memml_Feed_Client( $options['base_url'] );
+		$feed_urls           = $is_ready ? $feed_client->get_feed_urls( $options['organization_key'] ) : array();
+		$content_preferences = array(
+			'show_images'                 => __( 'Images', 'memml' ),
+			'show_descriptions'           => __( 'Descriptions', 'memml' ),
+			'show_item_count'             => __( 'Item count above lists', 'memml' ),
+			'show_details'                => __( 'Clickable details dialog', 'memml' ),
+			'show_venue_cost'             => __( 'Venue, location, and cost', 'memml' ),
+			'show_volunteer_availability' => __( 'Volunteer availability and “Volunteers needed” status', 'memml' ),
+			'show_cancelled_events'       => __( 'Cancelled events', 'memml' ),
+		);
+		$action_preferences  = array(
+			'show_registration'     => __( 'Registration actions', 'memml' ),
+			'show_online'           => __( 'Join online actions', 'memml' ),
+			'show_volunteer_signup' => __( 'Volunteer signup actions', 'memml' ),
+			'show_add_to_calendar'  => __( 'Add-to-calendar actions', 'memml' ),
+		);
 		?>
 		<div class="wrap memml-settings">
 			<h1><?php echo esc_html__( 'Memml Calendar Settings', 'memml' ); ?></h1>
@@ -351,18 +380,103 @@ final class Memml_Settings {
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php echo esc_html__( 'Subscribe links', 'memml' ); ?></th>
+						<th scope="row"><?php echo esc_html__( 'Visitor toolbar', 'memml' ); ?></th>
 						<td>
-							<label for="memml-subscribe-links">
-								<input
-									id="memml-subscribe-links"
-									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[subscribe_links]"
-									type="checkbox"
-									value="1"
-									<?php checked( ! empty( $options['subscribe_links'] ) ); ?>
-								/>
-								<?php echo esc_html__( 'Offer Google Calendar, Apple / Outlook, and RSS subscription links above each calendar.', 'memml' ); ?>
-							</label>
+							<fieldset>
+								<legend class="screen-reader-text"><?php echo esc_html__( 'Visitor toolbar', 'memml' ); ?></legend>
+								<label for="memml-calendar-switcher">
+									<input
+										id="memml-calendar-switcher"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[calendar_switcher]"
+										type="checkbox"
+										value="1"
+										<?php checked( ! empty( $options['calendar_switcher'] ) ); ?>
+									/>
+									<?php echo esc_html__( 'Let visitors switch between Events and Volunteer Opportunities on the combined calendar.', 'memml' ); ?>
+								</label>
+								<br />
+								<label for="memml-layout-switcher">
+									<input
+										id="memml-layout-switcher"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[layout_switcher]"
+										type="checkbox"
+										value="1"
+										<?php checked( ! empty( $options['layout_switcher'] ) ); ?>
+									/>
+									<?php echo esc_html__( 'Let visitors switch between List and Month.', 'memml' ); ?>
+								</label>
+								<br />
+								<label for="memml-period-switcher">
+									<input
+										id="memml-period-switcher"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[period_switcher]"
+										type="checkbox"
+										value="1"
+										<?php checked( ! empty( $options['period_switcher'] ) ); ?>
+									/>
+									<?php echo esc_html__( 'Let visitors switch between Upcoming and Past in List view.', 'memml' ); ?>
+								</label>
+								<br />
+								<label for="memml-subscribe-links">
+									<input
+										id="memml-subscribe-links"
+										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[subscribe_links]"
+										type="checkbox"
+										value="1"
+										<?php checked( ! empty( $options['subscribe_links'] ) ); ?>
+									/>
+									<?php echo esc_html__( 'Show the subscription row with Google Calendar, Apple / Outlook, and RSS links.', 'memml' ); ?>
+								</label>
+							</fieldset>
+							<p class="description"><?php echo esc_html__( 'When a switcher is hidden, the initial calendar, view, or list filter above stays fixed.', 'memml' ); ?></p>
+						</td>
+					</tr>
+				</table>
+				<h2><?php echo esc_html__( 'Content and actions', 'memml' ); ?></h2>
+				<p class="description">
+					<?php echo esc_html__( 'Choose the information and actions calendars show. Blocks can use these site settings or make an intentional exception.', 'memml' ); ?>
+				</p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Content', 'memml' ); ?></th>
+						<td>
+							<fieldset>
+								<legend class="screen-reader-text"><?php echo esc_html__( 'Visible calendar content', 'memml' ); ?></legend>
+								<?php foreach ( $content_preferences as $name => $label ) : ?>
+									<label for="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>">
+										<input
+											id="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>"
+											name="<?php echo esc_attr( self::OPTION_NAME ); ?>[<?php echo esc_attr( $name ); ?>]"
+											type="checkbox"
+											value="1"
+											<?php checked( ! empty( $options[ $name ] ) ); ?>
+										/>
+										<?php echo esc_html( $label ); ?>
+									</label>
+									<br />
+								<?php endforeach; ?>
+							</fieldset>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><?php echo esc_html__( 'Actions', 'memml' ); ?></th>
+						<td>
+							<fieldset>
+								<legend class="screen-reader-text"><?php echo esc_html__( 'Visible calendar actions', 'memml' ); ?></legend>
+								<?php foreach ( $action_preferences as $name => $label ) : ?>
+									<label for="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>">
+										<input
+											id="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>"
+											name="<?php echo esc_attr( self::OPTION_NAME ); ?>[<?php echo esc_attr( $name ); ?>]"
+											type="checkbox"
+											value="1"
+											<?php checked( ! empty( $options[ $name ] ) ); ?>
+										/>
+										<?php echo esc_html( $label ); ?>
+									</label>
+									<br />
+								<?php endforeach; ?>
+							</fieldset>
 						</td>
 					</tr>
 				</table>
@@ -536,14 +650,28 @@ final class Memml_Settings {
 	 */
 	private static function get_defaults() {
 		return array(
-			'organization_key'   => '',
-			'base_url'           => Memml_Feed_Client::DEFAULT_BASE_URL,
-			'default_calendar'   => 'events',
-			'default_view'       => 'list',
-			'default_period'     => 'upcoming',
-			'default_list_style' => 'grid',
-			'default_limit'      => 0,
-			'subscribe_links'    => true,
+			'organization_key'            => '',
+			'base_url'                    => Memml_Feed_Client::DEFAULT_BASE_URL,
+			'default_calendar'            => 'events',
+			'default_view'                => 'list',
+			'default_period'              => 'upcoming',
+			'default_list_style'          => 'grid',
+			'default_limit'               => 0,
+			'calendar_switcher'           => true,
+			'layout_switcher'             => true,
+			'period_switcher'             => true,
+			'subscribe_links'             => true,
+			'show_images'                 => true,
+			'show_descriptions'           => true,
+			'show_item_count'             => true,
+			'show_details'                => true,
+			'show_venue_cost'             => true,
+			'show_volunteer_availability' => true,
+			'show_cancelled_events'       => true,
+			'show_registration'           => true,
+			'show_online'                 => true,
+			'show_volunteer_signup'       => true,
+			'show_add_to_calendar'        => true,
 		);
 	}
 }

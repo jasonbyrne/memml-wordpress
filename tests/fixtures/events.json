@@ -92,6 +92,26 @@
       "ctaLabel": null,
       "meetingUrl": null,
       "volunteerSignupUrl": null
+    },
+    {
+      "id": "evt_01JCANCELLED",
+      "uid": "evt_01JCANCELLED@memml.com",
+      "title": "Cancelled River Walk",
+      "description": "This guided river walk has been cancelled.",
+      "location": "North River Trailhead",
+      "cost": "Free",
+      "status": "cancelled",
+      "startsAt": "2026-10-10T14:00:00.000Z",
+      "endsAt": "2026-10-10T16:00:00.000Z",
+      "allDay": false,
+      "lastModified": "2026-08-25T15:30:00.000Z",
+      "url": "https://memml.com/river-city-neighbors/events/cancelled-river-walk",
+      "imageUrl": "https://cdn.memml.com/events/cancelled-river-walk.jpg",
+      "icsUrl": "https://memml.com/api/public/v1/river-city-neighbors/events/evt_01JCANCELLED.ics",
+      "publicEventUrl": "https://rivercityneighbors.example/register/river-walk",
+      "ctaLabel": "Register",
+      "meetingUrl": "https://meet.example/cancelled-river-walk",
+      "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/cancelled-river-walk"
     }
   ]
 }

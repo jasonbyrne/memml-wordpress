@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.3
+Stable tag: 0.4.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -18,25 +18,40 @@ does not store Memml credentials.
 
 Choose the calendar that belongs on each page:
 
-* Use the Memml Calendar block or `[memml_calendar]` shortcode to let visitors switch calendars and display views.
-* Use the Memml Events block or `[memml_events]` shortcode for general events with a List/Month switcher.
-* Use the Memml Volunteers block or `[memml_volunteers]` shortcode for volunteer opportunities with a List/Month switcher.
+* Use the Memml Calendar block or `[memml_calendar]` shortcode for events and volunteer opportunities, with visitor switchers enabled by default.
+* Use the Memml Events block or `[memml_events]` shortcode for general events.
+* Use the Memml Volunteers block or `[memml_volunteers]` shortcode for volunteer opportunities.
 
 Settings > Memml Calendar > Display defaults controls the initially selected
 calendar, initial List or Month view, initial Upcoming or Past filter, list style,
-maximum list items, and subscribe links. Blocks offer Use site setting for every
-matching preference, and shortcodes inherit the site settings when properties are
-omitted.
+maximum list items, the visitor switchers, and the subscription row. Blocks offer
+Use site setting for every matching preference, and shortcodes inherit the site
+settings when properties are omitted.
+
+The Content and actions section controls images, descriptions, list item counts,
+details pop-ups, venue/location and cost, volunteer availability, cancelled
+events, registration, Join online, volunteer signup, and add-to-calendar actions.
+These preferences are enabled by default. Each block groups its relevant
+overrides under Content and Actions and offers Use site setting, Show, and Hide.
 
 For an intentional exception, set block controls or shortcode properties such as
-`[memml_calendar calendar="volunteers" view="list" period="upcoming" list_style="rows" limit="3" subscribe="no" url_key="main"]`.
+`[memml_calendar calendar="volunteers" view="list" period="upcoming" list_style="rows" limit="3" subscribe="no" calendar_switcher="no" layout_switcher="no" period_switcher="no" url_key="main"]`.
 Explicit values continue to take precedence over site settings. A `limit` of 0
 shows every item, while Month view always shows every item.
 
 Set the block's List style setting, or the shortcode `list_style="rows"` property,
 to stack compact full-width items instead of the card grid. Subscription links
 (Google Calendar, Apple / Outlook, RSS) can be controlled with the block's
-Subscribe links setting or the `subscribe` property.
+Subscription row setting or the `subscribe` property. The block's Visitor
+controls panel can also show or hide the List/Month, Upcoming/Past, and combined
+calendar switchers. Shortcodes use `layout_switcher`, `period_switcher`, and
+`calendar_switcher` with `yes` or `no`.
+Advanced shortcodes can also set `show_images`, `show_descriptions`,
+`show_item_count`, `show_details`, `show_venue_cost`,
+`show_volunteer_availability`, `show_cancelled_events`, `show_registration`,
+`show_online`, `show_volunteer_signup`, and `show_add_to_calendar` to `yes` or
+`no`. For example, `[memml_events show_images="no" show_cancelled_events="no"]`
+hides event images and removes cancelled events from both List and Month views.
 Clicking an item opens its full details in a pop-up, and events offer per-event
 Apple / Outlook and Google add-to-calendar links. Current and upcoming events
 also show a Join online action when the feed supplies an online meeting URL.
@@ -50,13 +65,15 @@ visitors get, so layouts and filters can be checked without leaving the post.
 
 Set `calendar="volunteers"` on `[memml_calendar]` when volunteer opportunities should
 be selected first. Set `view="month"` on any shortcode when Month should be selected
-first. These properties set the initial selections; visitors can change them.
+first. These properties set the initial selections; visitors can change them
+when the matching switcher is enabled. When a switcher is hidden, the selected
+state stays fixed and conflicting query parameters are ignored.
 In List view, visitors can choose Upcoming or Past. The site setting controls the
 initial selection; set `period="past"` for an explicit shortcode exception. Dates
 and sorting use the organization's timezone. Upcoming is oldest-first from today
 onward, while Past is newest-first.
 
-Every visitor control is a real link, so the calendar keeps working when
+Every enabled visitor control is a real link, so the calendar keeps working when
 JavaScript is unavailable and views can be opened in a new tab. When JavaScript is
 available the same click is handled in place, without a page load.
 
@@ -117,8 +134,9 @@ Yes. Each page can use the events block, the volunteers block, or both.
 
 = Can I use a month calendar instead of a list? =
 
-Yes. Visitors can switch between List and Month. The block setting or `view` shortcode
-property controls which view they see first.
+Yes. Visitors can switch between List and Month by default. The block setting or
+`view` shortcode property controls which view they see first, and administrators
+can hide the switcher when a calendar should stay in one view.
 
 = How are Upcoming and Past lists determined? =
 
@@ -138,10 +156,22 @@ Past lists; Month view always shows every item.
 
 = Can I link directly to a selected calendar view? =
 
-Yes. The URL updates as visitors change the calendar, layout, or displayed month.
-Copying the current URL preserves those selections for the recipient.
+Yes. The URL updates as visitors use enabled calendar, layout, list-filter, or
+month controls. Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.4.4 =
+
+* Added site-wide visitor-toolbar preferences, with inherited block controls,
+  for the calendar, List/Month, and Upcoming/Past switchers and subscription row.
+  Hidden switchers now keep their configured state fixed.
+* Added site-wide and per-block visibility preferences for images, descriptions,
+  item counts, details, venue and cost, volunteer availability, cancelled events,
+  registration, Join online, volunteer signup, and add-to-calendar actions.
+* Added matching advanced shortcode properties. Existing calendars keep all
+  content, actions, and visitor controls enabled unless an administrator hides
+  them, and explicit block or shortcode values continue to take precedence.
 
 = 0.4.3 =
 

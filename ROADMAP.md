@@ -52,9 +52,9 @@ should show shortcodes without properties.
 | ID | Milestone | Status | Outcome |
 | --- | --- | --- | --- |
 | RM-001 | 0.5 Admin-first controls | **DONE** | Complete the site-wide display defaults and inheritance model. |
-| RM-002 | 0.5 Admin-first controls | **NEXT** | Let administrators choose which visitor controls are available. |
-| RM-003 | 0.5 Admin-first controls | **PLANNED** | Add practical content and action visibility preferences. |
-| RM-004 | 0.5 Admin-first controls | **PLANNED** | Reorganize settings and add a live calendar preview. |
+| RM-002 | 0.5 Admin-first controls | **DONE** | Let administrators choose which visitor controls are available. |
+| RM-003 | 0.5 Admin-first controls | **DONE** | Add practical content and action visibility preferences. |
+| RM-004 | 0.5 Admin-first controls | **NEXT** | Reorganize settings and add a live calendar preview. |
 | RM-005 | 0.5 Admin-first controls | **PLANNED** | Add a small set of safe appearance presets. |
 | RM-006 | 0.6 Reliability | **PLANNED** | Show clear feed health and targeted refresh controls. |
 | RM-007 | 0.6 Reliability | **PLANNED** | Add useful, customizable empty states and calls to action. |
@@ -93,7 +93,9 @@ are all updated.
 
 ### RM-002 — Control the visitor toolbar
 
-**Status:** NEXT
+**Status:** DONE
+
+**Completed:** 2026-09-01
 
 Add admin defaults, with block overrides, for:
 
@@ -107,7 +109,9 @@ practical. Preserve accessible links and shareable state for enabled controls.
 
 ### RM-003 — Control visible content and actions
 
-**Status:** PLANNED
+**Status:** DONE
+
+**Completed:** 2026-09-01
 
 Start with the controls most likely to simplify a small organization's calendar:
 
@@ -125,7 +129,7 @@ settings screen into a template builder.
 
 ### RM-004 — Improve settings information architecture and preview
 
-**Status:** PLANNED
+**Status:** NEXT
 
 Organize the admin experience into clear sections:
 

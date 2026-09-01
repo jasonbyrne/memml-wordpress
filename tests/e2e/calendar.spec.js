@@ -60,6 +60,24 @@ test( 'applies independently scoped direct-link parameters', async ( {
 	await expect( sidebar ).toHaveAttribute( 'data-period', 'past' );
 } );
 
+test( 'keeps hidden visitor controls fixed when an old URL requests another state', async ( {
+	page,
+} ) => {
+	await page.goto(
+		'/tests/e2e/fixture.html?memml_fixed_calendar=volunteers&memml_fixed_view=month&memml_fixed_period=past'
+	);
+
+	const fixed = page.locator( '[data-memml-url-prefix="memml_fixed_"]' );
+
+	await expect( fixed ).toHaveAttribute( 'data-calendar', 'events' );
+	await expect( fixed ).toHaveAttribute( 'data-layout', 'list' );
+	await expect( fixed ).toHaveAttribute( 'data-period', 'upcoming' );
+	await expect( fixed.getByText( 'Fixed upcoming event' ) ).toBeVisible();
+	await expect( fixed.locator( '[data-memml-view]' ) ).toHaveCount( 0 );
+	await expect( fixed.locator( '[data-memml-layout]' ) ).toHaveCount( 0 );
+	await expect( fixed.locator( '[data-memml-period]' ) ).toHaveCount( 0 );
+} );
+
 test( 'opens an item’s full details in a modal dialog', async ( { page } ) => {
 	await page.goto( '/tests/e2e/fixture.html' );
 

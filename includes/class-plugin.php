@@ -148,15 +148,18 @@ final class Memml_Plugin {
 	 * @return string
 	 */
 	public function render_calendar_block( $attributes ) {
-		$calendar   = isset( $attributes['calendar'] ) ? $attributes['calendar'] : '';
-		$layout     = isset( $attributes['view'] ) ? $attributes['view'] : '';
-		$period     = isset( $attributes['period'] ) ? $attributes['period'] : '';
-		$url_key    = isset( $attributes['urlKey'] ) ? $attributes['urlKey'] : '';
-		$limit      = isset( $attributes['limit'] ) ? $attributes['limit'] : '';
-		$list_style = isset( $attributes['listStyle'] ) ? $attributes['listStyle'] : '';
-		$subscribe  = isset( $attributes['subscribe'] ) ? $attributes['subscribe'] : null;
+		$calendar          = isset( $attributes['calendar'] ) ? $attributes['calendar'] : '';
+		$layout            = isset( $attributes['view'] ) ? $attributes['view'] : '';
+		$period            = isset( $attributes['period'] ) ? $attributes['period'] : '';
+		$url_key           = isset( $attributes['urlKey'] ) ? $attributes['urlKey'] : '';
+		$limit             = isset( $attributes['limit'] ) ? $attributes['limit'] : '';
+		$list_style        = isset( $attributes['listStyle'] ) ? $attributes['listStyle'] : '';
+		$subscribe         = isset( $attributes['subscribe'] ) ? $attributes['subscribe'] : null;
+		$layout_switcher   = isset( $attributes['layoutSwitcher'] ) ? $attributes['layoutSwitcher'] : null;
+		$period_switcher   = isset( $attributes['periodSwitcher'] ) ? $attributes['periodSwitcher'] : null;
+		$calendar_switcher = isset( $attributes['calendarSwitcher'] ) ? $attributes['calendarSwitcher'] : null;
 
-		return $this->renderer->render_calendar( $calendar, $layout, $period, $url_key, $limit, $list_style, $subscribe );
+		return $this->renderer->render_calendar( $calendar, $layout, $period, $url_key, $limit, $list_style, $subscribe, $layout_switcher, $period_switcher, $calendar_switcher, $attributes );
 	}
 
 	/**
@@ -168,13 +171,27 @@ final class Memml_Plugin {
 	public function render_calendar_shortcode( $attributes ) {
 		$attributes = shortcode_atts(
 			array(
-				'calendar'   => '',
-				'limit'      => '',
-				'list_style' => '',
-				'period'     => '',
-				'subscribe'  => '',
-				'url_key'    => '',
-				'view'       => '',
+				'calendar'                    => '',
+				'calendar_switcher'           => '',
+				'layout_switcher'             => '',
+				'limit'                       => '',
+				'list_style'                  => '',
+				'period'                      => '',
+				'period_switcher'             => '',
+				'show_add_to_calendar'        => '',
+				'show_cancelled_events'       => '',
+				'show_descriptions'           => '',
+				'show_details'                => '',
+				'show_images'                 => '',
+				'show_item_count'             => '',
+				'show_online'                 => '',
+				'show_registration'           => '',
+				'show_venue_cost'             => '',
+				'show_volunteer_availability' => '',
+				'show_volunteer_signup'       => '',
+				'subscribe'                   => '',
+				'url_key'                     => '',
+				'view'                        => '',
 			),
 			is_array( $attributes ) ? $attributes : array(),
 			'memml_calendar'
@@ -187,7 +204,11 @@ final class Memml_Plugin {
 			$attributes['url_key'],
 			$attributes['limit'],
 			$attributes['list_style'],
-			$attributes['subscribe']
+			$attributes['subscribe'],
+			$attributes['layout_switcher'],
+			$attributes['period_switcher'],
+			$attributes['calendar_switcher'],
+			$attributes
 		);
 	}
 }
