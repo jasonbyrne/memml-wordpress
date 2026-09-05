@@ -31,7 +31,15 @@
       "publicEventUrl": "https://rivercityneighbors.example/register/school-supply-drive",
       "ctaLabel": "Register",
       "meetingUrl": "https://meet.example/school-supply-drive",
-      "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/school-supply-drive"
+      "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/school-supply-drive",
+      "rsvp": {
+        "canRegister": true,
+        "full": false,
+        "capacityLabel": "Spots available",
+        "remaining": null,
+        "cutoff": null,
+        "url": "https://memml.com/calendar/river-city-neighbors/evt_01JPASTLATER/rsvp"
+      }
     },
     {
       "id": "evt_01JPASTEARLIER",
@@ -51,14 +59,15 @@
       "publicEventUrl": null,
       "ctaLabel": null,
       "meetingUrl": null,
-      "volunteerSignupUrl": null
+      "volunteerSignupUrl": null,
+      "rsvp": null
     },
     {
       "id": "evt_01JTESTEVENT",
       "uid": "evt_01JTESTEVENT@memml.com",
       "title": "Riverside Cleanup",
       "description": "Bring gloves and comfortable shoes. All ages are welcome.",
-      "location": "Riverside Park, 100 River Road",
+      "location": "Riverside Park — 100 River Road, River City, OH 43000, US",
       "cost": null,
       "status": "scheduled",
       "startsAt": "2026-09-12T13:00:00.000Z",
@@ -71,7 +80,32 @@
       "publicEventUrl": "https://rivercityneighbors.example/register/cleanup",
       "ctaLabel": "Register",
       "meetingUrl": "https://meet.example/riverside-cleanup",
-      "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/riverside-cleanup"
+      "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/riverside-cleanup",
+      "rsvp": {
+        "canRegister": true,
+        "full": false,
+        "capacityLabel": "3 spots remaining",
+        "remaining": 3,
+        "cutoff": "2026-09-11T03:59:00.000Z",
+        "url": "https://memml.com/calendar/river-city-neighbors/evt_01JTESTEVENT/rsvp"
+      },
+      "locationMode": "venues",
+      "venues": [
+        {
+          "name": "Riverside Park",
+          "description": null,
+          "streetAddress": "100 River Road",
+          "streetAddress2": null,
+          "city": "River City",
+          "stateCode": "OH",
+          "postalCode": "43000",
+          "countryCode": "US",
+          "websiteUrl": null,
+          "phone": null,
+          "parkingInformation": "Park in the north lot.",
+          "arrivalInstructions": null
+        }
+      ]
     },
     {
       "id": "evt_01JPOSTPONED",
@@ -91,7 +125,8 @@
       "publicEventUrl": null,
       "ctaLabel": null,
       "meetingUrl": null,
-      "volunteerSignupUrl": null
+      "volunteerSignupUrl": null,
+      "rsvp": null
     },
     {
       "id": "evt_01JCANCELLED",
@@ -111,7 +146,8 @@
       "publicEventUrl": "https://rivercityneighbors.example/register/river-walk",
       "ctaLabel": "Register",
       "meetingUrl": "https://meet.example/cancelled-river-walk",
-      "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/cancelled-river-walk"
+      "volunteerSignupUrl": "https://memml.com/river-city-neighbors/volunteer/cancelled-river-walk",
+      "rsvp": null
     }
   ]
 }

@@ -224,10 +224,12 @@ final class Memml_Settings {
 			'show_venue_cost'             => ! empty( $input['show_venue_cost'] ),
 			'show_volunteer_availability' => ! empty( $input['show_volunteer_availability'] ),
 			'show_cancelled_events'       => ! empty( $input['show_cancelled_events'] ),
+			'show_rsvp'                   => ! empty( $input['show_rsvp'] ),
 			'show_registration'           => ! empty( $input['show_registration'] ),
 			'show_online'                 => ! empty( $input['show_online'] ),
 			'show_volunteer_signup'       => ! empty( $input['show_volunteer_signup'] ),
 			'show_add_to_calendar'        => ! empty( $input['show_add_to_calendar'] ),
+			'show_event_page'             => ! empty( $input['show_event_page'] ),
 		);
 	}
 
@@ -256,10 +258,12 @@ final class Memml_Settings {
 			'show_cancelled_events'       => __( 'Cancelled events', 'memml' ),
 		);
 		$action_preferences  = array(
+			'show_rsvp'             => __( 'RSVP actions', 'memml' ),
 			'show_registration'     => __( 'Registration actions', 'memml' ),
 			'show_online'           => __( 'Join online actions', 'memml' ),
 			'show_volunteer_signup' => __( 'Volunteer signup actions', 'memml' ),
 			'show_add_to_calendar'  => __( 'Add-to-calendar actions', 'memml' ),
+			'show_event_page'       => __( 'View event page links', 'memml' ),
 		);
 		?>
 		<div class="wrap memml-settings">
@@ -668,10 +672,12 @@ final class Memml_Settings {
 			'show_venue_cost'             => true,
 			'show_volunteer_availability' => true,
 			'show_cancelled_events'       => true,
+			'show_rsvp'                   => true,
 			'show_registration'           => true,
 			'show_online'                 => true,
 			'show_volunteer_signup'       => true,
 			'show_add_to_calendar'        => true,
+			'show_event_page'             => true,
 		);
 	}
 }

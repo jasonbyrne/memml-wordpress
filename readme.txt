@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.4
+Stable tag: 0.4.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -30,8 +30,8 @@ settings when properties are omitted.
 
 The Content and actions section controls images, descriptions, list item counts,
 details pop-ups, venue/location and cost, volunteer availability, cancelled
-events, registration, Join online, volunteer signup, and add-to-calendar actions.
-These preferences are enabled by default. Each block groups its relevant
+events, RSVP, registration, Join online, volunteer signup, add-to-calendar
+actions, and View event page links. These preferences are enabled by default. Each block groups its relevant
 overrides under Content and Actions and offers Use site setting, Show, and Hide.
 
 For an intentional exception, set block controls or shortcode properties such as
@@ -48,13 +48,20 @@ calendar switchers. Shortcodes use `layout_switcher`, `period_switcher`, and
 `calendar_switcher` with `yes` or `no`.
 Advanced shortcodes can also set `show_images`, `show_descriptions`,
 `show_item_count`, `show_details`, `show_venue_cost`,
-`show_volunteer_availability`, `show_cancelled_events`, `show_registration`,
-`show_online`, `show_volunteer_signup`, and `show_add_to_calendar` to `yes` or
-`no`. For example, `[memml_events show_images="no" show_cancelled_events="no"]`
+`show_volunteer_availability`, `show_cancelled_events`, `show_rsvp`,
+`show_registration`, `show_online`, `show_volunteer_signup`,
+`show_add_to_calendar`, and `show_event_page` to `yes` or `no`. For example, `[memml_events show_images="no" show_cancelled_events="no"]`
 hides event images and removes cancelled events from both List and Month views.
 Clicking an item opens its full details in a pop-up, and events offer per-event
 Apple / Outlook and Google add-to-calendar links. Current and upcoming events
 also show a Join online action when the feed supplies an online meeting URL.
+When an organizer advertises RSVP in Memml, upcoming events show an RSVP button
+that links to the Memml RSVP page, with the organizer's capacity wording beside
+it; once RSVPs are closed or full, a status is shown instead. The pop-up also
+names an explicit RSVP deadline when the organizer set one. Cancelled events
+keep their calendar and event page links but omit sign-up actions. Every event
+also offers a View event page link to its Memml event page, and that link is
+kept for past events so there is always a path to the full details.
 Events with structured venue data show the venue name and address separately,
 link complete addresses to Google Maps, and include any supplied venue contact,
 parking, and arrival details in the pop-up. Legacy location text remains fully
@@ -160,6 +167,24 @@ Yes. The URL updates as visitors use enabled calendar, layout, list-filter, or
 month controls. Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.4.5 =
+
+* Added RSVP actions from Memml's public events feed: an RSVP button with the
+  organizer's capacity wording while RSVPs are open, a Full or RSVP closed
+  status once they are not, and the RSVP deadline in the details pop-up.
+* Added a View event page link to every event's Memml page, kept for past
+  events so there is always a path to the full details. Both are site-wide
+  action preferences with block overrides and `show_rsvp` / `show_event_page`
+  shortcode properties, enabled by default.
+* Polished the rows list style so items with different content share one
+  shape: stacked when/where/cost lines, structured venues on one line,
+  add-to-calendar links under the description, and a fixed-width right-hand
+  column for the status badge, calls to action, and event page link.
+* Cost now displays as a small tag, and the details pop-up separates its
+  actions from the description.
+* Cancelled events no longer show RSVP, registration, Join online, or volunteer
+  actions.
 
 = 0.4.4 =
 

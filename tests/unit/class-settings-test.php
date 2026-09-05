@@ -119,10 +119,12 @@ final class Memml_Settings_Test extends TestCase {
 				'show_venue_cost'             => '1',
 				'show_volunteer_availability' => '1',
 				'show_cancelled_events'       => '1',
+				'show_rsvp'                   => '1',
 				'show_registration'           => '1',
 				'show_online'                 => '1',
 				'show_volunteer_signup'       => '1',
 				'show_add_to_calendar'        => '1',
+				'show_event_page'             => '1',
 			)
 		);
 

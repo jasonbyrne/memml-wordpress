@@ -212,10 +212,12 @@ final class Memml_Renderer_Test extends TestCase {
 						'show_venue_cost'             => false,
 						'show_volunteer_availability' => false,
 						'show_cancelled_events'       => false,
+						'show_rsvp'                   => false,
 						'show_registration'           => false,
 						'show_online'                 => false,
 						'show_volunteer_signup'       => false,
 						'show_add_to_calendar'        => false,
+						'show_event_page'             => false,
 					);
 				}
 
@@ -558,8 +560,13 @@ final class Memml_Renderer_Test extends TestCase {
 			'meetingUrl' => 'https://meet.example/undated-cleanup',
 		);
 
+		$past_actions = $this->call_renderer( 'render_event_actions', $past, $timezone );
+
 		$this->assertSame( '', $this->call_renderer( 'render_volunteer_actions', $past, $timezone ) );
-		$this->assertSame( '', $this->call_renderer( 'render_event_actions', $past, $timezone ) );
+		$this->assertStringNotContainsString( 'Register', $past_actions );
+		$this->assertStringNotContainsString( 'Join online', $past_actions );
+		$this->assertStringNotContainsString( '>Volunteer<', $past_actions );
+		$this->assertStringContainsString( 'href="https://memml.com/volunteer/completed-cleanup"', $past_actions );
 		$this->assertSame( '', $this->call_renderer( 'render_event_actions', $undated, $timezone ) );
 		$this->assertStringContainsString( 'Volunteer', $this->call_renderer( 'render_volunteer_actions', $future, $timezone ) );
 		$future_actions  = $this->call_renderer( 'render_event_actions', $future, $timezone );
@@ -599,6 +606,282 @@ final class Memml_Renderer_Test extends TestCase {
 		$this->assertStringContainsString( 'Join online', $actions );
 		$this->assertStringNotContainsString( '>Volunteer<', $actions );
 		$this->assertStringNotContainsString( 'Add to calendar:', $actions );
+	}
+
+	/**
+	 * An open RSVP renders a primary action with the organizer's capacity wording.
+	 *
+	 * @return void
+	 */
+	public function test_open_rsvp_renders_primary_action_with_capacity() {
+		$event   = array(
+			'title'     => 'Fall General Meeting',
+			'status'    => 'scheduled',
+			'eventDate' => '2099-01-01',
+			'url'       => 'https://memml.com/calendar/org/evt-1',
+			'rsvp'      => array(
+				'canRegister'   => true,
+				'full'          => false,
+				'capacityLabel' => '3 spots remaining',
+				'remaining'     => 3,
+				'cutoff'        => '2098-12-31T23:59:00.000Z',
+				'url'           => 'https://memml.com/calendar/org/evt-1/rsvp',
+			),
+		);
+		$actions = $this->call_renderer( 'render_event_actions', $event, new DateTimeZone( 'UTC' ) );
+
+		$this->assertStringContainsString( '<a class="memml-calendar__button memml-calendar__button--primary memml-calendar__button--rsvp" href="https://memml.com/calendar/org/evt-1/rsvp">RSVP</a>', $actions );
+		$this->assertStringContainsString( '<span class="memml-calendar__rsvp-note">3 spots remaining</span>', $actions );
+		$this->assertStringNotContainsString( 'RSVP closed', $actions );
+		$this->assertStringContainsString( 'href="https://memml.com/calendar/org/evt-1">View event page</a>', $actions );
+		$this->assertLessThan( strpos( $actions, 'View event page' ), strpos( $actions, '>RSVP<' ) );
+	}
+
+	/**
+	 * The details dialog names an explicit RSVP deadline; cards and an implicit
+	 * cutoff equal to the event start do not.
+	 *
+	 * @return void
+	 */
+	public function test_rsvp_deadline_appears_only_in_details_when_explicit() {
+		$timezone = new DateTimeZone( 'UTC' );
+		$event    = array(
+			'title'    => 'Fall General Meeting',
+			'status'   => 'scheduled',
+			'startsAt' => '2099-09-13T18:00:00.000Z',
+			'rsvp'     => array(
+				'canRegister'   => true,
+				'full'          => false,
+				'capacityLabel' => 'Spots available',
+				'remaining'     => null,
+				'cutoff'        => '2099-09-12T03:59:00.000Z',
+				'url'           => 'https://memml.com/calendar/org/evt-5/rsvp',
+			),
+		);
+		$implicit = $event;
+
+		$implicit['rsvp']['cutoff'] = $event['startsAt'];
+
+		$card    = $this->call_renderer( 'render_event_actions', $event, $timezone );
+		$details = $this->call_renderer( 'render_details', $event, 'events', $timezone, false );
+		$same    = $this->call_renderer( 'render_details', $implicit, 'events', $timezone, false );
+
+		$this->assertStringContainsString( '<span class="memml-calendar__rsvp-note">Spots available</span>', $card );
+		$this->assertStringContainsString( '<span class="memml-calendar__rsvp-note">Spots available · RSVP by 09/12/2099 at 3:59 AM</span>', $details );
+		$this->assertStringNotContainsString( 'RSVP by', $same );
+	}
+
+	/**
+	 * Cancelled events keep their calendar and event page links but drop sign-up actions.
+	 *
+	 * @return void
+	 */
+	public function test_cancelled_events_omit_signup_actions() {
+		$event   = array(
+			'title'              => 'Cancelled walk',
+			'status'             => 'cancelled',
+			'eventDate'          => '2099-01-01',
+			'url'                => 'https://memml.com/calendar/org/evt-6',
+			'icsUrl'             => 'https://memml.com/api/public/v1/org/events/evt-6.ics',
+			'publicEventUrl'     => 'https://events.example/register',
+			'ctaLabel'           => 'Register',
+			'meetingUrl'         => 'https://meet.example/walk',
+			'volunteerSignupUrl' => 'https://memml.com/volunteer/org/walk',
+			'rsvp'               => array(
+				'canRegister' => true,
+				'full'        => false,
+				'url'         => 'https://memml.com/calendar/org/evt-6/rsvp',
+			),
+		);
+		$actions = $this->call_renderer( 'render_event_actions', $event, new DateTimeZone( 'UTC' ) );
+
+		$this->assertStringNotContainsString( 'Register', $actions );
+		$this->assertStringNotContainsString( 'Join online', $actions );
+		$this->assertStringNotContainsString( '>Volunteer<', $actions );
+		$this->assertStringNotContainsString( 'evt-6/rsvp', $actions );
+		$this->assertStringContainsString( 'evt-6.ics', $actions );
+		$this->assertStringContainsString( 'View event page', $actions );
+	}
+
+	/**
+	 * Rows place add-to-calendar links in the body, leaving the aside for actions.
+	 *
+	 * @return void
+	 */
+	public function test_event_row_places_add_to_calendar_links_in_body() {
+		$timezone = new DateTimeZone( 'UTC' );
+		$event    = array(
+			'title'          => 'Riverside Cleanup',
+			'status'         => 'scheduled',
+			'startsAt'       => '2099-09-12T13:00:00.000Z',
+			'endsAt'         => '2099-09-12T16:00:00.000Z',
+			'url'            => 'https://memml.com/calendar/org/evt-7',
+			'icsUrl'         => 'https://memml.com/api/public/v1/org/events/evt-7.ics',
+			'publicEventUrl' => 'https://events.example/register',
+			'ctaLabel'       => 'Register',
+		);
+		$row      = $this->call_renderer( 'render_event_row', $event, $timezone, false );
+		$past_row = $this->call_renderer(
+			'render_event_row',
+			array_merge(
+				$event,
+				array(
+					'startsAt' => '2020-09-12T13:00:00.000Z',
+					'endsAt'   => '2020-09-12T16:00:00.000Z',
+				)
+			),
+			$timezone,
+			true
+		);
+		$body     = substr( $row, 0, strpos( $row, 'memml-calendar__row-aside' ) );
+		$aside    = substr( $row, strpos( $row, 'memml-calendar__row-aside' ), strpos( $row, 'data-memml-details' ) - strpos( $row, 'memml-calendar__row-aside' ) );
+
+		$this->assertStringContainsString( '<div class="memml-calendar__row-links"><span class="memml-calendar__add-links">', $body );
+		$this->assertStringContainsString( 'evt-7.ics', $body );
+		$this->assertStringNotContainsString( 'Add to calendar:', $aside );
+		$this->assertStringContainsString( 'Register', $aside );
+		$this->assertStringContainsString( 'View event page', $aside );
+		$this->assertStringNotContainsString( 'memml-calendar__row-links', $past_row );
+		$this->assertSame( 1, substr_count( substr( $row, 0, strpos( $row, 'data-memml-details' ) ), 'Add to calendar:' ) );
+	}
+
+	/**
+	 * A closed or full RSVP shows a status instead of a link.
+	 *
+	 * @return void
+	 */
+	public function test_closed_rsvp_renders_status_without_link() {
+		$timezone = new DateTimeZone( 'UTC' );
+		$closed   = array(
+			'title'     => 'Closed meeting',
+			'status'    => 'scheduled',
+			'eventDate' => '2099-01-01',
+			'rsvp'      => array(
+				'canRegister'   => false,
+				'full'          => false,
+				'capacityLabel' => null,
+				'remaining'     => null,
+				'cutoff'        => null,
+				'url'           => 'https://memml.com/calendar/org/evt-2/rsvp',
+			),
+		);
+		$full     = $closed;
+
+		$full['rsvp']['full']          = true;
+		$full['rsvp']['capacityLabel'] = 'Full';
+
+		$closed_actions = $this->call_renderer( 'render_event_actions', $closed, $timezone );
+		$full_actions   = $this->call_renderer( 'render_event_actions', $full, $timezone );
+
+		$this->assertStringContainsString( '<span class="memml-calendar__status memml-calendar__status--rsvp-closed">RSVP closed</span>', $closed_actions );
+		$this->assertStringContainsString( '<span class="memml-calendar__status memml-calendar__status--rsvp-closed">Full</span>', $full_actions );
+		$this->assertStringNotContainsString( 'evt-2/rsvp', $closed_actions );
+		$this->assertStringNotContainsString( 'evt-2/rsvp', $full_actions );
+	}
+
+	/**
+	 * RSVP is omitted for events that are past, not scheduled, hidden, or missing feed data.
+	 *
+	 * @return void
+	 */
+	public function test_rsvp_is_omitted_when_not_applicable() {
+		$timezone  = new DateTimeZone( 'UTC' );
+		$rsvp      = array(
+			'canRegister'   => true,
+			'full'          => false,
+			'capacityLabel' => 'Spots available',
+			'remaining'     => null,
+			'cutoff'        => null,
+			'url'           => 'https://memml.com/calendar/org/evt-3/rsvp',
+		);
+		$base      = array(
+			'title'     => 'Cleanup',
+			'status'    => 'scheduled',
+			'eventDate' => '2099-01-01',
+			'rsvp'      => $rsvp,
+		);
+		$past      = array_merge( $base, array( 'eventDate' => '2020-01-01' ) );
+		$hidden    = $this->call_renderer( 'render_event_actions', $base, $timezone, array( 'show_rsvp' => false ) );
+		$null      = $this->call_renderer( 'render_event_actions', array_merge( $base, array( 'rsvp' => null ) ), $timezone );
+		$absent    = $this->call_renderer(
+			'render_event_actions',
+			array(
+				'title'     => 'Legacy',
+				'eventDate' => '2099-01-01',
+			),
+			$timezone
+		);
+		$postponed = $this->call_renderer( 'render_event_actions', array_merge( $base, array( 'status' => 'postponed' ) ), $timezone );
+
+		$this->assertStringNotContainsString( 'evt-3/rsvp', $this->call_renderer( 'render_event_actions', $past, $timezone ) );
+		$this->assertStringNotContainsString( 'evt-3/rsvp', $this->call_renderer( 'render_event_actions', $base, $timezone, array(), true ) );
+		$this->assertStringNotContainsString( 'evt-3/rsvp', $hidden );
+		$this->assertStringNotContainsString( 'RSVP', $hidden );
+		$this->assertSame( '', $null );
+		$this->assertSame( '', $absent );
+		$this->assertStringNotContainsString( 'evt-3/rsvp', $postponed );
+	}
+
+	/**
+	 * The Memml event page link survives past events and can be hidden on its own.
+	 *
+	 * @return void
+	 */
+	public function test_event_page_link_is_kept_for_past_events_and_can_be_hidden() {
+		$timezone = new DateTimeZone( 'UTC' );
+		$event    = array(
+			'title'          => 'Completed picnic',
+			'status'         => 'scheduled',
+			'startsAt'       => '2020-07-05T16:00:00.000Z',
+			'endsAt'         => '2020-07-05T20:00:00.000Z',
+			'url'            => 'https://memml.com/calendar/org/evt-4',
+			'icsUrl'         => 'https://memml.com/api/public/v1/org/events/evt-4.ics',
+			'publicEventUrl' => 'https://events.example/register',
+			'ctaLabel'       => 'Register',
+		);
+
+		$card    = $this->call_renderer( 'render_event_card', $event, $timezone, true );
+		$row     = $this->call_renderer( 'render_event_row', $event, $timezone, true );
+		$details = $this->call_renderer( 'render_details', $event, 'events', $timezone, true );
+		$month   = $this->call_renderer( 'render_month_entry', $event, 'events', $timezone );
+		$hidden  = $this->call_renderer( 'render_event_card', $event, $timezone, true, array( 'show_event_page' => false ) );
+
+		foreach ( array( $card, $row, $details, $month ) as $markup ) {
+			$this->assertStringContainsString( '<span class="memml-calendar__event-page"><a class="memml-calendar__calendar-link memml-calendar__event-page-link" href="https://memml.com/calendar/org/evt-4">View event page</a></span>', $markup );
+			$this->assertStringNotContainsString( 'Register', $markup );
+			$this->assertStringNotContainsString( 'Add to calendar:', $markup );
+			$this->assertStringNotContainsString( 'evt-4.ics', $markup );
+		}
+
+		$this->assertStringNotContainsString( 'View event page', $hidden );
+		$this->assertStringNotContainsString( 'memml-calendar__actions', $hidden );
+	}
+
+	/**
+	 * New action attributes are parsed from block and shortcode spellings.
+	 *
+	 * @return void
+	 */
+	public function test_rsvp_and_event_page_visibility_attributes_are_parsed() {
+		$block     = $this->call_renderer(
+			'get_visibility_from_attributes',
+			array(
+				'showRsvp'      => 'no',
+				'showEventPage' => 'no',
+			)
+		);
+		$shortcode = $this->call_renderer(
+			'get_visibility_from_attributes',
+			array(
+				'show_rsvp'       => 'yes',
+				'show_event_page' => 'no',
+			)
+		);
+
+		$this->assertFalse( $block['show_rsvp'] );
+		$this->assertFalse( $block['show_event_page'] );
+		$this->assertTrue( $shortcode['show_rsvp'] );
+		$this->assertFalse( $shortcode['show_event_page'] );
 	}
 
 	/**

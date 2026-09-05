@@ -89,8 +89,10 @@ events" section. A value of `0` shows every item. Month view always shows every
 item, because a month grid with items missing would misrepresent the calendar.
 
 `list_style` chooses how lists render: `grid` arranges cards in columns; `rows`
-stacks compact full-width items — date chip, details, and actions in one line —
-which suits a narrow column or a text-heavy feed. `subscribe` controls the
+stacks compact full-width items — date chip, then short when/where/cost lines,
+the description, and the add-to-calendar links, with the status badge, calls
+to action, and event page link in a fixed-width right-hand column so they line
+up from row to row — which suits a narrow column or a text-heavy feed. `subscribe` controls the
 Google Calendar / Apple / Outlook / RSS subscription links shown above the
 calendar (`yes` or `no`).
 
@@ -104,15 +106,16 @@ continue to take precedence, including `limit="0"` for an unlimited list.
 
 The **Content and actions** settings control images, descriptions, list item
 counts, details dialogs, venue/location and cost, volunteer availability,
-cancelled events, registration, Join online, volunteer signup, and
-add-to-calendar actions. All are enabled by default, preserving existing
-calendars. Each block groups the relevant overrides under **Content** and
+cancelled events, RSVP, registration, Join online, volunteer signup,
+add-to-calendar actions, and View event page links. All are enabled by
+default, preserving existing calendars. Each block groups the relevant overrides under **Content** and
 **Actions**, with **Use site setting**, **Show**, and **Hide** choices.
 
 Advanced shortcode placements can use `show_images`, `show_descriptions`,
 `show_item_count`, `show_details`, `show_venue_cost`,
-`show_volunteer_availability`, `show_cancelled_events`, `show_registration`,
-`show_online`, `show_volunteer_signup`, and `show_add_to_calendar`. For example:
+`show_volunteer_availability`, `show_cancelled_events`, `show_rsvp`,
+`show_registration`, `show_online`, `show_volunteer_signup`,
+`show_add_to_calendar`, and `show_event_page`. For example:
 
 ```text
 [memml_events show_images="no" show_descriptions="no" show_cancelled_events="no" show_registration="yes"]
@@ -126,9 +129,28 @@ Every item opens a pop-up with its full details — including the complete
 description, which list cards clamp after a few lines — and events offer
 per-event Apple / Outlook and Google add-to-calendar links. When the feed
 supplies an online meeting URL, current and upcoming events also show a
-**Join online** action. Registration, volunteer, online meeting, and
+**Join online** action. RSVP, registration, volunteer, online meeting, and
 add-to-calendar actions are omitted after the event date in the organization's
 timezone.
+
+When an organizer advertises RSVP in Memml, the feed's `rsvp` object drives an
+**RSVP** action that links to the Memml RSVP page. While RSVPs are open the
+action is a primary button, with the organizer's chosen capacity wording beside
+it, such as "Spots available" or "3 spots remaining". Once RSVPs are closed or
+the event is full, the calendar shows a **Full** or **RSVP closed** status
+instead of a link. RSVP can appear alongside a registration link, Join online,
+and volunteer signup when an event offers all of them. The details pop-up also
+names an explicit RSVP deadline, such as "RSVP by September 10, 2026 at 11:59
+pm", when the organizer set one that differs from the event start.
+
+Cancelled events keep their add-to-calendar and event page links but omit RSVP,
+registration, Join online, and volunteer actions, since there is nothing left
+to sign up for.
+
+Every event also carries a **View event page** link to its Memml event page,
+where visitors can read the full record or manage an existing RSVP. Unlike the
+other actions, this link is kept for past events, so there is always a path to
+the Memml event page from cards, rows, month entries, and the details pop-up.
 
 Events with structured venue data show the venue name and formatted address as
 a richer location variant. Complete street addresses link to Google Maps, and

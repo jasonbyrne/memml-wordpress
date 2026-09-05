@@ -32,10 +32,12 @@ final class Memml_Renderer {
 		'show_venue_cost'             => array( 'showVenueCost', 'show_venue_cost' ),
 		'show_volunteer_availability' => array( 'showVolunteerAvailability', 'show_volunteer_availability' ),
 		'show_cancelled_events'       => array( 'showCancelledEvents', 'show_cancelled_events' ),
+		'show_rsvp'                   => array( 'showRsvp', 'show_rsvp' ),
 		'show_registration'           => array( 'showRegistration', 'show_registration' ),
 		'show_online'                 => array( 'showOnline', 'show_online' ),
 		'show_volunteer_signup'       => array( 'showVolunteerSignup', 'show_volunteer_signup' ),
 		'show_add_to_calendar'        => array( 'showAddToCalendar', 'show_add_to_calendar' ),
+		'show_event_page'             => array( 'showEventPage', 'show_event_page' ),
 	);
 
 	/**
@@ -1000,7 +1002,7 @@ final class Memml_Renderer {
 				);
 			}
 
-			$actions = $is_past ? '' : $this->render_event_actions( $item, $timezone, $context );
+			$actions = $this->render_event_actions( $item, $timezone, $context, $is_past );
 		} else {
 			if ( $this->is_visible( $context, 'show_volunteer_availability' ) && isset( $item['spotsRemaining'] ) ) {
 				$spots   = max( 0, (int) $item['spotsRemaining'] );
@@ -1633,7 +1635,7 @@ final class Memml_Renderer {
 			esc_html( $title ),
 			$this->render_event_meta( $event, $timezone, $is_past ? 'full' : 'compact', true, false, $context ),
 			$this->is_visible( $context, 'show_descriptions' ) ? $this->render_description( isset( $event['description'] ) ? $event['description'] : '' ) : '',
-			$is_past ? '' : $this->render_event_actions( $event, $timezone, $context ),
+			$this->render_event_actions( $event, $timezone, $context, $is_past ),
 			$this->render_details( $event, 'events', $timezone, $is_past, $context )
 		);
 	}
@@ -1655,15 +1657,18 @@ final class Memml_Renderer {
 		$status = isset( $event['status'] ) ? (string) $event['status'] : 'scheduled';
 		$status = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
 
+		$add_links = $this->render_add_to_calendar( $event, $context, $is_past );
+
 		return sprintf(
-			'<article class="memml-calendar__row memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__row-body"><h3 class="memml-calendar__title">%3$s</h3><div class="memml-calendar__meta memml-calendar__meta--inline">%4$s</div>%5$s</div><div class="memml-calendar__row-aside">%6$s%7$s</div>%8$s</article>',
+			'<article class="memml-calendar__row memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__row-body"><h3 class="memml-calendar__title">%3$s</h3><div class="memml-calendar__meta memml-calendar__meta--inline">%4$s</div>%5$s%6$s</div><div class="memml-calendar__row-aside">%7$s%8$s</div>%9$s</article>',
 			esc_attr( $status ),
 			$this->render_date_chip( $event, $timezone ),
 			esc_html( $title ),
 			$this->render_event_meta( $event, $timezone, $is_past ? 'full' : 'compact', false, false, $context ),
 			$this->is_visible( $context, 'show_descriptions' ) ? $this->render_description( isset( $event['description'] ) ? $event['description'] : '' ) : '',
+			'' === $add_links ? '' : '<div class="memml-calendar__row-links">' . $add_links . '</div>',
 			$this->render_status_badge( $status ),
-			$is_past ? '' : $this->render_event_actions( $event, $timezone, $context ),
+			$this->render_event_actions( $event, $timezone, $context, $is_past, false, false ),
 			$this->render_details( $event, 'events', $timezone, $is_past, $context )
 		);
 	}
@@ -1986,7 +1991,7 @@ final class Memml_Renderer {
 			$status  = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
 			$badge   = $this->render_status_badge( $status );
 			$meta    = $this->render_event_meta( $item, $timezone, 'full', true, true, $context );
-			$actions = $is_past ? '' : $this->render_event_actions( $item, $timezone, $context );
+			$actions = $this->render_event_actions( $item, $timezone, $context, $is_past, true );
 		} else {
 			$badge   = $this->is_visible( $context, 'show_volunteer_availability' ) && ! $is_past && ! empty( $item['needsMore'] )
 				? '<span class="memml-calendar__status memml-calendar__status--needed">' . esc_html__( 'Volunteers needed', 'memml' ) . '</span>'
@@ -2055,14 +2060,29 @@ final class Memml_Renderer {
 	/**
 	 * Renders event action links.
 	 *
+	 * Timely actions (RSVP, registration, Join online, volunteer signup) and
+	 * the add-to-calendar links are omitted once the event date has passed in
+	 * the organization's timezone. Timely actions are also omitted for
+	 * cancelled events, which have nothing to sign up for. The Memml event
+	 * page link is kept in both cases so visitors always have a path to the
+	 * full event record.
+	 *
 	 * @param array        $event    Event feed record.
 	 * @param DateTimeZone $timezone Organization timezone.
-	 * @param array        $context  Instance render context.
+	 * @param array        $context      Instance render context.
+	 * @param bool         $is_past      Whether the event is in the Past list.
+	 * @param bool         $with_details   Whether to include dialog-only detail such as the RSVP deadline.
+	 * @param bool         $with_add_links Whether to include the add-to-calendar links; rows place them in the body instead.
 	 * @return string
 	 */
-	private function render_event_actions( $event, $timezone, $context = array() ) {
+	private function render_event_actions( $event, $timezone, $context = array(), $is_past = false, $with_details = false, $with_add_links = true ) {
 		$actions       = '';
-		$is_actionable = $this->is_item_actionable( $event, $timezone );
+		$is_cancelled  = isset( $event['status'] ) && 'cancelled' === $event['status'];
+		$is_actionable = ! $is_past && ! $is_cancelled && $this->is_item_actionable( $event, $timezone );
+
+		if ( $this->is_visible( $context, 'show_rsvp' ) && $is_actionable ) {
+			$actions .= $this->render_rsvp_action( $event, $timezone, $with_details );
+		}
 
 		if ( $this->is_visible( $context, 'show_registration' ) && $is_actionable && ! empty( $event['publicEventUrl'] ) && ! empty( $event['ctaLabel'] ) ) {
 			$actions .= sprintf(
@@ -2088,9 +2108,37 @@ final class Memml_Renderer {
 			);
 		}
 
+		if ( $with_add_links ) {
+			$actions .= $this->render_add_to_calendar( $event, $context, $is_past );
+		}
+
+		if ( $this->is_visible( $context, 'show_event_page' ) && ! empty( $event['url'] ) ) {
+			$actions .= sprintf(
+				'<span class="memml-calendar__event-page"><a class="memml-calendar__calendar-link memml-calendar__event-page-link" href="%1$s">%2$s</a></span>',
+				esc_url( $event['url'] ),
+				esc_html__( 'View event page', 'memml' )
+			);
+		}
+
+		return '' === $actions ? '' : '<div class="memml-calendar__actions">' . $actions . '</div>';
+	}
+
+	/**
+	 * Renders the labelled Apple / Outlook and Google add-to-calendar links.
+	 *
+	 * @param array $event   Event feed record.
+	 * @param array $context Instance render context.
+	 * @param bool  $is_past Whether the event is in the Past list.
+	 * @return string Empty when the links are hidden, expired, or unavailable.
+	 */
+	private function render_add_to_calendar( $event, $context = array(), $is_past = false ) {
+		if ( $is_past || ! $this->is_visible( $context, 'show_add_to_calendar' ) ) {
+			return '';
+		}
+
 		$add_links = '';
 
-		if ( $this->is_visible( $context, 'show_add_to_calendar' ) && ! empty( $event['icsUrl'] ) ) {
+		if ( ! empty( $event['icsUrl'] ) ) {
 			$add_links .= sprintf(
 				'<a class="memml-calendar__calendar-link" href="%1$s">%2$s</a>',
 				esc_url( $event['icsUrl'] ),
@@ -2098,7 +2146,7 @@ final class Memml_Renderer {
 			);
 		}
 
-		$google = $this->is_visible( $context, 'show_add_to_calendar' ) ? $this->build_google_event_url( $event ) : '';
+		$google = $this->build_google_event_url( $event );
 
 		if ( '' !== $google ) {
 			$add_links .= sprintf(
@@ -2108,15 +2156,107 @@ final class Memml_Renderer {
 			);
 		}
 
-		if ( '' !== $add_links ) {
-			$actions .= sprintf(
-				'<span class="memml-calendar__add-links"><span class="memml-calendar__add-label">%1$s</span>%2$s</span>',
-				esc_html__( 'Add to calendar:', 'memml' ),
-				$add_links
+		if ( '' === $add_links ) {
+			return '';
+		}
+
+		return sprintf(
+			'<span class="memml-calendar__add-links"><span class="memml-calendar__add-label">%1$s</span>%2$s</span>',
+			esc_html__( 'Add to calendar:', 'memml' ),
+			$add_links
+		);
+	}
+
+	/**
+	 * Renders the RSVP action supplied by the feed's `rsvp` object.
+	 *
+	 * Memml includes `rsvp` only for scheduled events whose organizer
+	 * advertises RSVP. While registration is open the action is a primary
+	 * RSVP button with the organizer's chosen capacity wording beside it.
+	 * When registration is closed or full, only a status pill is shown; the
+	 * event page link remains the path for managing an existing RSVP.
+	 *
+	 * The details dialog also names an explicit RSVP deadline. Memml reports
+	 * the event start as the cutoff when the organizer set none, so a cutoff
+	 * equal to the start is not worth repeating.
+	 *
+	 * @param array        $event        Event feed record.
+	 * @param DateTimeZone $timezone     Organization timezone.
+	 * @param bool         $with_details Whether to include the RSVP deadline.
+	 * @return string
+	 */
+	private function render_rsvp_action( $event, $timezone, $with_details = false ) {
+		$rsvp = isset( $event['rsvp'] ) && is_array( $event['rsvp'] ) ? $event['rsvp'] : null;
+
+		if ( null === $rsvp || empty( $rsvp['url'] ) ) {
+			return '';
+		}
+
+		$status = isset( $event['status'] ) ? (string) $event['status'] : 'scheduled';
+
+		if ( 'scheduled' !== $status ) {
+			return '';
+		}
+
+		$capacity_label = isset( $rsvp['capacityLabel'] ) && is_string( $rsvp['capacityLabel'] ) ? trim( $rsvp['capacityLabel'] ) : '';
+
+		if ( empty( $rsvp['canRegister'] ) ) {
+			$closed_label = ! empty( $rsvp['full'] ) && '' !== $capacity_label ? $capacity_label : __( 'RSVP closed', 'memml' );
+
+			return sprintf(
+				'<span class="memml-calendar__status memml-calendar__status--rsvp-closed">%s</span>',
+				esc_html( $closed_label )
 			);
 		}
 
-		return '' === $actions ? '' : '<div class="memml-calendar__actions">' . $actions . '</div>';
+		$notes = '' === $capacity_label ? array() : array( $capacity_label );
+
+		if ( $with_details ) {
+			$deadline = $this->format_rsvp_deadline( $event, $rsvp, $timezone );
+
+			if ( '' !== $deadline ) {
+				$notes[] = $deadline;
+			}
+		}
+
+		$note = empty( $notes )
+			? ''
+			: sprintf( '<span class="memml-calendar__rsvp-note">%s</span>', esc_html( implode( ' · ', $notes ) ) );
+
+		return sprintf(
+			'<a class="memml-calendar__button memml-calendar__button--primary memml-calendar__button--rsvp" href="%1$s">%2$s</a>%3$s',
+			esc_url( $rsvp['url'] ),
+			esc_html__( 'RSVP', 'memml' ),
+			$note
+		);
+	}
+
+	/**
+	 * Formats an explicit RSVP deadline in the organization's timezone.
+	 *
+	 * @param array        $event    Event feed record.
+	 * @param array        $rsvp     Feed RSVP object.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return string Empty when there is no deadline distinct from the event start.
+	 */
+	private function format_rsvp_deadline( $event, $rsvp, $timezone ) {
+		if ( empty( $rsvp['cutoff'] ) || ! is_string( $rsvp['cutoff'] ) ) {
+			return '';
+		}
+
+		$cutoff = strtotime( $rsvp['cutoff'] );
+		$start  = empty( $event['startsAt'] ) ? false : strtotime( $event['startsAt'] );
+
+		if ( false === $cutoff || $cutoff === $start ) {
+			return '';
+		}
+
+		return sprintf(
+			/* translators: 1: Deadline date, 2: Deadline time. */
+			__( 'RSVP by %1$s at %2$s', 'memml' ),
+			wp_date( get_option( 'date_format' ), $cutoff, $timezone ),
+			wp_date( get_option( 'time_format' ), $cutoff, $timezone )
+		);
 	}
 
 	/**

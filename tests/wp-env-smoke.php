@@ -197,6 +197,18 @@ try {
 		throw new RuntimeException( 'An upcoming online meeting link was not rendered.' );
 	}
 
+	if ( false === strpos( $upcoming_segment, 'href="https://memml.com/calendar/river-city-neighbors/evt_01JTESTEVENT/rsvp">RSVP</a>' ) || false === strpos( $upcoming_segment, '3 spots remaining' ) ) {
+		throw new RuntimeException( 'An open RSVP action was not rendered for an upcoming event.' );
+	}
+
+	if ( false !== strpos( $past_segment, 'evt_01JPASTLATER/rsvp' ) ) {
+		throw new RuntimeException( 'An expired RSVP action was rendered for a past event.' );
+	}
+
+	if ( false === strpos( $past_segment, 'href="https://memml.com/river-city-neighbors/events/school-supply-drive">View event page</a>' ) ) {
+		throw new RuntimeException( 'The Memml event page link was not kept for a past event.' );
+	}
+
 	$_GET['memml_shared_calendar'] = 'events';
 	$_GET['memml_shared_view']     = 'month';
 	$_GET['memml_shared_month']    = '2026-10';
@@ -349,7 +361,7 @@ try {
 	$hidden_event_output = array(
 		'Cancelled River Walk',
 		'Bring gloves and comfortable shoes.',
-		'Riverside Park, 100 River Road',
+		'Riverside Park',
 		'memml-calendar__count',
 		'data-memml-details',
 		'cdn.memml.com/events/riverside-cleanup.jpg',
@@ -392,7 +404,7 @@ try {
 		throw new RuntimeException( 'Explicit list style or limit values did not override the display defaults.' );
 	}
 
-	foreach ( array( 'Cancelled River Walk', 'Bring gloves and comfortable shoes.', 'Riverside Park, 100 River Road', 'memml-calendar__count', 'data-memml-details', 'cdn.memml.com/events/riverside-cleanup.jpg', 'rivercityneighbors.example/register/cleanup', 'meet.example/riverside-cleanup', 'events/evt_01JTESTEVENT.ics', 'volunteer/riverside-cleanup', 'Sort and shelve weekly food donations.', '4 spots remaining', 'Volunteers needed' ) as $expectation ) {
+	foreach ( array( 'Cancelled River Walk', 'Bring gloves and comfortable shoes.', 'Riverside Park', 'memml-calendar__count', 'data-memml-details', 'cdn.memml.com/events/riverside-cleanup.jpg', 'rivercityneighbors.example/register/cleanup', 'meet.example/riverside-cleanup', 'events/evt_01JTESTEVENT.ics', 'volunteer/riverside-cleanup', 'Sort and shelve weekly food donations.', '4 spots remaining', 'Volunteers needed' ) as $expectation ) {
 		if ( false === strpos( $explicit, $expectation ) ) {
 			throw new RuntimeException( 'An explicit visibility override was not rendered: ' . $expectation );
 		}

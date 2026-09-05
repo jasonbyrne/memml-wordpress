@@ -64,6 +64,7 @@ should show shortcodes without properties.
 | RM-011 | 0.7 Visitor experience | **PLANNED** | Add simple search and high-value visitor filters. |
 | RM-012 | 0.7 Visitor experience | **PLANNED** | Add appropriate Event structured data for search engines. |
 | RM-013 | 0.7 Visitor experience | **PLANNED** | Reduce initial markup while preserving no-JavaScript navigation. |
+| RM-014 | 0.7 Visitor experience | **DONE** | Show Memml RSVP actions and keep a link to the Memml event page. |
 
 ## 0.5 — Admin-first controls
 
@@ -240,6 +241,31 @@ Avoid rendering every feed, period, and layout into hidden initial markup. Keep
 the current real query-string links as the no-JavaScript path, then progressively
 enhance visitor changes. Measure the markup reduction and preserve accessibility,
 shareable URLs, and stale-cache behavior.
+
+### RM-014 — RSVP actions and Memml event page links
+
+**Status:** DONE
+
+**Completed:** 2026-09-05
+
+Render the `rsvp` object Memml's public events feed supplies for organizer-
+advertised RSVPs: a primary RSVP action with the organizer's capacity wording
+while RSVPs are open, and a Full or RSVP closed status once they are not. RSVP
+can coexist with registration, Join online, and volunteer signup actions.
+
+Always provide a path to the Memml event page. A View event page link appears
+on cards, rows, month entries, and the details dialog, and is kept for past
+events after the timely actions expire.
+
+Both are site-wide action preferences with block overrides and `show_rsvp` /
+`show_event_page` shortcode properties, enabled by default. The details dialog
+names an explicit RSVP deadline. Cancelled events omit sign-up actions.
+
+Completed alongside: a rows-layout and dialog consistency pass — stacked
+when/where/cost lines, add-to-calendar links under the description, a
+fixed-width right-aligned column reserved for calls to action and the event
+page link, cost shown as a tag, and a rule separating dialog actions — so items
+with different content share one shape.
 
 ## Deferred until demand is demonstrated
 

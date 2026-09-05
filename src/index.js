@@ -124,6 +124,10 @@ const getActionFields = ( kind ) => {
 	if ( 'volunteers' !== kind ) {
 		fields.push(
 			{
+				attribute: 'showRsvp',
+				label: __( 'RSVP actions', 'memml' ),
+			},
+			{
 				attribute: 'showRegistration',
 				label: __( 'Registration actions', 'memml' ),
 			},
@@ -142,6 +146,13 @@ const getActionFields = ( kind ) => {
 		attribute: 'showVolunteerSignup',
 		label: __( 'Volunteer signup actions', 'memml' ),
 	} );
+
+	if ( 'volunteers' !== kind ) {
+		fields.push( {
+			attribute: 'showEventPage',
+			label: __( 'View event page links', 'memml' ),
+		} );
+	}
 
 	return fields;
 };
