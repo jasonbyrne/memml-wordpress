@@ -711,10 +711,6 @@
 		justify-items: start;
 	}
 
-	:where(.memml-calendar__row-aside .memml-calendar__actions) {
-		justify-content: flex-start;
-	}
-
 	:where(.memml-calendar__row-aside .memml-calendar__event-page) {
 		text-align: start;
 	}
