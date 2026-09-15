@@ -1024,13 +1024,13 @@ final class Memml_Renderer_Test extends TestCase {
 		$row      = $this->call_renderer(
 			'render_volunteer_row',
 			array(
-				'title'          => 'September 2026 Car Show',
+				'title'          => 'September 2030 Car Show',
 				'description'    => 'Join us for the monthly car show.',
 				'location'       => 'Historic Civic Center',
 				'spotsRemaining' => 10,
 				'needsMore'      => 5,
-				'startsAt'       => '2026-09-12T20:00:00.000Z',
-				'endsAt'         => '2026-09-13T00:00:00.000Z',
+				'startsAt'       => '2030-09-14T20:00:00.000Z',
+				'endsAt'         => '2030-09-15T00:00:00.000Z',
 				'url'            => 'https://memml.com/volunteer/org/v-1',
 			),
 			$timezone,
@@ -1038,7 +1038,7 @@ final class Memml_Renderer_Test extends TestCase {
 		);
 
 		$this->assertStringContainsString( '<article class="memml-calendar__row memml-calendar__card--volunteer" data-memml-item>', $row );
-		$this->assertStringContainsString( '<span aria-hidden="true" class="memml-calendar__date-chip"><span>Sep</span><strong>12</strong></span><div class="memml-calendar__row-body">', $row );
+		$this->assertStringContainsString( '<span aria-hidden="true" class="memml-calendar__date-chip"><span>Sep</span><strong>14</strong></span><div class="memml-calendar__row-body">', $row );
 		$this->assertStringContainsString( 'memml-calendar__meta memml-calendar__meta--inline', $row );
 		$this->assertStringContainsString( 'Saturday · 4:00 PM–8:00 PM', $row );
 		$this->assertStringContainsString( '<div class="memml-calendar__row-aside"><span class="memml-calendar__status memml-calendar__status--needed">', $row );
@@ -1107,5 +1107,109 @@ final class Memml_Renderer_Test extends TestCase {
 				array( 'data' => array( 'links' => array( 'ics' => 'javascript:alert(1)' ) ) )
 			)
 		);
+	}
+
+	/**
+	 * A committee renders its charter, filled seats, and vacant seats.
+	 *
+	 * @return void
+	 */
+	public function test_committee_renders_charter_and_seats() {
+		$committee = array(
+			'name'    => 'Board of Directors',
+			'charter' => 'Executive Committee of Officers',
+			'seats'   => array(
+				array(
+					'title'   => 'President',
+					'vacant'  => false,
+					'holders' => array( array( 'name' => 'Jason Byrne' ) ),
+				),
+				array(
+					'title'   => 'Treasurer',
+					'vacant'  => true,
+					'holders' => array(),
+				),
+			),
+		);
+
+		$markup = $this->call_renderer( 'render_committee', $committee, true, true );
+
+		$this->assertStringContainsString( '<h3 class="memml-calendar__title">Board of Directors</h3>', $markup );
+		$this->assertStringContainsString( 'Executive Committee of Officers', $markup );
+		$this->assertStringContainsString( 'President', $markup );
+		$this->assertStringContainsString( 'Jason Byrne', $markup );
+		$this->assertStringContainsString( 'memml-calendar__seat--vacant', $markup );
+		$this->assertStringContainsString( 'Vacant', $markup );
+	}
+
+	/**
+	 * Hiding the charter or vacant seats omits them from the roster.
+	 *
+	 * @return void
+	 */
+	public function test_committee_can_hide_charter_and_vacant_seats() {
+		$committee = array(
+			'name'    => 'Board of Directors',
+			'charter' => 'Executive Committee of Officers',
+			'seats'   => array(
+				array(
+					'title'   => 'Treasurer',
+					'vacant'  => true,
+					'holders' => array(),
+				),
+			),
+		);
+
+		$markup = $this->call_renderer( 'render_committee', $committee, false, false );
+
+		$this->assertStringNotContainsString( 'Executive Committee of Officers', $markup );
+		$this->assertStringNotContainsString( 'Treasurer', $markup );
+		$this->assertStringContainsString( 'No seats to show.', $markup );
+	}
+
+	/**
+	 * A seat with multiple holders joins their names, and a vacant seat
+	 * always shows Vacant even when holder records are present.
+	 *
+	 * @return void
+	 */
+	public function test_committee_seat_joins_multiple_holders() {
+		$filled = $this->call_renderer(
+			'render_committee_seat',
+			array(
+				'title'   => 'Co-Chairs',
+				'vacant'  => false,
+				'holders' => array( array( 'name' => 'Ada Lovelace' ), array( 'name' => 'Grace Hopper' ) ),
+			),
+			false
+		);
+
+		$this->assertStringContainsString( 'Ada Lovelace, Grace Hopper', $filled );
+
+		$vacant = $this->call_renderer(
+			'render_committee_seat',
+			array(
+				'title'   => 'Secretary',
+				'vacant'  => true,
+				'holders' => array( array( 'name' => 'Stale Data' ) ),
+			),
+			true
+		);
+
+		$this->assertStringContainsString( 'Vacant', $vacant );
+		$this->assertStringNotContainsString( 'Stale Data', $vacant );
+	}
+
+	/**
+	 * The committee visibility toggle follows the enum, legacy booleans, and
+	 * the built-in default when unset.
+	 *
+	 * @return void
+	 */
+	public function test_committee_toggle_from_attributes() {
+		$this->assertTrue( $this->call_renderer( 'get_committee_toggle_from_attributes', array(), 'showCharter', 'show_charter', true ) );
+		$this->assertFalse( $this->call_renderer( 'get_committee_toggle_from_attributes', array( 'showCharter' => 'no' ), 'showCharter', 'show_charter', true ) );
+		$this->assertFalse( $this->call_renderer( 'get_committee_toggle_from_attributes', array( 'show_charter' => 'false' ), 'showCharter', 'show_charter', true ) );
+		$this->assertTrue( $this->call_renderer( 'get_committee_toggle_from_attributes', array( 'showCharter' => 'yes' ), 'showCharter', 'show_charter', false ) );
 	}
 }

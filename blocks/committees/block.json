@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "memml/committees",
+  "version": "0.4.6",
+  "title": "Memml Committees",
+  "category": "widgets",
+  "icon": "groups",
+  "description": "Display a board of directors or public committee roster from Memml.",
+  "keywords": ["committee", "board", "directors", "roster", "nonprofit"],
+  "textdomain": "memml",
+  "editorScript": "memml-block-editor",
+  "editorStyle": "memml-calendar",
+  "style": "memml-calendar",
+  "attributes": {
+    "showCharter": {
+      "type": "string",
+      "default": "",
+      "enum": ["", "yes", "no"]
+    },
+    "showVacantSeats": {
+      "type": "string",
+      "default": "",
+      "enum": ["", "yes", "no"]
+    }
+  },
+  "supports": {
+    "html": false
+  }
+}

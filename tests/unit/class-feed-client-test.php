@@ -410,6 +410,33 @@ final class Memml_Feed_Client_Test extends TestCase {
 	}
 
 	/**
+	 * The committees method requests the contract filename, and accepts an
+	 * envelope with no organization timezone.
+	 *
+	 * @return void
+	 */
+	public function test_committees_feed_uses_versioned_contract_url() {
+		$committees = json_decode(
+			file_get_contents( dirname( __DIR__ ) . '/fixtures/committees.json' ), // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local test fixture.
+			true
+		);
+
+		Functions\expect( 'get_transient' )->once()->andReturn( false );
+		Functions\expect( 'wp_remote_get' )
+			->once()
+			->with(
+				'https://memml.com/api/public/v1/river-city-neighbors/committees.json',
+				Mockery::type( 'array' )
+			)
+			->andReturn( $this->http_response( 200, $committees, '"committees-v1"' ) );
+		Functions\expect( 'set_transient' )->once();
+
+		$result = ( new Memml_Feed_Client() )->get_committees( 'river-city-neighbors' );
+
+		self::assertSame( $committees, $result['data'] );
+	}
+
+	/**
 	 * Creates a cache record.
 	 *
 	 * @param int $expires_at Fresh-cache expiration timestamp.

@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.5
+Stable tag: 0.4.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -21,6 +21,12 @@ Choose the calendar that belongs on each page:
 * Use the Memml Calendar block or `[memml_calendar]` shortcode for events and volunteer opportunities, with visitor switchers enabled by default.
 * Use the Memml Events block or `[memml_events]` shortcode for general events.
 * Use the Memml Volunteers block or `[memml_volunteers]` shortcode for volunteer opportunities.
+* Use the Memml Committees block or `[memml_committees]` shortcode to display a board of directors or public committee roster.
+
+The Memml Committees block or `[memml_committees show_charter="no" show_vacant_seats="no"]`
+shortcode lists every public committee for your organization, each with its
+seats and the current holder's name, or Vacant when a seat is unfilled. The
+charter and vacant seats are shown by default.
 
 Settings > Memml Calendar > Display defaults controls the initially selected
 calendar, initial List or Month view, initial Upcoming or Past filter, list style,
@@ -167,6 +173,15 @@ Yes. The URL updates as visitors use enabled calendar, layout, list-filter, or
 month controls. Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.4.6 =
+
+* Added the Memml Committees block and `[memml_committees]` shortcode to
+  display a board of directors or other public committee as a roster of
+  seats, each with its current holder's name or a Vacant label. Committees
+  with a charter show it beneath the committee name by default; both the
+  charter and vacant seats can be hidden per block or with the
+  `show_charter` / `show_vacant_seats` shortcode properties.
 
 = 0.4.5 =
 

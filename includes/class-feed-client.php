@@ -58,6 +58,13 @@ final class Memml_Feed_Client {
 	private const VOLUNTEERS_FEED = 'volunteer-opportunities.json';
 
 	/**
+	 * Feed filename for committees.
+	 *
+	 * @var string
+	 */
+	private const COMMITTEES_FEED = 'committees.json';
+
+	/**
 	 * API origin.
 	 *
 	 * @var string
@@ -105,6 +112,17 @@ final class Memml_Feed_Client {
 	}
 
 	/**
+	 * Gets the public committees feed.
+	 *
+	 * @param string $organization_key Memml organization key.
+	 * @param bool   $force_revalidate  Whether to bypass a still-fresh response.
+	 * @return array|WP_Error Normalized response or an error.
+	 */
+	public function get_committees( $organization_key, $force_revalidate = false ) {
+		return $this->get_feed( $organization_key, self::COMMITTEES_FEED, $force_revalidate );
+	}
+
+	/**
 	 * Gets the public feed URLs for an organization.
 	 *
 	 * @param string $organization_key Memml organization key.
@@ -114,6 +132,7 @@ final class Memml_Feed_Client {
 		return array(
 			'events'     => $this->build_feed_url( $organization_key, self::EVENTS_FEED ),
 			'volunteers' => $this->build_feed_url( $organization_key, self::VOLUNTEERS_FEED ),
+			'committees' => $this->build_feed_url( $organization_key, self::COMMITTEES_FEED ),
 		);
 	}
 
@@ -282,8 +301,7 @@ final class Memml_Feed_Client {
 			isset( $data['organization'] ) &&
 			is_array( $data['organization'] ) &&
 			! empty( $data['organization']['name'] ) &&
-			! empty( $data['organization']['organizationKey'] ) &&
-			! empty( $data['organization']['timezone'] );
+			! empty( $data['organization']['organizationKey'] );
 	}
 
 	/**

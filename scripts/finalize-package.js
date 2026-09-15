@@ -23,7 +23,7 @@ const versionConstant = pluginContents.match(
 	/^define\( 'MEMML_VERSION', '(.+)' \);$/m
 );
 const stableTag = readmeContents.match( /^Stable tag:\s+(.+)$/m );
-const blockVersions = [ 'calendar', 'events', 'volunteers' ].map(
+const blockVersions = [ 'calendar', 'events', 'volunteers', 'committees' ].map(
 	( block ) =>
 		JSON.parse(
 			fs.readFileSync(

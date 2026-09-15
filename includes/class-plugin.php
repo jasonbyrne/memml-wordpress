@@ -48,6 +48,26 @@ final class Memml_Plugin {
 		add_shortcode( 'memml_calendar', array( $this, 'render_calendar_shortcode' ) );
 		add_shortcode( 'memml_events', array( $this->renderer, 'render_events' ) );
 		add_shortcode( 'memml_volunteers', array( $this->renderer, 'render_volunteers' ) );
+		add_shortcode( 'memml_committees', array( $this, 'render_committees_shortcode' ) );
+	}
+
+	/**
+	 * Renders the committees shortcode.
+	 *
+	 * @param array|string $attributes Shortcode attributes.
+	 * @return string
+	 */
+	public function render_committees_shortcode( $attributes ) {
+		$attributes = shortcode_atts(
+			array(
+				'show_charter'      => '',
+				'show_vacant_seats' => '',
+			),
+			is_array( $attributes ) ? $attributes : array(),
+			'memml_committees'
+		);
+
+		return $this->renderer->render_committees( $attributes );
 	}
 
 	/**
@@ -67,10 +87,12 @@ final class Memml_Plugin {
 		$content        = $post->post_content;
 		$uses_block     = has_block( 'memml/calendar', $post ) ||
 			has_block( 'memml/events', $post ) ||
-			has_block( 'memml/volunteers', $post );
+			has_block( 'memml/volunteers', $post ) ||
+			has_block( 'memml/committees', $post );
 		$uses_shortcode = has_shortcode( $content, 'memml_calendar' ) ||
 			has_shortcode( $content, 'memml_events' ) ||
-			has_shortcode( $content, 'memml_volunteers' );
+			has_shortcode( $content, 'memml_volunteers' ) ||
+			has_shortcode( $content, 'memml_committees' );
 
 		if ( $uses_block || $uses_shortcode ) {
 			$this->renderer->enqueue_assets();
@@ -138,6 +160,10 @@ final class Memml_Plugin {
 		register_block_type(
 			MEMML_PLUGIN_DIR . 'blocks/volunteers',
 			array( 'render_callback' => array( $this->renderer, 'render_volunteers' ) )
+		);
+		register_block_type(
+			MEMML_PLUGIN_DIR . 'blocks/committees',
+			array( 'render_callback' => array( $this->renderer, 'render_committees' ) )
 		);
 	}
 

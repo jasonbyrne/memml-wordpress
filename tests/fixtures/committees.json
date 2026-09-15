@@ -1,0 +1,31 @@
+{
+  "version": "v1",
+  "organization": {
+    "name": "River City Neighbors",
+    "organizationKey": "river-city-neighbors",
+    "logoUrl": "https://cdn.memml.com/organizations/river-city-neighbors/logo.png",
+    "websiteUrl": "https://rivercityneighbors.example"
+  },
+  "links": {
+    "json": "https://memml.com/api/public/v1/river-city-neighbors/committees.json"
+  },
+  "committees": [
+    {
+      "id": "committee_board",
+      "name": "Board of Directors",
+      "charter": "Executive Committee of Officers",
+      "seats": [
+        {
+          "title": "President",
+          "vacant": false,
+          "holders": [{ "name": "Jordan Rivera" }]
+        },
+        {
+          "title": "Treasurer",
+          "vacant": true,
+          "holders": []
+        }
+      ]
+    }
+  ]
+}

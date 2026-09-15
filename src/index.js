@@ -16,6 +16,7 @@ import { __ } from '@wordpress/i18n';
 import calendarMetadata from '../blocks/calendar/block.json';
 import eventsMetadata from '../blocks/events/block.json';
 import volunteersMetadata from '../blocks/volunteers/block.json';
+import committeesMetadata from '../blocks/committees/block.json';
 
 const editorConfig = window.memmlEditor || {};
 
@@ -520,5 +521,49 @@ registerBlockType( volunteersMetadata.name, {
 		'groups',
 		__( 'Memml Volunteers', 'memml' )
 	),
+	save: () => null,
+} );
+
+const CommitteesEdit = ( { attributes, setAttributes } ) => (
+	<>
+		<InspectorControls>
+			<PanelBody title={ __( 'Committee settings', 'memml' ) }>
+				<VisitorControl
+					label={ __( 'Charter', 'memml' ) }
+					help={ __(
+						'The short description of the committee, when available.',
+						'memml'
+					) }
+					value={ attributes.showCharter }
+					onChange={ ( showCharter ) =>
+						setAttributes( { showCharter } )
+					}
+				/>
+				<VisitorControl
+					label={ __( 'Vacant seats', 'memml' ) }
+					help={ __(
+						'When hidden, seats with no current holder are left off the roster.',
+						'memml'
+					) }
+					value={ attributes.showVacantSeats }
+					onChange={ ( showVacantSeats ) =>
+						setAttributes( { showVacantSeats } )
+					}
+				/>
+			</PanelBody>
+		</InspectorControls>
+		<div { ...useBlockProps() }>
+			<CalendarPreview
+				name={ committeesMetadata.name }
+				attributes={ attributes }
+				icon="groups"
+				label={ __( 'Memml Committees', 'memml' ) }
+			/>
+		</div>
+	</>
+);
+
+registerBlockType( committeesMetadata.name, {
+	edit: CommitteesEdit,
 	save: () => null,
 } );

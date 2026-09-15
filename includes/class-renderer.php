@@ -115,6 +115,142 @@ final class Memml_Renderer {
 	}
 
 	/**
+	 * Renders a committee roster, such as a board of directors.
+	 *
+	 * @param array|string $attributes Block or shortcode attributes.
+	 * @return string
+	 */
+	public function render_committees( $attributes = array() ) {
+		$this->enqueue_assets();
+
+		$result = $this->get_client_result( 'committees' );
+
+		if ( is_wp_error( $result ) ) {
+			return $this->render_error( $result );
+		}
+
+		$committees = isset( $result['data']['committees'] ) && is_array( $result['data']['committees'] )
+			? $result['data']['committees']
+			: array();
+
+		if ( empty( $committees ) ) {
+			return $this->render_notice( __( 'No committees are currently available.', 'memml' ) );
+		}
+
+		$show_charter      = $this->get_committee_toggle_from_attributes( $attributes, 'showCharter', 'show_charter', true );
+		$show_vacant_seats = $this->get_committee_toggle_from_attributes( $attributes, 'showVacantSeats', 'show_vacant_seats', true );
+		$rosters           = '';
+
+		foreach ( $committees as $committee ) {
+			if ( is_array( $committee ) ) {
+				$rosters .= $this->render_committee( $committee, $show_charter, $show_vacant_seats );
+			}
+		}
+
+		return '<div class="memml-calendar memml-calendar--committees" data-memml-committees>' . $rosters . '</div>';
+	}
+
+	/**
+	 * Gets a yes/no toggle from block or shortcode attributes.
+	 *
+	 * @param array|string $attributes    Block or shortcode attributes.
+	 * @param string       $camel_case    Block attribute name.
+	 * @param string       $snake_case    Shortcode attribute name.
+	 * @param bool         $default_value Value used when unset.
+	 * @return bool
+	 */
+	private function get_committee_toggle_from_attributes( $attributes, $camel_case, $snake_case, $default_value ) {
+		if ( ! is_array( $attributes ) ) {
+			return $default_value;
+		}
+
+		$value = isset( $attributes[ $camel_case ] ) ? $attributes[ $camel_case ] : ( isset( $attributes[ $snake_case ] ) ? $attributes[ $snake_case ] : '' );
+
+		if ( '' === $value || null === $value ) {
+			return $default_value;
+		}
+
+		if ( is_string( $value ) ) {
+			return ! in_array( strtolower( $value ), array( '0', 'false', 'no' ), true );
+		}
+
+		return (bool) $value;
+	}
+
+	/**
+	 * Renders one committee's roster.
+	 *
+	 * @param array $committee         Committee feed record.
+	 * @param bool  $show_charter      Whether to show the committee's charter.
+	 * @param bool  $show_vacant_seats Whether to show vacant seats.
+	 * @return string
+	 */
+	private function render_committee( $committee, $show_charter, $show_vacant_seats ) {
+		$name    = isset( $committee['name'] ) ? (string) $committee['name'] : '';
+		$charter = $show_charter && ! empty( $committee['charter'] )
+			? '<p class="memml-calendar__committee-charter">' . esc_html( (string) $committee['charter'] ) . '</p>'
+			: '';
+
+		$seats = isset( $committee['seats'] ) && is_array( $committee['seats'] ) ? $committee['seats'] : array();
+		$rows  = '';
+
+		foreach ( $seats as $seat ) {
+			if ( ! is_array( $seat ) ) {
+				continue;
+			}
+
+			$is_vacant = ! empty( $seat['vacant'] );
+
+			if ( $is_vacant && ! $show_vacant_seats ) {
+				continue;
+			}
+
+			$rows .= $this->render_committee_seat( $seat, $is_vacant );
+		}
+
+		if ( '' === $rows ) {
+			$rows = '<li class="memml-calendar__seat">' . esc_html__( 'No seats to show.', 'memml' ) . '</li>';
+		}
+
+		return sprintf(
+			'<article class="memml-calendar__committee" data-memml-item><h3 class="memml-calendar__title">%1$s</h3>%2$s<ul class="memml-calendar__seat-list">%3$s</ul></article>',
+			esc_html( $name ),
+			$charter,
+			$rows
+		);
+	}
+
+	/**
+	 * Renders one committee seat.
+	 *
+	 * @param array $seat      Seat feed record.
+	 * @param bool  $is_vacant Whether the seat is vacant.
+	 * @return string
+	 */
+	private function render_committee_seat( $seat, $is_vacant ) {
+		$title   = isset( $seat['title'] ) ? (string) $seat['title'] : '';
+		$holders = isset( $seat['holders'] ) && is_array( $seat['holders'] ) ? $seat['holders'] : array();
+		$names   = array();
+
+		foreach ( $holders as $holder ) {
+			if ( is_array( $holder ) && ! empty( $holder['name'] ) ) {
+				$names[] = (string) $holder['name'];
+			}
+		}
+
+		$holder_markup = $is_vacant || empty( $names )
+			? '<span class="memml-calendar__seat-vacant">' . esc_html__( 'Vacant', 'memml' ) . '</span>'
+			: esc_html( implode( ', ', $names ) );
+
+		return sprintf(
+			'<li class="memml-calendar__seat%1$s"><span class="memml-calendar__seat-title">%2$s</span><span class="memml-calendar__seat-holder">%3$s</span></li>',
+			$is_vacant ? ' memml-calendar__seat--vacant' : '',
+			esc_html( $title ),
+			$holder_markup
+		);
+	}
+
+	/**
 	 * Renders a visitor-facing calendar switcher.
 	 *
 	 * @param string $calendar   Initial calendar: events or volunteers, or '' for the site default.
@@ -1605,9 +1741,13 @@ final class Memml_Renderer {
 		if ( ! isset( self::$feed_results[ $cache_key ] ) ) {
 			$client = new Memml_Feed_Client( $options['base_url'] );
 
-			self::$feed_results[ $cache_key ] = 'volunteers' === $feed
-				? $client->get_volunteer_opportunities( $options['organization_key'] )
-				: $client->get_events( $options['organization_key'] );
+			if ( 'volunteers' === $feed ) {
+				self::$feed_results[ $cache_key ] = $client->get_volunteer_opportunities( $options['organization_key'] );
+			} elseif ( 'committees' === $feed ) {
+				self::$feed_results[ $cache_key ] = $client->get_committees( $options['organization_key'] );
+			} else {
+				self::$feed_results[ $cache_key ] = $client->get_events( $options['organization_key'] );
+			}
 		}
 
 		return self::$feed_results[ $cache_key ];

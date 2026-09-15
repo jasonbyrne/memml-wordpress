@@ -864,3 +864,58 @@
 	background: var(--memml-card-background);
 	color: var(--memml-muted);
 }
+
+:where(.memml-calendar--committees) {
+	display: grid;
+	gap: var(--memml-spacing);
+}
+
+:where(.memml-calendar__committee) {
+	padding: var(--memml-spacing);
+	border: 1px solid var(--memml-border);
+	border-radius: var(--memml-radius);
+	background: var(--memml-card-background);
+	box-shadow: var(--memml-shadow);
+}
+
+.memml-calendar .memml-calendar__committee-charter {
+	margin: 0.35rem 0 0;
+	color: var(--memml-muted);
+}
+
+:where(.memml-calendar__seat-list) {
+	display: grid;
+	gap: 0.5rem;
+	margin: var(--memml-spacing) 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+:where(.memml-calendar__seat) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.5rem;
+	padding-block-end: 0.5rem;
+	border-block-end: 1px solid var(--memml-border);
+}
+
+:where(.memml-calendar__seat:last-child) {
+	padding-block-end: 0;
+	border-block-end: 0;
+}
+
+.memml-calendar .memml-calendar__seat-title {
+	font-weight: 650;
+}
+
+.memml-calendar .memml-calendar__seat-holder {
+	color: var(--memml-muted);
+}
+
+.memml-calendar .memml-calendar__seat--vacant .memml-calendar__seat-holder,
+.memml-calendar .memml-calendar__seat-vacant {
+	color: var(--memml-warning);
+	font-style: italic;
+}
