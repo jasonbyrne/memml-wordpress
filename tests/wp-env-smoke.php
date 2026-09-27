@@ -86,6 +86,21 @@ try {
 		throw new RuntimeException( 'The connection test did not return the fixture organization name.' );
 	}
 
+	$page_cache_calls = array();
+	$record_ttl       = static function ( $ttl ) use ( &$page_cache_calls ) {
+		$page_cache_calls[] = array( 'ttl', $ttl );
+	};
+	$record_tag       = static function ( $tag ) use ( &$page_cache_calls ) {
+		$page_cache_calls[] = array( 'tag', $tag );
+	};
+	$record_purge     = static function ( $tag ) use ( &$page_cache_calls ) {
+		$page_cache_calls[] = array( 'purge', $tag );
+	};
+
+	add_action( 'litespeed_control_set_ttl', $record_ttl );
+	add_action( 'litespeed_tag_add', $record_tag );
+	add_action( 'litespeed_purge', $record_purge );
+
 	$html        = do_shortcode( '[memml_calendar calendar="volunteers" url_key="primary"]' );
 	$month_html  = do_shortcode( '[memml_calendar calendar="events" view="month" url_key="monthly"]' );
 	$events_html = do_shortcode( '[memml_events view="month" url_key="events"]' );
@@ -109,6 +124,44 @@ try {
 			throw new RuntimeException( 'Missing rendered output: ' . $expectation );
 		}
 	}
+
+	// Rendering a feed asks LiteSpeed Cache to tag the page and expire it with the feed.
+	$ttl_calls = array_values(
+		array_filter(
+			$page_cache_calls,
+			static function ( $call ) {
+				return 'ttl' === $call[0];
+			}
+		)
+	);
+
+	if ( ! in_array( array( 'tag', Memml_Page_Cache::TAG ), $page_cache_calls, true ) ) {
+		throw new RuntimeException( 'A rendered calendar did not tag the page for LiteSpeed Cache.' );
+	}
+
+	if ( ! $ttl_calls || $ttl_calls[0][1] < Memml_Page_Cache::MIN_TTL || $ttl_calls[0][1] > Memml_Feed_Client::DEFAULT_CACHE_TTL ) {
+		throw new RuntimeException( 'A rendered calendar did not limit its page lifetime to the feed lifetime.' );
+	}
+
+	update_option(
+		Memml_Settings::OPTION_NAME,
+		array_merge( Memml_Settings::get_options(), array( 'default_limit' => 3 ) )
+	);
+
+	if ( ! in_array( array( 'purge', Memml_Page_Cache::TAG ), $page_cache_calls, true ) ) {
+		throw new RuntimeException( 'Saving Memml settings did not purge Memml pages from LiteSpeed Cache.' );
+	}
+
+	update_option(
+		Memml_Settings::OPTION_NAME,
+		array(
+			'organization_key' => 'river-city-neighbors',
+			'base_url'         => Memml_Feed_Client::DEFAULT_BASE_URL,
+		)
+	);
+	remove_action( 'litespeed_control_set_ttl', $record_ttl );
+	remove_action( 'litespeed_tag_add', $record_tag );
+	remove_action( 'litespeed_purge', $record_purge );
 
 	$month_expectations = array(
 		'data-layout="month"',
@@ -547,7 +600,7 @@ try {
 		throw new RuntimeException( 'An invalid organization key discarded the saved key.' );
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, display-default inheritance, visitor-control visibility, explicit overrides, URL state, filtering, sorting, link controls, timezone, month view, settings screen, and key-retention smoke test passed.' );
+	WP_CLI::success( 'Memml Calendar activation, connection, display-default inheritance, visitor-control visibility, explicit overrides, URL state, filtering, sorting, link controls, timezone, month view, page-cache, settings screen, and key-retention smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
 	remove_filter( 'memml_calendar_today', $today_filter, 10 );

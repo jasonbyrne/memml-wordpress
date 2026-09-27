@@ -1750,6 +1750,8 @@ final class Memml_Renderer {
 			}
 		}
 
+		Memml_Page_Cache::limit_for_feed( $feed, self::$feed_results[ $cache_key ] );
+
 		return self::$feed_results[ $cache_key ];
 	}
 

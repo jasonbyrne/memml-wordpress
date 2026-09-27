@@ -95,7 +95,7 @@ final class Memml_Settings {
 	}
 
 	/**
-	 * Discards cached feed responses so the next page view refetches them.
+	 * Discards cached feed responses and the cached pages that show them.
 	 *
 	 * @return void
 	 */
@@ -116,6 +116,8 @@ final class Memml_Settings {
 			$client = new Memml_Feed_Client( $options['base_url'] );
 			$client->flush_cache( $options['organization_key'] );
 		}
+
+		Memml_Page_Cache::purge();
 
 		wp_safe_redirect( add_query_arg( 'memml-refreshed', '1', self::get_page_url() ) );
 		exit;
@@ -528,6 +530,9 @@ final class Memml_Settings {
 					echo ' ';
 					echo esc_html__( 'Clear the cache to publish a Memml change on your site right away.', 'memml' );
 					?>
+				</p>
+				<p class="description">
+					<?php echo esc_html__( 'If your site uses LiteSpeed Cache, pages that show Memml content are refreshed on the same schedule, and clearing the cache here or saving these settings clears those pages too. If your site uses a different page cache, clear that cache as well.', 'memml' ); ?>
 				</p>
 				<p><?php echo esc_html__( 'This site reads:', 'memml' ); ?></p>
 				<ul class="memml-feed-urls">

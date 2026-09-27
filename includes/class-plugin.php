@@ -27,11 +27,19 @@ final class Memml_Plugin {
 	private $renderer;
 
 	/**
+	 * Full-page cache compatibility.
+	 *
+	 * @var Memml_Page_Cache
+	 */
+	private $page_cache;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->settings = new Memml_Settings();
-		$this->renderer = new Memml_Renderer();
+		$this->settings   = new Memml_Settings();
+		$this->renderer   = new Memml_Renderer();
+		$this->page_cache = new Memml_Page_Cache();
 	}
 
 	/**
@@ -41,6 +49,7 @@ final class Memml_Plugin {
 	 */
 	public function register() {
 		$this->settings->register();
+		$this->page_cache->register();
 		add_action( 'init', array( $this, 'load_textdomain' ) );
 		add_action( 'init', array( $this->renderer, 'register_assets' ) );
 		add_action( 'init', array( $this, 'register_blocks' ) );

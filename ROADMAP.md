@@ -56,6 +56,7 @@ should show shortcodes without properties.
 | RM-003 | 0.5 Admin-first controls | **DONE** | Add practical content and action visibility preferences. |
 | RM-004 | 0.5 Admin-first controls | **NEXT** | Reorganize settings and add a live calendar preview. |
 | RM-005 | 0.5 Admin-first controls | **PLANNED** | Add a small set of safe appearance presets. |
+| RM-015 | 0.6 Reliability | **DONE** | Keep page caches from serving outdated Memml content. |
 | RM-006 | 0.6 Reliability | **PLANNED** | Show clear feed health and targeted refresh controls. |
 | RM-007 | 0.6 Reliability | **PLANNED** | Add useful, customizable empty states and calls to action. |
 | RM-008 | 0.6 Reliability | **PLANNED** | Support delegated calendar management and improve onboarding. |
@@ -160,6 +161,30 @@ Continue to support CSS custom properties and normal theme overrides. Do not add
 fine-grained typography or arbitrary CSS editors.
 
 ## 0.6 — Reliability and day-to-day administration
+
+### RM-015 — Page-cache compatibility
+
+**Status:** DONE
+
+**Completed:** 2026-09-27
+
+Full-page caches can keep serving a rendered Memml calendar long after the feed
+changes. LiteSpeed Cache's default public lifetime is a week, which hid new
+volunteer opportunities on a live site for days.
+
+- A page that renders a Memml block or shortcode asks LiteSpeed Cache to keep
+  it no longer than the feed data it shows stays fresh, and much less while
+  Memml is unavailable or stale data is shown. It never lengthens a shorter
+  lifetime the site has configured.
+- Those pages carry a `memml` LiteSpeed cache tag. Clear cached data and any
+  change to Memml Calendar settings purge the tagged pages.
+- A `memml_page_cache_ttl` filter adjusts or disables the requested lifetime.
+  `memml_page_cache_limit` and `memml_page_cache_purge` actions let sites
+  connect other page caches.
+
+**Completion criteria:** Lifetime calculation, LiteSpeed tagging, purge on
+clear and settings changes, unit tests, README, readme.txt, and settings-page
+help are updated.
 
 ### RM-006 — Feed status and refresh tools
 
@@ -274,5 +299,8 @@ with different content share one shape.
 - Detailed analytics dashboards; lightweight action hooks may be considered
   earlier when an integration needs them
 - Administrator-configurable cache lifetimes and failure backoff
+- Built-in integrations for page caches other than LiteSpeed Cache, such as
+  WP Rocket, W3 Total Cache, or host-level caches; the `memml_page_cache_limit`
+  and `memml_page_cache_purge` actions cover them in the meantime
 - Complex taxonomies and location management
 - A full template builder or arbitrary CSS editor

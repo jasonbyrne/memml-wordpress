@@ -43,6 +43,37 @@ automatically.
 Three filters adjust the timings: `memml_feed_cache_ttl`,
 `memml_feed_stale_ttl`, and `memml_feed_failure_ttl`.
 
+Memml's public feeds are also cached at Memml's edge for up to five minutes, so
+a change can take up to about fifteen minutes to appear. If Clear cached data
+runs within a few minutes of an edit and the change is still missing, clear it
+again a few minutes later.
+
+### Full-page caches
+
+A full-page cache can keep serving a rendered calendar long after the feed
+changes. LiteSpeed Cache, for example, keeps public pages for a week by default.
+The plugin works with LiteSpeed Cache automatically:
+
+- A page that renders a Memml block or shortcode asks LiteSpeed Cache to keep it
+  no longer than the feed data it shows stays fresh (at most ten minutes by
+  default), and one minute while Memml is unavailable or stale data is shown.
+  A shorter public lifetime configured in LiteSpeed Cache is kept.
+- Those pages carry a `memml` cache tag. Clear cached data and any change to
+  Memml Calendar settings purge the tagged pages.
+
+For other page caches, exclude pages with Memml calendars or give them a short
+lifetime, or connect the cache through these hooks:
+
+- `memml_page_cache_ttl` filter: adjusts the requested lifetime in seconds for
+  each rendered feed. It receives the lifetime, the feed (`events`,
+  `volunteers`, or `committees`), and the feed result. Return `0` to leave page
+  caches alone.
+- `memml_page_cache_limit` action: fires with the maximum page lifetime in
+  seconds when a page shows Memml content, and again if a later feed on the
+  same page expires sooner.
+- `memml_page_cache_purge` action: fires when cached pages showing Memml
+  content should be discarded.
+
 ## Theming
 
 The front-end stylesheet is written with `:where()` so theme rules win by

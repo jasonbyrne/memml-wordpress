@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.6
+Stable tag: 0.4.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,12 @@ backoff period before contacting Memml again, so an outage cannot slow down ever
 page view. Settings > Memml Calendar lists the feed URLs the site reads and
 provides a Clear cached data button for publishing a Memml change immediately.
 
+Pages that show a Memml calendar work with LiteSpeed Cache automatically: they are
+kept in the page cache no longer than the feed data they show stays fresh, and
+Clear cached data or saving Memml Calendar settings clears them. Developers can
+connect other page caches with the `memml_page_cache_ttl` filter and the
+`memml_page_cache_limit` and `memml_page_cache_purge` actions.
+
 Colors, spacing, and corner radii are exposed as CSS custom properties on the
 `.memml-calendar` container, and every front-end rule uses `:where()`, so a theme
 can restyle the calendar without fighting plugin specificity.
@@ -158,8 +164,17 @@ and future dates in ascending order. Past includes dates before today in descend
 
 = How quickly do Memml changes appear on my site? =
 
-Within about ten minutes. To publish a change immediately, open
-Settings > Memml Calendar and select Clear cached data.
+Usually within ten to fifteen minutes. To publish a change sooner, open
+Settings > Memml Calendar and select Clear cached data. Memml's own servers can
+keep a feed for up to five minutes, so if you clear the cache right after an
+edit and the change is still missing, clear it again a few minutes later.
+
+= My site uses a page cache plugin. Will calendars go out of date? =
+
+LiteSpeed Cache is supported automatically: pages with Memml calendars expire from
+its cache along with the feed data, and Clear cached data clears them. For other
+page caches, exclude pages with Memml calendars from caching or give them a short
+cache lifetime, and clear the page cache after clearing Memml's cached data.
 
 = Can I show only the next few events? =
 
@@ -173,6 +188,18 @@ Yes. The URL updates as visitors use enabled calendar, layout, list-filter, or
 month controls. Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.4.7 =
+
+* Pages that show a Memml calendar now work with LiteSpeed Cache: they are kept
+  in the page cache no longer than the feed data they show stays fresh, and
+  Clear cached data or saving Memml Calendar settings clears them. Previously a
+  page cache could keep showing outdated events and volunteer opportunities for
+  days.
+* Added the `memml_page_cache_ttl` filter and the `memml_page_cache_limit` and
+  `memml_page_cache_purge` actions for connecting other page caches.
+* Corrected how quickly Memml changes appear: usually within ten to fifteen
+  minutes, because Memml's servers can also keep a feed for up to five minutes.
 
 = 0.4.6 =
 

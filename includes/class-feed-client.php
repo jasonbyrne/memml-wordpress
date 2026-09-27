@@ -438,6 +438,7 @@ final class Memml_Feed_Client {
 			'data'       => $record['data'],
 			'etag'       => isset( $record['etag'] ) ? $record['etag'] : '',
 			'fetched_at' => isset( $record['fetched_at'] ) ? (int) $record['fetched_at'] : 0,
+			'expires_at' => isset( $record['expires_at'] ) ? (int) $record['expires_at'] : 0,
 			'is_stale'   => (bool) $is_stale,
 			'from_cache' => (bool) $from_cache,
 			'warning'    => $warning,

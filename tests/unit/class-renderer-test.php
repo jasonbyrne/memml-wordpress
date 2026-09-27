@@ -10,13 +10,17 @@
  */
 
 use Brain\Monkey;
+use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
+use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Tests attribute parsing and calendar link formatting.
  */
 final class Memml_Renderer_Test extends TestCase {
+
+	use MockeryPHPUnitIntegration;
 
 	/**
 	 * Sets up Brain Monkey and shared WordPress functions.
@@ -1211,5 +1215,44 @@ final class Memml_Renderer_Test extends TestCase {
 		$this->assertFalse( $this->call_renderer( 'get_committee_toggle_from_attributes', array( 'showCharter' => 'no' ), 'showCharter', 'show_charter', true ) );
 		$this->assertFalse( $this->call_renderer( 'get_committee_toggle_from_attributes', array( 'show_charter' => 'false' ), 'showCharter', 'show_charter', true ) );
 		$this->assertTrue( $this->call_renderer( 'get_committee_toggle_from_attributes', array( 'showCharter' => 'yes' ), 'showCharter', 'show_charter', false ) );
+	}
+
+	/**
+	 * Every feed a page renders limits that page's cache lifetime.
+	 *
+	 * @return void
+	 */
+	public function test_feed_results_limit_page_cache_lifetime() {
+		Functions\when( 'get_option' )->justReturn( array( 'organization_key' => 'historic-longwood' ) );
+
+		$feed_results = new ReflectionProperty( Memml_Renderer::class, 'feed_results' );
+		$feed_results->setAccessible( true );
+		$feed_results->setValue(
+			null,
+			array(
+				'volunteers|historic-longwood|' . Memml_Feed_Client::DEFAULT_BASE_URL => array(
+					'data'       => array(),
+					'expires_at' => time() + 400,
+					'is_stale'   => false,
+				),
+			)
+		);
+
+		Memml_Page_Cache::reset();
+		Actions\expectDone( 'litespeed_tag_add' )->once()->with( Memml_Page_Cache::TAG );
+		Actions\expectDone( 'litespeed_control_set_ttl' )->once()->with(
+			Mockery::on(
+				static function ( $ttl ) {
+					return $ttl >= 399 && $ttl <= 400;
+				}
+			)
+		);
+
+		try {
+			$this->call_renderer( 'get_client_result', 'volunteers' );
+		} finally {
+			$feed_results->setValue( null, array() );
+			Memml_Page_Cache::reset();
+		}
 	}
 }

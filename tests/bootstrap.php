@@ -21,5 +21,6 @@ if ( ! defined( 'DAY_IN_SECONDS' ) ) {
 }
 
 require_once dirname( __DIR__ ) . '/includes/class-feed-client.php';
+require_once dirname( __DIR__ ) . '/includes/class-page-cache.php';
 require_once dirname( __DIR__ ) . '/includes/class-settings.php';
 require_once dirname( __DIR__ ) . '/includes/class-renderer.php';
