@@ -20,6 +20,37 @@
 	line-height: 1.5;
 }
 
+/* Appearance presets from Settings → Memml Calendar → Appearance. The
+   default presets add no class. Like the defaults above, these only set
+   custom properties at zero specificity, so theme overrides still win. */
+:where(.memml-calendar--palette-neutral) {
+	--memml-border: #dde1e6;
+	--memml-card-background: #f5f6f8;
+	--memml-shadow: none;
+}
+
+/* Theme colors: text and borders follow the theme's text color and surfaces
+   are lightly tinted, so the calendar fits light and dark themes alike. The
+   dialog needs an opaque surface, so it uses the theme's base and contrast
+   colors when a block theme defines them. */
+:where(.memml-calendar--palette-theme) {
+	--memml-border: color-mix(in srgb, currentcolor 22%, transparent);
+	--memml-card-background: color-mix(in srgb, currentcolor 5%, transparent);
+	--memml-dialog-background: var(--wp--preset--color--base, #fff);
+	--memml-dialog-text: var(--wp--preset--color--contrast, #1f2430);
+	--memml-muted: color-mix(in srgb, currentcolor 72%, transparent);
+	--memml-shadow: none;
+	--memml-text: currentcolor;
+}
+
+:where(.memml-calendar--spacing-compact) {
+	--memml-spacing: 0.65rem;
+}
+
+:where(.memml-calendar--corners-square) {
+	--memml-radius: 0;
+}
+
 /* Headings inside the calendar are compact labels, not article headings.
    Themes size h3/h4 through element and content-area selectors that beat
    zero-specificity rules, so these sizes are deliberately not wrapped in
@@ -181,6 +212,12 @@
 :where(.memml-calendar__image) {
 	aspect-ratio: 16 / 9;
 	background: var(--memml-border);
+}
+
+/* The Compact card images preset; it follows the rule above so it wins at
+   the same zero specificity. */
+:where(.memml-calendar--images-compact .memml-calendar__image) {
+	aspect-ratio: 5 / 2;
 }
 
 :where(.memml-calendar__image img) {
@@ -787,9 +824,9 @@
 	overflow-y: auto;
 	border: 1px solid var(--memml-border);
 	border-radius: var(--memml-radius);
-	background: var(--memml-card-background);
+	background: var(--memml-dialog-background, var(--memml-card-background));
 	box-shadow: 0 10px 40px rgb(0 0 0 / 25%);
-	color: var(--memml-text);
+	color: var(--memml-dialog-text, var(--memml-text));
 }
 
 :where(.memml-calendar__dialog)::backdrop {

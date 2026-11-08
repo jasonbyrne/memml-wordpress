@@ -73,8 +73,32 @@ final class Memml_Settings {
 		),
 		'appearance' => array(
 			'default_list_style',
+			'accent_color',
+			'appearance_palette',
+			'appearance_spacing',
+			'appearance_corners',
+			'image_size',
 		),
 	);
+
+	/**
+	 * Appearance preset choices; the first choice is the default.
+	 *
+	 * @var array
+	 */
+	public const APPEARANCE_CHOICES = array(
+		'appearance_palette' => array( 'light', 'neutral', 'theme' ),
+		'appearance_spacing' => array( 'comfortable', 'compact' ),
+		'appearance_corners' => array( 'rounded', 'square' ),
+		'image_size'         => array( 'wide', 'compact' ),
+	);
+
+	/**
+	 * The calendar's built-in accent color, shown when no custom color is set.
+	 *
+	 * @var string
+	 */
+	public const DEFAULT_ACCENT = '#2563eb';
 
 	/**
 	 * Calendars the settings preview can show, mapped to their shortcodes.
@@ -282,8 +306,22 @@ final class Memml_Settings {
 		$default_period     = isset( $input['default_period'] ) ? $input['default_period'] : '';
 		$default_list_style = isset( $input['default_list_style'] ) ? $input['default_list_style'] : '';
 		$default_limit      = isset( $input['default_limit'] ) ? max( 0, (int) $input['default_limit'] ) : 0;
+		$accent_color       = isset( $input['accent_color'] ) && is_string( $input['accent_color'] ) ? strtolower( trim( $input['accent_color'] ) ) : '';
+		$appearance         = array();
 
-		return array(
+		foreach ( self::APPEARANCE_CHOICES as $name => $choices ) {
+			$value               = isset( $input[ $name ] ) ? $input[ $name ] : '';
+			$appearance[ $name ] = in_array( $value, $choices, true ) ? $value : $choices[0];
+		}
+
+		// The color field always has a value, so the checkbox decides whether
+		// it is used; an unchecked box keeps the calendar's own accent.
+		if ( empty( $input['accent_custom'] ) || ! preg_match( '/^#[0-9a-f]{6}$/', $accent_color ) ) {
+			$accent_color = '';
+		}
+
+		return $appearance + array(
+			'accent_color'                => $accent_color,
 			'default_calendar'            => 'volunteers' === $default_calendar ? 'volunteers' : 'events',
 			'default_view'                => 'month' === $default_view ? 'month' : 'list',
 			'default_period'              => 'past' === $default_period ? 'past' : 'upcoming',
@@ -525,8 +563,107 @@ final class Memml_Settings {
 
 						<section aria-labelledby="memml-section-appearance" class="memml-settings__section">
 							<?php $this->render_section_heading( 'appearance', __( 'Appearance', 'memml' ) ); ?>
-							<p class="description"><?php echo esc_html__( 'Calendars inherit your theme’s fonts, colors, and spacing, and themes can adjust them further with CSS.', 'memml' ); ?></p>
+							<p class="description"><?php echo esc_html__( 'Calendars use your theme’s fonts. These presets adjust colors, spacing, and shapes, and your theme’s CSS can still change anything further.', 'memml' ); ?></p>
 							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row"><?php echo esc_html__( 'Accent color', 'memml' ); ?></th>
+									<td>
+										<fieldset class="memml-settings__accent">
+											<legend class="screen-reader-text"><?php echo esc_html__( 'Accent color', 'memml' ); ?></legend>
+											<label for="memml-accent-custom">
+												<input
+													id="memml-accent-custom"
+													name="<?php echo esc_attr( self::OPTION_NAME ); ?>[accent_custom]"
+													type="checkbox"
+													value="1"
+													<?php checked( '' !== $options['accent_color'] ); ?>
+												/>
+												<?php echo esc_html__( 'Use a custom accent color', 'memml' ); ?>
+											</label>
+											<label for="memml-accent-color">
+												<span class="screen-reader-text"><?php echo esc_html__( 'Custom accent color', 'memml' ); ?></span>
+												<input
+													id="memml-accent-color"
+													name="<?php echo esc_attr( self::OPTION_NAME ); ?>[accent_color]"
+													type="color"
+													value="<?php echo esc_attr( '' !== $options['accent_color'] ? $options['accent_color'] : self::DEFAULT_ACCENT ); ?>"
+												/>
+											</label>
+										</fieldset>
+										<p class="description"><?php echo esc_html__( 'Used for buttons, highlights, and the current day. Button text switches between white and dark automatically so it stays readable.', 'memml' ); ?></p>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">
+										<label for="memml-appearance-palette"><?php echo esc_html__( 'Palette', 'memml' ); ?></label>
+									</th>
+									<td>
+										<?php
+										$this->render_select(
+											'appearance_palette',
+											$options['appearance_palette'],
+											array(
+												'light'   => __( 'Light', 'memml' ),
+												'neutral' => __( 'Neutral', 'memml' ),
+												'theme'   => __( 'Theme colors', 'memml' ),
+											)
+										);
+										?>
+										<p class="description"><?php echo esc_html__( 'Light uses white cards. Neutral uses soft gray cards. Theme colors follows your theme’s text color with lightly tinted cards, which suits dark themes.', 'memml' ); ?></p>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">
+										<label for="memml-appearance-spacing"><?php echo esc_html__( 'Spacing', 'memml' ); ?></label>
+									</th>
+									<td>
+										<?php
+										$this->render_select(
+											'appearance_spacing',
+											$options['appearance_spacing'],
+											array(
+												'comfortable' => __( 'Comfortable', 'memml' ),
+												'compact' => __( 'Compact', 'memml' ),
+											)
+										);
+										?>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">
+										<label for="memml-appearance-corners"><?php echo esc_html__( 'Corners', 'memml' ); ?></label>
+									</th>
+									<td>
+										<?php
+										$this->render_select(
+											'appearance_corners',
+											$options['appearance_corners'],
+											array(
+												'rounded' => __( 'Rounded', 'memml' ),
+												'square'  => __( 'Square', 'memml' ),
+											)
+										);
+										?>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">
+										<label for="memml-image-size"><?php echo esc_html__( 'Card images', 'memml' ); ?></label>
+									</th>
+									<td>
+										<?php
+										$this->render_select(
+											'image_size',
+											$options['image_size'],
+											array(
+												'wide'    => __( 'Wide', 'memml' ),
+												'compact' => __( 'Compact', 'memml' ),
+											)
+										);
+										?>
+										<p class="description"><?php echo esc_html__( 'Compact images are shorter banners. To hide images, turn off Images under Content and actions.', 'memml' ); ?></p>
+									</td>
+								</tr>
 								<tr>
 									<th scope="row">
 										<label for="memml-default-list-style"><?php echo esc_html__( 'List style', 'memml' ); ?></label>
@@ -766,6 +903,11 @@ final class Memml_Settings {
 			$sections[ $section ] = array_intersect_key( $defaults, array_flip( $names ) );
 		}
 
+		// The accent is two form fields: a checkbox and a color that always
+		// holds a value. Resetting unchecks the box and shows the default.
+		$sections['appearance']['accent_custom'] = false;
+		$sections['appearance']['accent_color']  = self::DEFAULT_ACCENT;
+
 		return $sections;
 	}
 
@@ -812,6 +954,16 @@ final class Memml_Settings {
 
 		if ( function_exists( 'wp_get_global_stylesheet' ) ) {
 			wp_add_inline_style( 'memml-preview', wp_get_global_stylesheet() );
+		}
+
+		// The calendar stylesheet carries the saved accent color; swap in the
+		// previewed one so unsaved appearance choices show.
+		$appearance_css = Memml_Renderer::get_appearance_css( $options );
+
+		wp_styles()->add_data( Memml_Renderer::ASSET_HANDLE, 'after', false );
+
+		if ( '' !== $appearance_css ) {
+			wp_add_inline_style( Memml_Renderer::ASSET_HANDLE, $appearance_css );
 		}
 
 		nocache_headers();
@@ -968,6 +1120,11 @@ final class Memml_Settings {
 			'show_volunteer_signup'       => true,
 			'show_add_to_calendar'        => true,
 			'show_event_page'             => true,
+			'accent_color'                => '',
+			'appearance_palette'          => 'light',
+			'appearance_spacing'          => 'comfortable',
+			'appearance_corners'          => 'rounded',
+			'image_size'                  => 'wide',
 		);
 	}
 }

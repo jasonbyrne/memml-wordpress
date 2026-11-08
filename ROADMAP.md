@@ -47,6 +47,42 @@ New blocks should use site settings by default. Shortcode properties remain
 supported as advanced overrides, but the primary documentation and onboarding
 should show shortcodes without properties.
 
+## Upstream Memml changes to know about
+
+### Memml public page addresses are moving (planned 2026-11-08, not yet shipped)
+
+Memml plans to move every organization's public pages under the organization
+key, alongside a new hub page at `https://memml.com/<organization_key>`. This is
+slice 7 of Memml's self-service home (Memml roadmap M12 phase 4). It has not
+shipped; today's addresses remain live until it does.
+
+| Today | Planned |
+| --- | --- |
+| `/calendar/<key>`, `/calendar/<key>/<event>` | `/<key>/events`, `/<key>/events/<event>` |
+| `/calendar/<key>/<event>/rsvp` | under `/<key>/events/<event>` |
+| `/volunteer/<key>/...` | `/<key>/volunteer/...` |
+| `/donate/<key>` | `/<key>/donate` |
+| `/portal/<key>` (membership levels and sign-up) | `/<key>/join` |
+| `/portal/<key>` (a person's own records) | `/<key>/portal` |
+
+What the plugin needs to know:
+
+- **No code change is expected.** The plugin renders the page URLs each feed
+  supplies and never builds Memml page URLs itself; keep it that way. When the
+  move ships, the `url`, `calendar`, `volunteerSignupUrl`, RSVP, and similar
+  fields switch to the new addresses in the same Memml release.
+- **Old addresses redirect permanently,** so links in cached feed data and in
+  pages already served keep working.
+- **Feed endpoints do not move.** `/api/public/v1/<key>/...` stays where it is,
+  so the connection test and every feed request are unaffected.
+- **When it ships:** update any documentation or examples that show the old
+  page addresses, and re-run the smoke test against a live organization to
+  confirm the new links. Test fixtures that hard-code old-style URLs (for
+  example the RSVP link in `tests/wp-env-smoke.php`) remain valid as fixtures
+  but may be refreshed to the new shape.
+- Memml's planned new feeds for the 0.8 milestone are listed in Memml's
+  `docs/features/public-feeds.md` under "Planned with the self-service home".
+
 ## Roadmap summary
 
 | ID | Milestone | Status | Outcome |
@@ -55,10 +91,10 @@ should show shortcodes without properties.
 | RM-002 | 0.5 Admin-first controls | **DONE** | Let administrators choose which visitor controls are available. |
 | RM-003 | 0.5 Admin-first controls | **DONE** | Add practical content and action visibility preferences. |
 | RM-004 | 0.5 Admin-first controls | **DONE** | Reorganize settings and add a live calendar preview. |
-| RM-005 | 0.5 Admin-first controls | **NEXT** | Add a small set of safe appearance presets. |
+| RM-005 | 0.5 Admin-first controls | **DONE** | Add a small set of safe appearance presets. |
 | RM-015 | 0.6 Reliability | **DONE** | Keep page caches from serving outdated Memml content. |
 | RM-016 | 0.6 Reliability | **DONE** | Show multi-day events across every day they run. |
-| RM-006 | 0.6 Reliability | **PLANNED** | Show clear feed health and targeted refresh controls. |
+| RM-006 | 0.6 Reliability | **NEXT** | Show clear feed health and targeted refresh controls. |
 | RM-007 | 0.6 Reliability | **PLANNED** | Add useful, customizable empty states and calls to action. |
 | RM-008 | 0.6 Reliability | **PLANNED** | Support delegated calendar management and improve onboarding. |
 | RM-009 | 0.7 Visitor experience | **PLANNED** | Add a mobile-friendly chronological agenda view. |
@@ -67,6 +103,9 @@ should show shortcodes without properties.
 | RM-012 | 0.7 Visitor experience | **PLANNED** | Add appropriate Event structured data for search engines. |
 | RM-013 | 0.7 Visitor experience | **PLANNED** | Reduce initial markup while preserving no-JavaScript navigation. |
 | RM-014 | 0.7 Visitor experience | **DONE** | Show Memml RSVP actions and keep a link to the Memml event page. |
+| RM-017 | 0.8 Getting involved | **PLANNED** | Add a Get involved block of the organization's Memml destinations. |
+| RM-018 | 0.8 Getting involved | **PLANNED** | Add an Our sponsors block that recognizes paid sponsors with their logos. |
+| RM-019 | 0.8 Getting involved | **PLANNED** | Add a Join block that lists membership levels with join links. |
 
 ## 0.5 — Admin-first controls
 
@@ -167,18 +206,34 @@ remain unchanged.
 
 ### RM-005 — Add safe appearance presets
 
-**Status:** NEXT
+**Status:** DONE
 
-Provide a limited set of theme-friendly choices:
+**Completed:** 2026-11-08
 
-- Accent color
-- Theme inherited, light, or neutral palette
+Provide a limited set of theme-friendly choices in the Appearance settings
+section:
+
+- Accent color: the default blue or a custom color, with readable button text
+  chosen automatically
+- Palette: Light (the current look), Neutral (soft gray surfaces), or Theme
+  colors (text and borders follow the theme, with lightly tinted surfaces and a
+  dialog that uses the theme's base and contrast colors when available)
 - Comfortable or compact spacing
-- Rounded or square cards
-- Wide, compact, or hidden images
+- Rounded or square corners
+- Wide or compact card images; hiding images remains the Content and actions
+  Images preference rather than a second control
 
-Continue to support CSS custom properties and normal theme overrides. Do not add
-fine-grained typography or arbitrary CSS editors.
+The defaults reproduce the current appearance and markup exactly. Presets set
+the existing CSS custom properties at zero specificity, so theme rules and
+custom-property overrides continue to win. They apply to the calendar, events,
+volunteer, and committee blocks and the settings preview. Presets are
+site-wide; per-block appearance overrides are deferred until demand is clear.
+Do not add fine-grained typography or arbitrary CSS editors.
+
+**Completion criteria:** Sanitized settings with defaults, Appearance section
+controls included in Reset section to defaults and the live preview, renderer
+classes and accent CSS, unit tests for sanitization, classes, and accent
+contrast, README, and readme.txt are updated.
 
 ## 0.6 — Reliability and day-to-day administration
 
@@ -230,7 +285,7 @@ placement, Upcoming/Past, and Google links, README, and readme.txt are updated.
 
 ### RM-006 — Feed status and refresh tools
 
-**Status:** PLANNED
+**Status:** NEXT
 
 Show separate Events and Volunteers status cards with organization, timezone,
 item count, last successful refresh, fresh/cached/stale state, and the latest
@@ -334,6 +389,69 @@ fixed-width right-aligned column reserved for calls to action and the event
 page link, cost shown as a tag, and a rule separating dialog actions — so items
 with different content share one shape.
 
+## 0.8 — Getting involved
+
+Planned 2026-11-08 alongside Memml's self-service home (Memml roadmap M12
+phase 4). The organization's own website stays its home page; these blocks are
+how the things a visitor can do with the organization (volunteer, give, join,
+see their own records) reach it. Each block depends on a Memml public feed that
+does not exist yet and is recorded in Memml's `docs/features/public-feeds.md`
+under "Planned with the self-service home". None of these items can start until
+its feed ships. As with existing feeds, the plugin never builds Memml page URLs
+itself; it uses the URLs each feed supplies, so Memml can move its public pages
+(planned: under `memml.com/<organization_key>`) without breaking a site.
+
+### RM-017 — Get involved block
+
+**Status:** PLANNED
+
+**Depends on:** Memml `organization.json`.
+
+Render the organization's public Memml destinations as a row or grid of
+buttons, each with its label and short line from the feed: Events, Volunteer,
+Donate, Join, My portal, and the Memml hub page. Show only the destinations the
+feed lists, since Memml lists only what the organization actually uses. My
+portal is a plain link; signing in always happens on Memml, never in a form on
+the WordPress site. Administrators can hide individual destinations site-wide,
+with block overrides. Consider using the same feed for RM-010's optional
+destination links.
+
+**Completion criteria:** block and shortcode, site-wide visibility settings
+with block overrides, an accessible empty state when the feed lists nothing,
+caching consistent with the existing feeds, tests, README and readme.txt usage.
+
+### RM-018 — Our sponsors block
+
+**Status:** PLANNED
+
+**Depends on:** Memml `sponsors.json`.
+
+Show paid sponsors whose sponsorship includes a "Logo on website" benefit,
+grouped by project and ordered by level, with the logo the sponsor chose, their
+name, and a link to their site. Text fallback when a sponsor has no logo. An
+administrator can limit the block to one project (for example, a single event's
+sponsors). Rendering this block is how an organization delivers the "Logo on
+website" benefit, so it must never show a sponsor the feed does not list.
+
+**Completion criteria:** block and shortcode, project filter, accessible logo
+alt text from the sponsor name, image sizing that keeps mixed logos even,
+tests, README and readme.txt usage.
+
+### RM-019 — Join block
+
+**Status:** PLANNED
+
+**Depends on:** Memml `membership-levels.json`.
+
+List the organization's public membership levels with price, term, a short
+benefit summary, and a Join button to the level's Memml sign-up URL. The block
+renders nothing (and says why to editors only) when the organization is not
+advertising joining.
+
+**Completion criteria:** block and shortcode, card and list layouts consistent
+with existing list styles, editor-only notice when membership is not
+advertised, tests, README and readme.txt usage.
+
 ## Deferred until demand is demonstrated
 
 - Multiple Memml organizations on one WordPress site
@@ -341,6 +459,8 @@ with different content share one shape.
 - Detailed analytics dashboards; lightweight action hooks may be considered
   earlier when an integration needs them
 - Administrator-configurable cache lifetimes and failure backoff
+- Per-block or per-shortcode appearance overrides; the site-wide Appearance
+  presets and theme CSS cover them in the meantime
 - Built-in integrations for page caches other than LiteSpeed Cache, such as
   WP Rocket, W3 Total Cache, or host-level caches; the `memml_page_cache_limit`
   and `memml_page_cache_purge` actions cover them in the meantime

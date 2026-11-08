@@ -108,6 +108,16 @@
 		previewTimer = window.setTimeout( updatePreview, 400 );
 	};
 
+	// Choosing a color implies using it.
+	const accentColor = document.getElementById( 'memml-accent-color' );
+	const accentCustom = document.getElementById( 'memml-accent-custom' );
+
+	if ( accentColor && accentCustom ) {
+		accentColor.addEventListener( 'input', function () {
+			accentCustom.checked = true;
+		} );
+	}
+
 	form.addEventListener( 'input', schedulePreview );
 	form.addEventListener( 'change', schedulePreview );
 

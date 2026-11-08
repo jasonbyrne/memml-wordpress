@@ -195,10 +195,16 @@ final class Memml_Settings_Test extends TestCase {
 		$saved = Memml_Settings::get_options();
 		unset( $saved['organization_key'], $saved['base_url'] );
 
+		// The accent checkbox is a form-only field alongside the stored color.
+		unset( $combined['accent_custom'] );
+
 		$this->assertSame( array( 'display', 'content', 'appearance' ), array_keys( $sections ) );
 		$this->assertEqualsCanonicalizing( array_keys( $saved ), array_keys( $combined ) );
 		$this->assertEqualsCanonicalizing( array_keys( Memml_Settings::sanitize_preferences( array() ) ), array_keys( $combined ) );
-		$this->assertSame( array( 'default_list_style' => 'grid' ), $sections['appearance'] );
+		$this->assertSame( 'grid', $sections['appearance']['default_list_style'] );
+		$this->assertSame( 'light', $sections['appearance']['appearance_palette'] );
+		$this->assertFalse( $sections['appearance']['accent_custom'] );
+		$this->assertSame( Memml_Settings::DEFAULT_ACCENT, $sections['appearance']['accent_color'] );
 		$this->assertSame( 'list', $sections['display']['default_view'] );
 		$this->assertTrue( $sections['content']['show_event_page'] );
 	}
@@ -275,5 +281,104 @@ final class Memml_Settings_Test extends TestCase {
 		$this->assertSame( 'calendar', Memml_Settings::get_preview_calendar( 'calendar' ) );
 		$this->assertSame( 'calendar', Memml_Settings::get_preview_calendar( 'committees' ) );
 		$this->assertSame( 'calendar', Memml_Settings::get_preview_calendar( array( 'events' ) ) );
+	}
+
+	/**
+	 * Older saved options keep the current appearance.
+	 *
+	 * @return void
+	 */
+	public function test_legacy_options_keep_current_appearance() {
+		$options = Memml_Settings::get_options();
+
+		$this->assertSame( '', $options['accent_color'] );
+		$this->assertSame( 'light', $options['appearance_palette'] );
+		$this->assertSame( 'comfortable', $options['appearance_spacing'] );
+		$this->assertSame( 'rounded', $options['appearance_corners'] );
+		$this->assertSame( 'wide', $options['image_size'] );
+	}
+
+	/**
+	 * Appearance presets accept their documented values and reject others.
+	 *
+	 * @return void
+	 */
+	public function test_sanitize_appearance_presets() {
+		$valid = Memml_Settings::sanitize_preferences(
+			array(
+				'appearance_palette' => 'theme',
+				'appearance_spacing' => 'compact',
+				'appearance_corners' => 'square',
+				'image_size'         => 'compact',
+			)
+		);
+
+		$this->assertSame( 'theme', $valid['appearance_palette'] );
+		$this->assertSame( 'compact', $valid['appearance_spacing'] );
+		$this->assertSame( 'square', $valid['appearance_corners'] );
+		$this->assertSame( 'compact', $valid['image_size'] );
+
+		$invalid = Memml_Settings::sanitize_preferences(
+			array(
+				'appearance_palette' => 'dark',
+				'appearance_spacing' => array( 'compact' ),
+				'appearance_corners' => 'pill',
+				'image_size'         => 'hidden',
+			)
+		);
+
+		$this->assertSame( 'light', $invalid['appearance_palette'] );
+		$this->assertSame( 'comfortable', $invalid['appearance_spacing'] );
+		$this->assertSame( 'rounded', $invalid['appearance_corners'] );
+		$this->assertSame( 'wide', $invalid['image_size'] );
+	}
+
+	/**
+	 * A custom accent needs the checkbox and a six-digit hex color.
+	 *
+	 * @return void
+	 */
+	public function test_sanitize_accent_color_requires_opt_in_and_hex() {
+		$accent = static function ( $input ) {
+			return Memml_Settings::sanitize_preferences( $input )['accent_color'];
+		};
+
+		$this->assertSame(
+			'#b91c1c',
+			$accent(
+				array(
+					'accent_custom' => '1',
+					'accent_color'  => '#B91C1C',
+				)
+			)
+		);
+		$this->assertSame( '', $accent( array( 'accent_color' => '#b91c1c' ) ) );
+		$this->assertSame(
+			'',
+			$accent(
+				array(
+					'accent_custom' => '1',
+					'accent_color'  => 'red',
+				)
+			)
+		);
+		$this->assertSame(
+			'',
+			$accent(
+				array(
+					'accent_custom' => '1',
+					'accent_color'  => '#abc',
+				)
+			)
+		);
+		$this->assertSame(
+			'',
+			$accent(
+				array(
+					'accent_custom' => '1',
+					'accent_color'  => '#b91c1c;}body{',
+				)
+			)
+		);
 	}
 }

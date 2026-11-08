@@ -32,8 +32,11 @@ Settings > Memml Calendar is arranged in Connection, Calendar display, Content
 and actions, Appearance, and Status sections. Calendar display controls the
 initially selected calendar, initial List or Month view, initial Upcoming or Past
 filter, maximum list items, the visitor switchers, and the subscription row.
-Appearance controls the list style. Blocks offer Use site setting for every
-matching preference, and shortcodes inherit the site settings when properties
+Appearance controls the list style and a few site-wide presets: a custom accent
+color, a Light, Neutral, or Theme colors palette, comfortable or compact spacing,
+rounded or square corners, and wide or compact card images. The defaults keep
+the original look. Blocks offer Use site setting for every matching display and
+content preference, and shortcodes inherit the site settings when properties
 are omitted.
 
 A preview beside the settings shows the Memml Calendar, Memml Events, or Memml
@@ -130,7 +133,8 @@ connect other page caches with the `memml_page_cache_ttl` filter and the
 
 Colors, spacing, and corner radii are exposed as CSS custom properties on the
 `.memml-calendar` container, and every front-end rule uses `:where()`, so a theme
-can restyle the calendar without fighting plugin specificity.
+can restyle the calendar without fighting plugin specificity. The Appearance
+presets set the same custom properties, so theme CSS still takes precedence.
 
 Deleting the plugin removes its settings and cached feed data.
 

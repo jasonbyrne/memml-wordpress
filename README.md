@@ -37,8 +37,8 @@ intentional exception.
 - **Calendar display** — the initial calendar, view, and list filter, the
   maximum list items, the visitor switchers, and the subscription row.
 - **Content and actions** — which details and calls to action calendars show.
-- **Appearance** — the list style. Calendars otherwise inherit the theme; see
-  [Theming](#theming).
+- **Appearance** — the list style and a few safe presets: accent color,
+  palette, spacing, corners, and card image size. See [Theming](#theming).
 - **Status** — how long feed data is cached, the feed URLs this site reads, and
   **Clear cached data**.
 
@@ -117,6 +117,27 @@ theme can redefine on `.memml-calendar` or any ancestor:
 ```
 
 See `assets/calendar.css` for the full list.
+
+For sites without theme CSS, **Settings → Memml Calendar → Appearance** offers a
+small set of site-wide presets:
+
+- **Accent color** — the default blue or a custom color. Button text switches
+  between white and dark automatically for contrast.
+- **Palette** — **Light** (white cards, the default), **Neutral** (soft gray
+  cards), or **Theme colors** (text and borders follow the theme's text color
+  over lightly tinted cards, which suits dark themes; the details dialog uses
+  the theme's `base` and `contrast` colors when a block theme defines them).
+- **Spacing** — Comfortable or Compact.
+- **Corners** — Rounded or Square.
+- **Card images** — Wide (16:9) or Compact (5:2). Hiding images is the
+  **Images** preference under Content and actions.
+
+The defaults keep the original appearance and add nothing to the markup.
+Other choices add classes such as `memml-calendar--palette-neutral` to the
+calendar container and set the custom properties above with `:where()`, so a
+theme's own overrides still win. The accent color is added as an inline rule
+after the plugin stylesheet. Presets apply to every Memml calendar and
+committee roster; there are no per-block appearance overrides.
 
 ## Shortcodes
 

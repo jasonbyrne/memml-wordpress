@@ -625,6 +625,56 @@ final class Memml_Renderer_Test extends TestCase {
 	}
 
 	/**
+	 * Default appearance presets add no classes, so markup is unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_appearance_classes_only_mark_non_default_presets() {
+		$this->assertSame( '', Memml_Renderer::get_appearance_classes( array() ) );
+		$this->assertSame(
+			'',
+			Memml_Renderer::get_appearance_classes(
+				array(
+					'appearance_palette' => 'light',
+					'appearance_spacing' => 'comfortable',
+					'appearance_corners' => 'rounded',
+					'image_size'         => 'wide',
+				)
+			)
+		);
+		$this->assertSame(
+			' memml-calendar--palette-theme memml-calendar--spacing-compact memml-calendar--corners-square memml-calendar--images-compact',
+			Memml_Renderer::get_appearance_classes(
+				array(
+					'appearance_palette' => 'theme',
+					'appearance_spacing' => 'compact',
+					'appearance_corners' => 'square',
+					'image_size'         => 'compact',
+				)
+			)
+		);
+		$this->assertSame( '', Memml_Renderer::get_appearance_classes( array( 'appearance_palette' => '" onload="x' ) ) );
+	}
+
+	/**
+	 * A custom accent sets the accent and a readable contrast color.
+	 *
+	 * @return void
+	 */
+	public function test_appearance_css_sets_accent_and_contrast() {
+		$this->assertSame( '', Memml_Renderer::get_appearance_css( array( 'accent_color' => '' ) ) );
+		$this->assertSame( '', Memml_Renderer::get_appearance_css( array( 'accent_color' => 'red;}' ) ) );
+		$this->assertSame(
+			':where(.memml-calendar){--memml-accent:#b91c1c;--memml-accent-contrast:#fff}',
+			Memml_Renderer::get_appearance_css( array( 'accent_color' => '#b91c1c' ) )
+		);
+		$this->assertSame( '#fff', Memml_Renderer::get_accent_contrast( '#2563eb' ) );
+		$this->assertSame( '#1f2430', Memml_Renderer::get_accent_contrast( '#ffd400' ) );
+		$this->assertSame( '#1f2430', Memml_Renderer::get_accent_contrast( '#ffffff' ) );
+		$this->assertSame( '#fff', Memml_Renderer::get_accent_contrast( '#000000' ) );
+	}
+
+	/**
 	 * Pins the organization-local today used by date filtering.
 	 *
 	 * @param string       $date     Date in Y-m-d format.

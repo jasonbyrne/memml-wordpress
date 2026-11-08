@@ -152,7 +152,7 @@ final class Memml_Renderer {
 			}
 		}
 
-		return '<div class="memml-calendar memml-calendar--committees" data-memml-committees>' . $rosters . '</div>';
+		return '<div class="memml-calendar memml-calendar--committees' . esc_attr( self::get_appearance_classes( Memml_Settings::get_options() ) ) . '" data-memml-committees>' . $rosters . '</div>';
 	}
 
 	/**
@@ -338,14 +338,15 @@ final class Memml_Renderer {
 		}
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--switchable" data-memml-calendar data-memml-url-prefix="%1$s" data-calendar="%2$s" data-layout="%3$s" data-period="%4$s">%5$s%6$s%7$s</div>',
+			'<div class="memml-calendar memml-calendar--switchable%8$s" data-memml-calendar data-memml-url-prefix="%1$s" data-calendar="%2$s" data-layout="%3$s" data-period="%4$s">%5$s%6$s%7$s</div>',
 			esc_attr( $query_prefix ),
 			esc_attr( $calendar ),
 			esc_attr( $context['layout'] ),
 			esc_attr( $context['period'] ),
 			$toolbar,
 			$panels,
-			$this->render_live_region()
+			$this->render_live_region(),
+			esc_attr( self::get_appearance_classes( Memml_Settings::get_options() ) )
 		);
 	}
 
@@ -389,14 +390,15 @@ final class Memml_Renderer {
 		$toolbar              = $this->render_toolbar( $this->render_period_controls( $context ) . $this->render_layout_controls( $context ) );
 
 		return sprintf(
-			'<div class="memml-calendar memml-calendar--%1$s" data-memml-calendar data-memml-url-prefix="%2$s" data-feed="%1$s" data-layout="%3$s" data-period="%4$s">%5$s%6$s%7$s</div>',
+			'<div class="memml-calendar memml-calendar--%1$s%8$s" data-memml-calendar data-memml-url-prefix="%2$s" data-feed="%1$s" data-layout="%3$s" data-period="%4$s">%5$s%6$s%7$s</div>',
 			esc_attr( $feed ),
 			esc_attr( $query_prefix ),
 			esc_attr( $context['layout'] ),
 			esc_attr( $context['period'] ),
 			$toolbar,
 			$this->render_layout_panels( $feed, $context, $this->get_client_result( $feed ) ),
-			$this->render_live_region()
+			$this->render_live_region(),
+			esc_attr( self::get_appearance_classes( Memml_Settings::get_options() ) )
 		);
 	}
 
@@ -2821,6 +2823,91 @@ final class Memml_Renderer {
 			)
 		);
 		wp_script_add_data( self::ASSET_HANDLE, 'strategy', 'defer' );
+
+		$appearance_css = self::get_appearance_css( Memml_Settings::get_options() );
+
+		if ( '' !== $appearance_css ) {
+			wp_add_inline_style( self::ASSET_HANDLE, $appearance_css );
+		}
+	}
+
+	/**
+	 * Gets the root classes for appearance presets that differ from the default.
+	 *
+	 * Default presets add no class, so existing markup is unchanged.
+	 *
+	 * @param array $options Plugin settings.
+	 * @return string Space-prefixed class list, or ''.
+	 */
+	public static function get_appearance_classes( $options ) {
+		$prefixes = array(
+			'appearance_palette' => 'palette',
+			'appearance_spacing' => 'spacing',
+			'appearance_corners' => 'corners',
+			'image_size'         => 'images',
+		);
+		$classes  = '';
+
+		foreach ( Memml_Settings::APPEARANCE_CHOICES as $name => $choices ) {
+			$value = isset( $options[ $name ] ) ? $options[ $name ] : $choices[0];
+
+			if ( $value !== $choices[0] && in_array( $value, $choices, true ) ) {
+				$classes .= ' memml-calendar--' . $prefixes[ $name ] . '-' . $value;
+			}
+		}
+
+		return $classes;
+	}
+
+	/**
+	 * Gets the stylesheet rule for a custom accent color.
+	 *
+	 * Uses :where() like the rest of the stylesheet, so a theme's own
+	 * custom-property overrides still win.
+	 *
+	 * @param array $options Plugin settings.
+	 * @return string CSS, or '' for the default accent.
+	 */
+	public static function get_appearance_css( $options ) {
+		$accent = isset( $options['accent_color'] ) && is_string( $options['accent_color'] ) ? strtolower( $options['accent_color'] ) : '';
+
+		if ( ! preg_match( '/^#[0-9a-f]{6}$/', $accent ) ) {
+			return '';
+		}
+
+		return sprintf(
+			':where(.memml-calendar){--memml-accent:%1$s;--memml-accent-contrast:%2$s}',
+			$accent,
+			self::get_accent_contrast( $accent )
+		);
+	}
+
+	/**
+	 * Chooses white or dark text for the best contrast on an accent color.
+	 *
+	 * @param string $hex Six-digit hex color.
+	 * @return string
+	 */
+	public static function get_accent_contrast( $hex ) {
+		$dark      = '#1f2430';
+		$luminance = static function ( $color ) {
+			$channels = array_map(
+				static function ( $pair ) {
+					$value = hexdec( $pair ) / 255;
+
+					return $value <= 0.03928 ? $value / 12.92 : pow( ( $value + 0.055 ) / 1.055, 2.4 );
+				},
+				str_split( substr( $color, 1 ), 2 )
+			);
+
+			return 0.2126 * $channels[0] + 0.7152 * $channels[1] + 0.0722 * $channels[2];
+		};
+		$accent    = $luminance( $hex );
+
+		$white_contrast = 1.05 / ( $accent + 0.05 );
+		$dark_contrast  = ( $accent + 0.05 ) / ( $luminance( $dark ) + 0.05 );
+
+		return $white_contrast >= $dark_contrast ? '#fff' : $dark;
 	}
 
 	/**
