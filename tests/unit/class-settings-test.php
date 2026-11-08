@@ -381,4 +381,92 @@ final class Memml_Settings_Test extends TestCase {
 			)
 		);
 	}
+
+	/**
+	 * Committees are listed only once a page has shown them.
+	 *
+	 * @return void
+	 */
+	public function test_feed_statuses_list_committees_once_loaded() {
+		$committees_loaded = false;
+
+		Functions\when( 'get_transient' )->alias(
+			static function ( $key ) use ( &$committees_loaded ) {
+				$committees = 'memml_feed_' . md5( 'https://memml.com/api/public/v1/river-city-neighbors/committees.json' );
+
+				if ( $key === $committees && ! $committees_loaded ) {
+					return false;
+				}
+
+				return array(
+					'data'       => array( 'organization' => array( 'name' => 'River City Neighbors' ) ),
+					'fetched_at' => time(),
+					'expires_at' => time() + 600,
+				);
+			}
+		);
+
+		$client = new Memml_Feed_Client();
+
+		self::assertSame( array( 'events', 'volunteers' ), array_keys( Memml_Settings::get_feed_statuses( $client, 'river-city-neighbors' ) ) );
+
+		$committees_loaded = true;
+
+		self::assertSame( array( 'events', 'volunteers', 'committees' ), array_keys( Memml_Settings::get_feed_statuses( $client, 'river-city-neighbors' ) ) );
+	}
+
+	/**
+	 * Refresh all covers the listed feeds; a single refresh covers known feeds only.
+	 *
+	 * @return void
+	 */
+	public function test_refresh_feeds_requested() {
+		$statuses = array(
+			'events'     => array(),
+			'volunteers' => array(),
+		);
+
+		self::assertSame( array( 'events', 'volunteers' ), Memml_Settings::get_refresh_feeds( 'all', $statuses ) );
+		self::assertSame( array( 'volunteers' ), Memml_Settings::get_refresh_feeds( 'volunteers', $statuses ) );
+		self::assertSame( array( 'committees' ), Memml_Settings::get_refresh_feeds( 'committees', $statuses ) );
+		self::assertSame( array(), Memml_Settings::get_refresh_feeds( 'sponsors', $statuses ) );
+	}
+
+	/**
+	 * Every status has a plain-language label and summary without cache jargon.
+	 *
+	 * @return void
+	 */
+	public function test_feed_status_descriptions_use_plain_language() {
+		Functions\when( '__' )->returnArg();
+		Functions\when( 'human_time_diff' )->justReturn( '5 mins' );
+
+		$labels = array();
+
+		foreach ( array( 'fresh', 'cached', 'stale', 'error', 'not_loaded' ) as $state ) {
+			$description = Memml_Settings::describe_feed_status(
+				array(
+					'state'      => $state,
+					'fetched_at' => 'not_loaded' === $state ? 0 : 1800000000 - 300,
+				),
+				1800000000
+			);
+
+			self::assertNotSame( '', $description['label'] );
+			self::assertStringNotContainsStringIgnoringCase( 'cache', $description['label'] . $description['summary'] );
+			$labels[] = $description['label'];
+		}
+
+		self::assertCount( 5, array_unique( $labels ) );
+		self::assertStringContainsString(
+			'5 mins ago',
+			Memml_Settings::describe_feed_status(
+				array(
+					'state'      => 'stale',
+					'fetched_at' => 1,
+				),
+				1800000000
+			)['summary']
+		);
+	}
 }

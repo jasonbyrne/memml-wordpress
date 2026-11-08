@@ -39,8 +39,8 @@ intentional exception.
 - **Content and actions** — which details and calls to action calendars show.
 - **Appearance** — the list style and a few safe presets: accent color,
   palette, spacing, corners, and card image size. See [Theming](#theming).
-- **Status** — how long feed data is cached, the feed URLs this site reads, and
-  **Clear cached data**.
+- **Status** — a card for each feed with its health and a **Refresh** button,
+  plus **Refresh all**. See [Cached feed data](#cached-feed-data).
 
 These are site-wide settings: they apply to every block set to **Use site
 setting** and every shortcode without its own properties, while explicit block
@@ -61,18 +61,34 @@ ETags. After a failed request the plugin waits a short backoff period before
 trying again, serving the last known-good response in the meantime, so an
 unreachable Memml service cannot slow down every page view.
 
-**Settings → Memml Calendar → Status** lists the feed URLs this site
-reads and provides a **Clear cached data** button for publishing a Memml change
-immediately. Saving a new organization key or base URL clears the cache
-automatically.
+**Settings → Memml Calendar → Status** shows a card for Events and one for
+Volunteer opportunities (and one for Committees once a page has shown them).
+Each card gives the organization, timezone, item count, when the feed was last
+updated from Memml, the feed address, and the latest problem, if any, with one
+of these states:
+
+- **Up to date** — visitors see a copy checked within the last ten minutes.
+- **Due for a check** — the next page view checks Memml for changes.
+- **Showing an older copy** — the latest check failed, so visitors see the last
+  copy that loaded while the plugin tries again shortly.
+- **Not available** — the latest check failed and there is no copy to show, so
+  calendars show a message instead of items.
+- **Not loaded yet** — no page has shown the feed since it was last loaded.
+
+The status is read from the saved copy, so opening the settings page never
+contacts Memml. Each card's **Refresh** button, and **Refresh all**, check Memml
+right away to publish a change immediately and clear Memml pages from supported
+page caches. If Memml cannot be reached, the saved copy is kept, so a refresh
+never takes a working calendar away. Saving a new organization key or base URL
+discards the saved copies automatically.
 
 Three filters adjust the timings: `memml_feed_cache_ttl`,
 `memml_feed_stale_ttl`, and `memml_feed_failure_ttl`.
 
 Memml's public feeds are also cached at Memml's edge for up to five minutes, so
-a change can take up to about fifteen minutes to appear. If Clear cached data
-runs within a few minutes of an edit and the change is still missing, clear it
-again a few minutes later.
+a change can take up to about fifteen minutes to appear. If a refresh runs
+within a few minutes of an edit and the change is still missing, refresh again a
+few minutes later.
 
 ### Full-page caches
 
@@ -84,7 +100,7 @@ The plugin works with LiteSpeed Cache automatically:
   no longer than the feed data it shows stays fresh (at most ten minutes by
   default), and one minute while Memml is unavailable or stale data is shown.
   A shorter public lifetime configured in LiteSpeed Cache is kept.
-- Those pages carry a `memml` cache tag. Clear cached data and any change to
+- Those pages carry a `memml` cache tag. Refresh and any change to
   Memml Calendar settings purge the tagged pages.
 
 For other page caches, exclude pages with Memml calendars or give them a short

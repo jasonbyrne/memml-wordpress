@@ -27,7 +27,7 @@ final class Memml_Settings {
 	public const PAGE_SLUG = 'memml';
 
 	/**
-	 * Cache-refresh admin-post action.
+	 * Feed-refresh admin-post action.
 	 *
 	 * @var string
 	 */
@@ -122,7 +122,7 @@ final class Memml_Settings {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_notices', array( $this, 'render_setup_notice' ) );
 		add_action( 'wp_ajax_memml_test_connection', array( $this, 'test_connection' ) );
-		add_action( 'admin_post_' . self::FLUSH_ACTION, array( $this, 'flush_cache' ) );
+		add_action( 'admin_post_' . self::FLUSH_ACTION, array( $this, 'refresh_feeds' ) );
 		add_action( 'admin_post_' . self::PREVIEW_ACTION, array( $this, 'render_preview' ) );
 		add_filter(
 			'plugin_action_links_' . plugin_basename( MEMML_PLUGIN_FILE ),
@@ -174,11 +174,15 @@ final class Memml_Settings {
 	}
 
 	/**
-	 * Discards cached feed responses and the cached pages that show them.
+	 * Checks Memml for one feed or every listed feed right away, then clears
+	 * the cached pages that show them.
+	 *
+	 * A failed check keeps the saved copy, so visitors never lose a working
+	 * calendar because of a refresh.
 	 *
 	 * @return void
 	 */
-	public function flush_cache() {
+	public function refresh_feeds() {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die(
 				esc_html__( 'You are not allowed to manage these settings.', 'memml' ),
@@ -189,17 +193,163 @@ final class Memml_Settings {
 
 		check_admin_referer( self::FLUSH_ACTION );
 
-		$options = self::get_options();
+		$options   = self::get_options();
+		$requested = isset( $_POST['feed'] ) ? sanitize_key( wp_unslash( $_POST['feed'] ) ) : 'all';
+		$refreshed = array();
+		$failed    = array();
 
 		if ( '' !== $options['organization_key'] ) {
-			$client = new Memml_Feed_Client( $options['base_url'] );
-			$client->flush_cache( $options['organization_key'] );
+			$client   = new Memml_Feed_Client( $options['base_url'] );
+			$statuses = self::get_feed_statuses( $client, $options['organization_key'] );
+
+			foreach ( self::get_refresh_feeds( $requested, $statuses ) as $feed ) {
+				$result = $client->refresh_feed( $options['organization_key'], $feed );
+
+				if ( is_array( $result ) && empty( $result['is_stale'] ) ) {
+					$refreshed[] = $feed;
+				} else {
+					$failed[] = $feed;
+				}
+			}
 		}
 
 		Memml_Page_Cache::purge();
 
-		wp_safe_redirect( add_query_arg( 'memml-refreshed', '1', self::get_page_url() ) );
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'memml-refreshed'      => implode( ',', $refreshed ),
+					'memml-refresh-failed' => implode( ',', $failed ),
+				),
+				self::get_page_url()
+			) . '#memml-section-status'
+		);
 		exit;
+	}
+
+	/**
+	 * Gets the plain-language name of each feed.
+	 *
+	 * @return array
+	 */
+	public static function get_feed_labels() {
+		return array(
+			'events'     => __( 'Events', 'memml' ),
+			'volunteers' => __( 'Volunteer opportunities', 'memml' ),
+			'committees' => __( 'Committees', 'memml' ),
+		);
+	}
+
+	/**
+	 * Gets the status of each feed listed in the Status section.
+	 *
+	 * Events and volunteer opportunities are always listed. Committees are
+	 * listed once a page has shown them, so sites without a committee roster
+	 * are not asked about a feed they do not use.
+	 *
+	 * @param Memml_Feed_Client $client           Feed client.
+	 * @param string            $organization_key Memml organization key.
+	 * @return array Statuses keyed by feed.
+	 */
+	public static function get_feed_statuses( $client, $organization_key ) {
+		$statuses = array();
+
+		foreach ( array_keys( Memml_Feed_Client::FEEDS ) as $feed ) {
+			$status = $client->get_feed_status( $organization_key, $feed );
+
+			if ( 'committees' !== $feed || 'not_loaded' !== $status['state'] ) {
+				$statuses[ $feed ] = $status;
+			}
+		}
+
+		return $statuses;
+	}
+
+	/**
+	 * Gets the feeds a refresh request covers.
+	 *
+	 * @param string $requested A feed identifier, or "all".
+	 * @param array  $statuses  Listed feed statuses keyed by feed.
+	 * @return array Feed identifiers.
+	 */
+	public static function get_refresh_feeds( $requested, $statuses ) {
+		if ( 'all' === $requested ) {
+			return array_keys( $statuses );
+		}
+
+		return isset( Memml_Feed_Client::FEEDS[ $requested ] ) ? array( $requested ) : array();
+	}
+
+	/**
+	 * Describes a feed status in plain language.
+	 *
+	 * @param array $status Feed status from Memml_Feed_Client::get_feed_status().
+	 * @param int   $now    Current timestamp, for tests.
+	 * @return array Short label and one-sentence summary.
+	 */
+	public static function describe_feed_status( $status, $now = 0 ) {
+		$now     = $now > 0 ? (int) $now : time();
+		$updated = $status['fetched_at'] > 0 ? human_time_diff( $status['fetched_at'], $now ) : '';
+
+		switch ( $status['state'] ) {
+			case 'fresh':
+				return array(
+					'label'   => __( 'Up to date', 'memml' ),
+					/* translators: %s: Time since Memml was last checked, such as "3 mins". */
+					'summary' => sprintf( __( 'Visitors see the latest copy from Memml, checked %s ago.', 'memml' ), $updated ),
+				);
+			case 'cached':
+				return array(
+					'label'   => __( 'Due for a check', 'memml' ),
+					/* translators: %s: Age of the saved copy, such as "2 hours". */
+					'summary' => sprintf( __( 'Visitors see the copy from %s ago. The next page view checks Memml for changes.', 'memml' ), $updated ),
+				);
+			case 'stale':
+				return array(
+					'label'   => __( 'Showing an older copy', 'memml' ),
+					/* translators: %s: Age of the saved copy, such as "2 hours". */
+					'summary' => sprintf( __( 'The latest check with Memml did not succeed, so visitors see the copy from %s ago. The plugin tries again shortly.', 'memml' ), $updated ),
+				);
+			case 'error':
+				return array(
+					'label'   => __( 'Not available', 'memml' ),
+					'summary' => __( 'The latest check with Memml did not succeed and there is no copy to show, so calendars show a message instead of items. The plugin tries again shortly.', 'memml' ),
+				);
+			default:
+				return array(
+					'label'   => __( 'Not loaded yet', 'memml' ),
+					'summary' => __( 'No page has shown this feed since it was last loaded. Select Refresh to load it now.', 'memml' ),
+				);
+		}
+	}
+
+	/**
+	 * Formats a timestamp in the site's date and time format.
+	 *
+	 * @param int $timestamp Unix timestamp.
+	 * @return string
+	 */
+	private static function format_timestamp( $timestamp ) {
+		return wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
+	}
+
+	/**
+	 * Gets a readable list of feed names from a query-string value.
+	 *
+	 * @param string $value Comma-separated feed identifiers.
+	 * @return string
+	 */
+	private static function get_feed_names( $value ) {
+		$labels = self::get_feed_labels();
+		$names  = array();
+
+		foreach ( explode( ',', $value ) as $feed ) {
+			if ( isset( $labels[ $feed ] ) ) {
+				$names[] = $labels[ $feed ];
+			}
+		}
+
+		return function_exists( 'wp_sprintf_l' ) ? wp_sprintf_l( '%l', $names ) : implode( ', ', $names );
 	}
 
 	/**
@@ -357,11 +507,16 @@ final class Memml_Settings {
 			return;
 		}
 
-		$options             = self::get_options();
-		$is_refresh          = isset( $_GET['memml-refreshed'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only flag set by an already-verified redirect.
+		$options = self::get_options();
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Display-only results set by an already-verified redirect.
+		$refreshed_names = isset( $_GET['memml-refreshed'] ) ? self::get_feed_names( sanitize_text_field( wp_unslash( $_GET['memml-refreshed'] ) ) ) : '';
+		$failed_names    = isset( $_GET['memml-refresh-failed'] ) ? self::get_feed_names( sanitize_text_field( wp_unslash( $_GET['memml-refresh-failed'] ) ) ) : '';
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		$is_ready            = '' !== $options['organization_key'];
 		$feed_client         = new Memml_Feed_Client( $options['base_url'] );
 		$feed_urls           = $is_ready ? $feed_client->get_feed_urls( $options['organization_key'] ) : array();
+		$feed_statuses       = $is_ready ? self::get_feed_statuses( $feed_client, $options['organization_key'] ) : array();
+		$feed_labels         = self::get_feed_labels();
 		$content_preferences = array(
 			'show_images'                 => __( 'Images', 'memml' ),
 			'show_descriptions'           => __( 'Descriptions', 'memml' ),
@@ -388,9 +543,30 @@ final class Memml_Settings {
 		?>
 		<div class="wrap memml-settings">
 			<h1><?php echo esc_html__( 'Memml Calendar Settings', 'memml' ); ?></h1>
-			<?php if ( $is_refresh ) : ?>
+			<?php if ( '' !== $refreshed_names ) : ?>
 				<div class="notice notice-success is-dismissible">
-					<p><?php echo esc_html__( 'Cached Memml data was cleared. The next page view will load fresh data.', 'memml' ); ?></p>
+					<p>
+						<?php
+						printf(
+							/* translators: %s: List of feed names, such as "Events and Volunteer opportunities". */
+							esc_html__( 'Refreshed from Memml: %s. Your pages now show the latest information.', 'memml' ),
+							esc_html( $refreshed_names )
+						);
+						?>
+					</p>
+				</div>
+			<?php endif; ?>
+			<?php if ( '' !== $failed_names ) : ?>
+				<div class="notice notice-error is-dismissible">
+					<p>
+						<?php
+						printf(
+							/* translators: %s: List of feed names, such as "Events and Volunteer opportunities". */
+							esc_html__( 'Could not refresh from Memml: %s. Visitors keep seeing the last copy that loaded, if there is one. See Status for details.', 'memml' ),
+							esc_html( $failed_names )
+						);
+						?>
+					</p>
 				</div>
 			<?php endif; ?>
 			<p class="memml-settings__intro">
@@ -694,27 +870,30 @@ final class Memml_Settings {
 							<p>
 								<?php
 								printf(
-									/* translators: %d: Number of minutes Memml responses are cached. */
-									esc_html( _n( 'Memml responses are cached for about %d minute.', 'Memml responses are cached for about %d minutes.', (int) round( Memml_Feed_Client::DEFAULT_CACHE_TTL / 60 ), 'memml' ) ),
+									/* translators: %d: Number of minutes between checks for Memml changes. */
+									esc_html( _n( 'Your site checks Memml for changes about every %d minute.', 'Your site checks Memml for changes about every %d minutes.', (int) round( Memml_Feed_Client::DEFAULT_CACHE_TTL / 60 ), 'memml' ) ),
 									(int) round( Memml_Feed_Client::DEFAULT_CACHE_TTL / 60 )
 								);
 								echo ' ';
-								echo esc_html__( 'Clear the cache to publish a Memml change on your site right away.', 'memml' );
+								echo esc_html__( 'Refresh to show a Memml change on your site right away. If Memml cannot be reached, visitors keep seeing the last copy that loaded.', 'memml' );
 								?>
 							</p>
 							<p class="description">
-								<?php echo esc_html__( 'If your site uses LiteSpeed Cache, pages that show Memml content are refreshed on the same schedule, and clearing the cache here or saving these settings clears those pages too. If your site uses a different page cache, clear that cache as well.', 'memml' ); ?>
+								<?php echo esc_html__( 'If your site uses LiteSpeed Cache, pages that show Memml content follow the same schedule, and refreshing here or saving these settings clears those pages too. If your site uses a different page cache, clear that cache as well.', 'memml' ); ?>
 							</p>
-							<p><?php echo esc_html__( 'This site reads:', 'memml' ); ?></p>
-							<ul class="memml-feed-urls">
-								<?php foreach ( $feed_urls as $feed_url ) : ?>
-									<li><code><?php echo esc_html( $feed_url ); ?></code></li>
-								<?php endforeach; ?>
-							</ul>
-							<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+							<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="memml-feed-status" method="post">
 								<input name="action" type="hidden" value="<?php echo esc_attr( self::FLUSH_ACTION ); ?>" />
 								<?php wp_nonce_field( self::FLUSH_ACTION ); ?>
-								<?php submit_button( __( 'Clear cached data', 'memml' ), 'secondary', 'submit', false ); ?>
+								<div class="memml-feed-status__cards">
+									<?php foreach ( $feed_statuses as $feed => $status ) : ?>
+										<?php $this->render_feed_card( $feed, $feed_labels[ $feed ], $status, $feed_urls[ $feed ] ); ?>
+									<?php endforeach; ?>
+								</div>
+								<p>
+									<button class="button button-secondary" name="feed" type="submit" value="all">
+										<?php echo esc_html__( 'Refresh all', 'memml' ); ?>
+									</button>
+								</p>
 							</form>
 						<?php else : ?>
 							<p><?php echo esc_html__( 'Save an organization key to see the feeds this site will read.', 'memml' ); ?></p>
@@ -762,6 +941,75 @@ final class Memml_Settings {
 				</aside>
 			</div>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Renders one feed's status card with its refresh button.
+	 *
+	 * @param string $feed     Feed identifier.
+	 * @param string $label    Feed name.
+	 * @param array  $status   Feed status.
+	 * @param string $feed_url Feed URL.
+	 * @return void
+	 */
+	private function render_feed_card( $feed, $label, $status, $feed_url ) {
+		$description = self::describe_feed_status( $status );
+		$heading_id  = 'memml-feed-' . $feed;
+		?>
+		<section aria-labelledby="<?php echo esc_attr( $heading_id ); ?>" class="memml-feed-card is-<?php echo esc_attr( str_replace( '_', '-', $status['state'] ) ); ?>">
+			<div class="memml-feed-card__header">
+				<h3 id="<?php echo esc_attr( $heading_id ); ?>"><?php echo esc_html( $label ); ?></h3>
+				<span class="memml-feed-card__state"><?php echo esc_html( $description['label'] ); ?></span>
+			</div>
+			<p class="memml-feed-card__summary"><?php echo esc_html( $description['summary'] ); ?></p>
+			<dl class="memml-feed-card__details">
+				<?php if ( '' !== $status['organization'] ) : ?>
+					<dt><?php echo esc_html__( 'Organization', 'memml' ); ?></dt>
+					<dd><?php echo esc_html( $status['organization'] ); ?></dd>
+				<?php endif; ?>
+				<?php if ( '' !== $status['timezone'] ) : ?>
+					<dt><?php echo esc_html__( 'Timezone', 'memml' ); ?></dt>
+					<dd><?php echo esc_html( $status['timezone'] ); ?></dd>
+				<?php endif; ?>
+				<?php if ( null !== $status['item_count'] ) : ?>
+					<dt><?php echo esc_html__( 'Items', 'memml' ); ?></dt>
+					<dd><?php echo esc_html( number_format_i18n( $status['item_count'] ) ); ?></dd>
+				<?php endif; ?>
+				<dt><?php echo esc_html__( 'Last updated from Memml', 'memml' ); ?></dt>
+				<dd><?php echo esc_html( $status['fetched_at'] > 0 ? self::format_timestamp( $status['fetched_at'] ) : __( 'Not yet', 'memml' ) ); ?></dd>
+				<?php if ( null !== $status['error'] ) : ?>
+					<dt><?php echo esc_html__( 'Latest problem', 'memml' ); ?></dt>
+					<dd>
+						<?php
+						echo esc_html( $status['error'] );
+
+						if ( $status['failed_at'] > 0 ) {
+							echo ' ';
+							printf(
+								/* translators: %s: Date and time of the failed check. */
+								esc_html__( '(%s)', 'memml' ),
+								esc_html( self::format_timestamp( $status['failed_at'] ) )
+							);
+						}
+						?>
+					</dd>
+				<?php endif; ?>
+			</dl>
+			<details class="memml-feed-card__address">
+				<summary><?php echo esc_html__( 'Feed address', 'memml' ); ?></summary>
+				<code><?php echo esc_html( $feed_url ); ?></code>
+			</details>
+			<button class="button" name="feed" type="submit" value="<?php echo esc_attr( $feed ); ?>">
+				<?php
+				printf(
+					/* translators: %s: Feed name, such as "Events". */
+					esc_html__( 'Refresh %s', 'memml' ),
+					esc_html( $label )
+				);
+				?>
+			</button>
+		</section>
 		<?php
 	}
 

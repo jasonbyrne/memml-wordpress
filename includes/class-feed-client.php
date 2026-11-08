@@ -65,6 +65,28 @@ final class Memml_Feed_Client {
 	private const COMMITTEES_FEED = 'committees.json';
 
 	/**
+	 * Feed identifiers mapped to their filenames.
+	 *
+	 * @var array
+	 */
+	public const FEEDS = array(
+		'events'     => self::EVENTS_FEED,
+		'volunteers' => self::VOLUNTEERS_FEED,
+		'committees' => self::COMMITTEES_FEED,
+	);
+
+	/**
+	 * Data keys holding each feed's items, in order of preference.
+	 *
+	 * @var array
+	 */
+	private const ITEM_KEYS = array(
+		'events'     => array( 'events' ),
+		'volunteers' => array( 'volunteerOpportunities', 'opportunities' ),
+		'committees' => array( 'committees' ),
+	);
+
+	/**
 	 * API origin.
 	 *
 	 * @var string
@@ -129,11 +151,103 @@ final class Memml_Feed_Client {
 	 * @return array Feed label keyed URLs.
 	 */
 	public function get_feed_urls( $organization_key ) {
-		return array(
-			'events'     => $this->build_feed_url( $organization_key, self::EVENTS_FEED ),
-			'volunteers' => $this->build_feed_url( $organization_key, self::VOLUNTEERS_FEED ),
-			'committees' => $this->build_feed_url( $organization_key, self::COMMITTEES_FEED ),
+		$urls = array();
+
+		foreach ( self::FEEDS as $feed => $filename ) {
+			$urls[ $feed ] = $this->build_feed_url( $organization_key, $filename );
+		}
+
+		return $urls;
+	}
+
+	/**
+	 * Checks Memml for a feed right away, keeping the saved copy if that fails.
+	 *
+	 * @param string $organization_key Memml organization key.
+	 * @param string $feed             Feed identifier: events, volunteers, or committees.
+	 * @return array|WP_Error Normalized response or an error.
+	 */
+	public function refresh_feed( $organization_key, $feed ) {
+		if ( ! isset( self::FEEDS[ $feed ] ) ) {
+			return new WP_Error( 'memml_unknown_feed', __( 'Unknown Memml feed.', 'memml' ) );
+		}
+
+		return $this->get_feed( $organization_key, self::FEEDS[ $feed ], true );
+	}
+
+	/**
+	 * Describes a feed's saved copy without contacting Memml.
+	 *
+	 * States:
+	 * - not_loaded: nothing is saved; the next page view loads it.
+	 * - fresh: the saved copy is within its fresh lifetime.
+	 * - cached: the saved copy is due for a check on the next page view.
+	 * - stale: the last check failed and visitors see the older saved copy.
+	 * - error: the last check failed and visitors see an error message.
+	 *
+	 * @param string $organization_key Memml organization key.
+	 * @param string $feed             Feed identifier: events, volunteers, or committees.
+	 * @param int    $now              Current timestamp, for tests.
+	 * @return array
+	 */
+	public function get_feed_status( $organization_key, $feed, $now = 0 ) {
+		$now    = $now > 0 ? (int) $now : time();
+		$status = array(
+			'feed'         => $feed,
+			'state'        => 'not_loaded',
+			'organization' => '',
+			'timezone'     => '',
+			'item_count'   => null,
+			'fetched_at'   => 0,
+			'expires_at'   => 0,
+			'error'        => null,
+			'failed_at'    => 0,
 		);
+
+		if ( ! isset( self::FEEDS[ $feed ] ) || '' === trim( (string) $organization_key ) ) {
+			return $status;
+		}
+
+		$url    = $this->build_feed_url( trim( (string) $organization_key ), self::FEEDS[ $feed ] );
+		$record = get_transient( 'memml_feed_' . md5( $url ) );
+
+		if ( ! is_array( $record ) ) {
+			return $status;
+		}
+
+		$has_data = isset( $record['data'] ) && is_array( $record['data'] );
+
+		if ( $has_data ) {
+			$organization           = isset( $record['data']['organization'] ) && is_array( $record['data']['organization'] ) ? $record['data']['organization'] : array();
+			$status['organization'] = isset( $organization['name'] ) ? (string) $organization['name'] : '';
+			$status['timezone']     = isset( $organization['timezone'] ) ? (string) $organization['timezone'] : '';
+			$status['item_count']   = 0;
+			$status['fetched_at']   = isset( $record['fetched_at'] ) ? (int) $record['fetched_at'] : 0;
+			$status['expires_at']   = isset( $record['expires_at'] ) ? (int) $record['expires_at'] : 0;
+
+			foreach ( self::ITEM_KEYS[ $feed ] as $key ) {
+				if ( isset( $record['data'][ $key ] ) && is_array( $record['data'][ $key ] ) ) {
+					$status['item_count'] = count( $record['data'][ $key ] );
+					break;
+				}
+			}
+		}
+
+		if ( isset( $record['error'] ) && is_array( $record['error'] ) ) {
+			$status['error']     = isset( $record['error']['message'] ) ? (string) $record['error']['message'] : '';
+			$status['failed_at'] = isset( $record['error']['failed_at'] ) ? (int) $record['error']['failed_at'] : 0;
+		}
+
+		if ( $has_data && $status['expires_at'] > $now ) {
+			// Visitors still see the fresh copy, even if a forced check failed.
+			$status['state'] = 'fresh';
+		} elseif ( null !== $status['error'] ) {
+			$status['state'] = $has_data && ! empty( $record['error']['allow_stale'] ) ? 'stale' : 'error';
+		} elseif ( $has_data ) {
+			$status['state'] = 'cached';
+		}
+
+		return $status;
 	}
 
 	/**
@@ -344,6 +458,7 @@ final class Memml_Feed_Client {
 			'message'     => $error->get_error_message(),
 			'data'        => $error->get_error_data(),
 			'allow_stale' => (bool) $allow_stale,
+			'failed_at'   => time(),
 		);
 
 		$record['retry_after'] = time() + $this->get_failure_ttl( $feed_filename );

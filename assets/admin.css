@@ -84,3 +84,78 @@
 		min-height: 480px;
 	}
 }
+
+/* Status: one card per feed. */
+.memml-feed-status__cards {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+	margin: 16px 0;
+}
+
+.memml-feed-card {
+	padding: 12px 16px 16px;
+	border: 1px solid #c3c4c7;
+	border-left-width: 4px;
+	border-radius: 4px;
+	background: #fff;
+}
+
+.memml-feed-card.is-fresh {
+	border-left-color: #00a32a;
+}
+
+.memml-feed-card.is-cached,
+.memml-feed-card.is-not-loaded {
+	border-left-color: #72aee6;
+}
+
+.memml-feed-card.is-stale {
+	border-left-color: #dba617;
+}
+
+.memml-feed-card.is-error {
+	border-left-color: #d63638;
+}
+
+.memml-feed-card__header {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+	align-items: baseline;
+	justify-content: space-between;
+}
+
+.memml-feed-card__header h3 {
+	margin: 0.5em 0;
+}
+
+.memml-feed-card__state {
+	font-weight: 600;
+}
+
+.memml-feed-card__details {
+	display: grid;
+	gap: 4px 12px;
+	grid-template-columns: max-content minmax(0, 1fr);
+	margin: 12px 0;
+}
+
+.memml-feed-card__details dt {
+	color: #50575e;
+}
+
+.memml-feed-card__details dd {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+
+.memml-feed-card__address {
+	margin: 0 0 12px;
+}
+
+.memml-feed-card__address code {
+	display: block;
+	margin-top: 4px;
+	overflow-wrap: anywhere;
+}

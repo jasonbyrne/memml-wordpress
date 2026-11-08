@@ -122,12 +122,17 @@ The plugin requests public data from memml.com, caches successful responses,
 revalidates them using ETags, and can show the last known-good response during a
 temporary service or network error. After a failed request it waits a short
 backoff period before contacting Memml again, so an outage cannot slow down every
-page view. The Status section of Settings > Memml Calendar lists the feed URLs the site reads and
-provides a Clear cached data button for publishing a Memml change immediately.
+page view. The Status section of Settings > Memml Calendar shows a card for Events
+and Volunteer opportunities (and Committees once a page has shown them) with the
+organization, timezone, item count, when the feed was last updated from Memml, and
+the latest problem, in plain language: Up to date, Due for a check, Showing an older
+copy, Not available, or Not loaded yet. Each card has a Refresh button, and Refresh
+all checks every feed, to publish a Memml change immediately. If Memml cannot be
+reached, the last copy that loaded is kept.
 
 Pages that show a Memml calendar work with LiteSpeed Cache automatically: they are
 kept in the page cache no longer than the feed data they show stays fresh, and
-Clear cached data or saving Memml Calendar settings clears them. Developers can
+refreshing feeds or saving Memml Calendar settings clears them. Developers can
 connect other page caches with the `memml_page_cache_ttl` filter and the
 `memml_page_cache_limit` and `memml_page_cache_purge` actions.
 
@@ -181,16 +186,16 @@ A multi-day item counts as upcoming until its last day has passed.
 = How quickly do Memml changes appear on my site? =
 
 Usually within ten to fifteen minutes. To publish a change sooner, open
-Settings > Memml Calendar and select Clear cached data. Memml's own servers can
-keep a feed for up to five minutes, so if you clear the cache right after an
-edit and the change is still missing, clear it again a few minutes later.
+Settings > Memml Calendar and select Refresh all under Status. Memml's own servers
+can keep a feed for up to five minutes, so if you refresh right after an edit and
+the change is still missing, refresh again a few minutes later.
 
 = My site uses a page cache plugin. Will calendars go out of date? =
 
 LiteSpeed Cache is supported automatically: pages with Memml calendars expire from
-its cache along with the feed data, and Clear cached data clears them. For other
+its cache along with the feed data, and refreshing feeds clears them. For other
 page caches, exclude pages with Memml calendars from caching or give them a short
-cache lifetime, and clear the page cache after clearing Memml's cached data.
+cache lifetime, and clear the page cache after refreshing Memml feeds.
 
 = Can I show only the next few events? =
 

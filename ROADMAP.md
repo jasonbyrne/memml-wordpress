@@ -94,8 +94,8 @@ What the plugin needs to know:
 | RM-005 | 0.5 Admin-first controls | **DONE** | Add a small set of safe appearance presets. |
 | RM-015 | 0.6 Reliability | **DONE** | Keep page caches from serving outdated Memml content. |
 | RM-016 | 0.6 Reliability | **DONE** | Show multi-day events across every day they run. |
-| RM-006 | 0.6 Reliability | **NEXT** | Show clear feed health and targeted refresh controls. |
-| RM-007 | 0.6 Reliability | **PLANNED** | Add useful, customizable empty states and calls to action. |
+| RM-006 | 0.6 Reliability | **DONE** | Show clear feed health and targeted refresh controls. |
+| RM-007 | 0.6 Reliability | **NEXT** | Add useful, customizable empty states and calls to action. |
 | RM-008 | 0.6 Reliability | **PLANNED** | Support delegated calendar management and improve onboarding. |
 | RM-009 | 0.7 Visitor experience | **PLANNED** | Add a mobile-friendly chronological agenda view. |
 | RM-010 | 0.7 Visitor experience | **PLANNED** | Add headings, introductions, and optional destination links. |
@@ -285,16 +285,31 @@ placement, Upcoming/Past, and Google links, README, and readme.txt are updated.
 
 ### RM-006 — Feed status and refresh tools
 
-**Status:** NEXT
+**Status:** DONE
+
+**Completed:** 2026-11-08
 
 Show separate Events and Volunteers status cards with organization, timezone,
 item count, last successful refresh, fresh/cached/stale state, and the latest
 recoverable error. Add per-feed refresh and Refresh all actions. Use plain
 language rather than cache implementation terminology.
 
+- Status is read from the saved copy without contacting Memml, in five plain
+  states: Up to date, Due for a check, Showing an older copy, Not available,
+  and Not loaded yet. A failed check records when it happened.
+- A Committees card appears once a page has shown the committees feed.
+- Refresh checks Memml right away and keeps the saved copy when Memml cannot
+  be reached; it replaces Clear cached data, which discarded that copy. Both
+  refresh and saving settings still purge supported page caches.
+
+**Completion criteria:** Feed status and refresh in the feed client, status
+cards and refresh actions on the settings page, unit tests for each state,
+refresh selection, and plain-language descriptions, README, readme.txt, and
+settings-page help are updated.
+
 ### RM-007 — Empty states and calls to action
 
-**Status:** PLANNED
+**Status:** NEXT
 
 For Events and Volunteers, allow the administrator to select:
 
