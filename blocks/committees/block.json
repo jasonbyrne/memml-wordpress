@@ -2,7 +2,7 @@
   "$schema": "https://schemas.wp.org/trunk/block.json",
   "apiVersion": 3,
   "name": "memml/committees",
-  "version": "0.4.7",
+  "version": "0.5.0",
   "title": "Memml Committees",
   "category": "widgets",
   "icon": "groups",

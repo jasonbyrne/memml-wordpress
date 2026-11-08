@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.4.7
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -204,6 +204,24 @@ Yes. The URL updates as visitors use enabled calendar, layout, list-filter, or
 month controls. Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.5.0 =
+
+* Reorganized Settings > Memml Calendar into Connection, Calendar display,
+  Content and actions, Appearance, and Status sections, with a note explaining
+  that the settings apply to blocks and shortcodes using site settings.
+* Added a live preview beside the settings that shows the Memml Calendar,
+  Memml Events, or Memml Volunteers block with your choices before you save
+  them, and a Reset section to defaults button for each preference section.
+* Added Appearance presets: a custom accent color with automatically readable
+  button text, a Light, Neutral, or Theme colors palette, comfortable or
+  compact spacing, rounded or square corners, and wide or compact card images.
+  The defaults keep the current look, and theme CSS still takes precedence.
+* Events and volunteer opportunities that run across several days now show
+  their first and last day, appear on every day they run in Month view, and
+  stay in Upcoming with their actions until their last day has passed.
+* Fixed Google Calendar links for multi-day all-day events, which ended one day
+  too late.
 
 = 0.4.7 =
 
