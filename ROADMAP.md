@@ -54,8 +54,8 @@ should show shortcodes without properties.
 | RM-001 | 0.5 Admin-first controls | **DONE** | Complete the site-wide display defaults and inheritance model. |
 | RM-002 | 0.5 Admin-first controls | **DONE** | Let administrators choose which visitor controls are available. |
 | RM-003 | 0.5 Admin-first controls | **DONE** | Add practical content and action visibility preferences. |
-| RM-004 | 0.5 Admin-first controls | **NEXT** | Reorganize settings and add a live calendar preview. |
-| RM-005 | 0.5 Admin-first controls | **PLANNED** | Add a small set of safe appearance presets. |
+| RM-004 | 0.5 Admin-first controls | **DONE** | Reorganize settings and add a live calendar preview. |
+| RM-005 | 0.5 Admin-first controls | **NEXT** | Add a small set of safe appearance presets. |
 | RM-015 | 0.6 Reliability | **DONE** | Keep page caches from serving outdated Memml content. |
 | RM-016 | 0.6 Reliability | **DONE** | Show multi-day events across every day they run. |
 | RM-006 | 0.6 Reliability | **PLANNED** | Show clear feed health and targeted refresh controls. |
@@ -132,23 +132,42 @@ settings screen into a template builder.
 
 ### RM-004 — Improve settings information architecture and preview
 
-**Status:** NEXT
+**Status:** DONE
+
+**Completed:** 2026-11-08
 
 Organize the admin experience into clear sections:
 
-- Connection
-- Calendar display
-- Content and actions
-- Appearance
-- Status
+- Connection: organization key, Test connection, and the Advanced base URL
+- Calendar display: initial calendar, view, list filter, list limit, visitor
+  toolbar, and subscription row
+- Content and actions: the existing content and action preferences
+- Appearance: list style, with a note that calendars inherit the theme; the
+  presets themselves remain RM-005
+- Status: cache explanation, the feeds this site reads, and Clear cached data;
+  per-feed health cards remain RM-006
 
-Add a server-rendered preview for Events and Volunteers. Clearly explain that
-changes affect blocks using site settings, and provide a reset-to-default action
-for each preference section.
+Add a server-rendered preview beside the settings. It previews the Memml
+Calendar, Memml Events, or Memml Volunteers block with the saved connection and
+the display, content, action, and appearance choices currently in the form,
+updating before they are saved. It renders in an isolated frame with the
+calendar's own assets and the theme's global styles, so preview navigation
+never changes the settings page URL.
+
+Clearly explain that changes affect blocks and shortcodes using site settings,
+while explicit block or shortcode choices keep their values. Each preference
+section has a Reset section to defaults action that restores that section's
+defaults in the form and updates the preview; Save Changes applies them.
+
+**Completion criteria:** Sectioned settings page, preview endpoint restricted to
+administrators with a nonce, preview options that never persist, per-section
+reset, unit tests for preview option resolution and section defaults, README,
+readme.txt, and settings-page help are updated. Saved option names and values
+remain unchanged.
 
 ### RM-005 — Add safe appearance presets
 
-**Status:** PLANNED
+**Status:** NEXT
 
 Provide a limited set of theme-friendly choices:
 

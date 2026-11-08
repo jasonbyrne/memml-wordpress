@@ -1,0 +1,86 @@
+/* Memml Calendar settings page. */
+
+.memml-settings__intro {
+	max-width: 48rem;
+	font-size: 14px;
+}
+
+.memml-settings__layout {
+	display: grid;
+	gap: 24px 32px;
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.memml-settings__section {
+	margin-top: 24px;
+	padding-top: 8px;
+	border-top: 1px solid #dcdcde;
+}
+
+.memml-settings__section-header {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 12px;
+	align-items: center;
+}
+
+.memml-settings__section-header h2 {
+	margin: 1em 0 0.5em;
+}
+
+.memml-settings__reset-result {
+	color: #50575e;
+	font-style: italic;
+}
+
+.memml-settings__test {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 12px;
+	align-items: center;
+}
+
+.memml-connection-result.is-success {
+	color: #00a32a;
+}
+
+.memml-connection-result.is-error {
+	color: #d63638;
+}
+
+.memml-settings__preview-header {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 12px;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.memml-settings__preview-frame {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 720px;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	background: #fff;
+}
+
+/* Wide screens keep the preview beside the settings while scrolling. */
+@media (min-width: 1280px) {
+
+	.memml-settings__layout {
+		grid-template-columns: minmax(0, 1fr) minmax(420px, 42%);
+	}
+
+	.memml-settings__preview {
+		position: sticky;
+		top: 48px;
+		align-self: start;
+	}
+
+	.memml-settings__preview-frame {
+		height: calc(100vh - 200px);
+		min-height: 480px;
+	}
+}

@@ -18,8 +18,8 @@
   "scripts": {
     "build": "wp-scripts build",
     "format": "wp-scripts format",
-    "lint:css": "wp-scripts lint-style assets/calendar.css",
-    "lint:js": "wp-scripts lint-js src assets/calendar.js scripts tests/e2e playwright.config.js",
+    "lint:css": "wp-scripts lint-style assets/calendar.css assets/admin.css",
+    "lint:js": "wp-scripts lint-js src assets/admin.js assets/calendar.js scripts tests/e2e playwright.config.js",
     "package": "npm run build && wp-scripts plugin-zip --root-folder=memml && node scripts/finalize-package.js",
     "start": "wp-scripts start",
     "test:e2e": "playwright test",

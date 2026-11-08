@@ -178,4 +178,102 @@ final class Memml_Settings_Test extends TestCase {
 			$this->assertFalse( $result[ $option_name ] );
 		}
 	}
+
+	/**
+	 * The reset sections together cover every preference, and only those.
+	 *
+	 * @return void
+	 */
+	public function test_section_defaults_cover_every_preference() {
+		$sections = Memml_Settings::get_section_defaults();
+		$combined = array();
+
+		foreach ( $sections as $defaults ) {
+			$combined = array_merge( $combined, $defaults );
+		}
+
+		$saved = Memml_Settings::get_options();
+		unset( $saved['organization_key'], $saved['base_url'] );
+
+		$this->assertSame( array( 'display', 'content', 'appearance' ), array_keys( $sections ) );
+		$this->assertEqualsCanonicalizing( array_keys( $saved ), array_keys( $combined ) );
+		$this->assertEqualsCanonicalizing( array_keys( Memml_Settings::sanitize_preferences( array() ) ), array_keys( $combined ) );
+		$this->assertSame( array( 'default_list_style' => 'grid' ), $sections['appearance'] );
+		$this->assertSame( 'list', $sections['display']['default_view'] );
+		$this->assertTrue( $sections['content']['show_event_page'] );
+	}
+
+	/**
+	 * Saved settings keep their option names and connection values.
+	 *
+	 * @return void
+	 */
+	public function test_sanitize_keeps_saved_option_shape() {
+		$settings = new Memml_Settings();
+		$result   = $settings->sanitize(
+			array(
+				'organization_key' => 'river-city-neighbors',
+				'base_url'         => Memml_Feed_Client::DEFAULT_BASE_URL,
+			)
+		);
+
+		$this->assertSame( 'river-city-neighbors', $result['organization_key'] );
+		$this->assertSame( Memml_Feed_Client::DEFAULT_BASE_URL, $result['base_url'] );
+		$this->assertEqualsCanonicalizing( array_keys( Memml_Settings::get_options() ), array_keys( $result ) );
+	}
+
+	/**
+	 * Preview values replace preferences but never the saved connection.
+	 *
+	 * @return void
+	 */
+	public function test_preview_options_use_form_preferences_and_saved_connection() {
+		$this->saved_options['show_images'] = true;
+
+		$preview = Memml_Settings::get_preview_options(
+			array(
+				'organization_key'   => 'someone-else',
+				'base_url'           => 'https://example.test',
+				'default_view'       => 'month',
+				'default_list_style' => 'rows',
+				'default_limit'      => '3',
+				'layout_switcher'    => '1',
+			)
+		);
+
+		$this->assertSame( 'river-city-neighbors', $preview['organization_key'] );
+		$this->assertSame( Memml_Feed_Client::DEFAULT_BASE_URL, $preview['base_url'] );
+		$this->assertSame( 'month', $preview['default_view'] );
+		$this->assertSame( 'rows', $preview['default_list_style'] );
+		$this->assertSame( 3, $preview['default_limit'] );
+		$this->assertTrue( $preview['layout_switcher'] );
+		$this->assertFalse( $preview['period_switcher'], 'An unchecked box in the form previews as off.' );
+		$this->assertFalse( $preview['show_images'] );
+	}
+
+	/**
+	 * Without form values the preview uses the saved settings unchanged.
+	 *
+	 * @return void
+	 */
+	public function test_preview_options_default_to_saved_settings() {
+		$this->saved_options['default_view'] = 'month';
+		$this->saved_options['show_images']  = false;
+
+		$this->assertSame( Memml_Settings::get_options(), Memml_Settings::get_preview_options( null ) );
+		$this->assertSame( Memml_Settings::get_options(), Memml_Settings::get_preview_options( 'month' ) );
+	}
+
+	/**
+	 * Only the three calendar blocks can be previewed.
+	 *
+	 * @return void
+	 */
+	public function test_preview_calendar_is_allow_listed() {
+		$this->assertSame( 'events', Memml_Settings::get_preview_calendar( 'events' ) );
+		$this->assertSame( 'volunteers', Memml_Settings::get_preview_calendar( 'volunteers' ) );
+		$this->assertSame( 'calendar', Memml_Settings::get_preview_calendar( 'calendar' ) );
+		$this->assertSame( 'calendar', Memml_Settings::get_preview_calendar( 'committees' ) );
+		$this->assertSame( 'calendar', Memml_Settings::get_preview_calendar( array( 'events' ) ) );
+	}
 }

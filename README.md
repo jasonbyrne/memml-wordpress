@@ -28,6 +28,32 @@ The organization key and display defaults are configured once for the WordPress
 site. Blocks and shortcodes inherit those defaults unless a placement needs an
 intentional exception.
 
+## Settings page
+
+**Settings → Memml Calendar** is arranged in five sections:
+
+- **Connection** — the organization key, **Test connection**, and an
+  **Advanced** Memml base URL for testing against another environment.
+- **Calendar display** — the initial calendar, view, and list filter, the
+  maximum list items, the visitor switchers, and the subscription row.
+- **Content and actions** — which details and calls to action calendars show.
+- **Appearance** — the list style. Calendars otherwise inherit the theme; see
+  [Theming](#theming).
+- **Status** — how long feed data is cached, the feed URLs this site reads, and
+  **Clear cached data**.
+
+These are site-wide settings: they apply to every block set to **Use site
+setting** and every shortcode without its own properties, while explicit block
+and shortcode choices keep their values.
+
+A **Preview** beside the settings (below them on narrower screens) shows the
+Memml Calendar, Memml Events, or Memml Volunteers block as it will look with the
+choices currently on the page, before they are saved. It uses the saved
+organization key, renders with the calendar's own styles and the theme's global
+styles in a separate frame, and only administrators can open it. Each preference
+section has **Reset section to defaults**, which fills in that section's
+defaults and updates the preview; **Save Changes** applies them.
+
 ## Cached feed data
 
 Successful Memml responses are cached for about ten minutes and revalidated with
@@ -35,7 +61,7 @@ ETags. After a failed request the plugin waits a short backoff period before
 trying again, serving the last known-good response in the meantime, so an
 unreachable Memml service cannot slow down every page view.
 
-**Settings → Memml Calendar → Cached feed data** lists the feed URLs this site
+**Settings → Memml Calendar → Status** lists the feed URLs this site
 reads and provides a **Clear cached data** button for publishing a Memml change
 immediately. Saving a new organization key or base URL clears the cache
 automatically.

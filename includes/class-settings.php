@@ -34,6 +34,60 @@ final class Memml_Settings {
 	public const FLUSH_ACTION = 'memml_refresh_cache';
 
 	/**
+	 * Settings-preview admin-post action.
+	 *
+	 * @var string
+	 */
+	public const PREVIEW_ACTION = 'memml_preview';
+
+	/**
+	 * Preference names in each resettable settings section.
+	 *
+	 * @var array
+	 */
+	public const PREFERENCE_SECTIONS = array(
+		'display'    => array(
+			'default_calendar',
+			'default_view',
+			'default_period',
+			'default_limit',
+			'calendar_switcher',
+			'layout_switcher',
+			'period_switcher',
+			'subscribe_links',
+		),
+		'content'    => array(
+			'show_images',
+			'show_descriptions',
+			'show_item_count',
+			'show_details',
+			'show_venue_cost',
+			'show_volunteer_availability',
+			'show_cancelled_events',
+			'show_rsvp',
+			'show_registration',
+			'show_online',
+			'show_volunteer_signup',
+			'show_add_to_calendar',
+			'show_event_page',
+		),
+		'appearance' => array(
+			'default_list_style',
+		),
+	);
+
+	/**
+	 * Calendars the settings preview can show, mapped to their shortcodes.
+	 *
+	 * @var array
+	 */
+	public const PREVIEW_CALENDARS = array(
+		'calendar'   => 'memml_calendar',
+		'events'     => 'memml_events',
+		'volunteers' => 'memml_volunteers',
+	);
+
+	/**
 	 * Registers hooks.
 	 *
 	 * @return void
@@ -45,6 +99,7 @@ final class Memml_Settings {
 		add_action( 'admin_notices', array( $this, 'render_setup_notice' ) );
 		add_action( 'wp_ajax_memml_test_connection', array( $this, 'test_connection' ) );
 		add_action( 'admin_post_' . self::FLUSH_ACTION, array( $this, 'flush_cache' ) );
+		add_action( 'admin_post_' . self::PREVIEW_ACTION, array( $this, 'render_preview' ) );
 		add_filter(
 			'plugin_action_links_' . plugin_basename( MEMML_PLUGIN_FILE ),
 			array( $this, 'add_plugin_action_links' )
@@ -201,6 +256,27 @@ final class Memml_Settings {
 			$client->flush_cache( $saved['organization_key'] );
 		}
 
+		return array_merge(
+			array(
+				'organization_key' => $organization_key,
+				'base_url'         => $base_url,
+			),
+			self::sanitize_preferences( $input )
+		);
+	}
+
+	/**
+	 * Sanitizes the display, content, action, and appearance preferences.
+	 *
+	 * Has no side effects, so the settings preview can use it for unsaved
+	 * form values. Unchecked checkboxes are absent from a submission and
+	 * resolve to false.
+	 *
+	 * @param mixed $input Submitted settings.
+	 * @return array
+	 */
+	public static function sanitize_preferences( $input ) {
+		$input              = is_array( $input ) ? $input : array();
 		$default_calendar   = isset( $input['default_calendar'] ) ? $input['default_calendar'] : '';
 		$default_view       = isset( $input['default_view'] ) ? $input['default_view'] : '';
 		$default_period     = isset( $input['default_period'] ) ? $input['default_period'] : '';
@@ -208,8 +284,6 @@ final class Memml_Settings {
 		$default_limit      = isset( $input['default_limit'] ) ? max( 0, (int) $input['default_limit'] ) : 0;
 
 		return array(
-			'organization_key'            => $organization_key,
-			'base_url'                    => $base_url,
 			'default_calendar'            => 'volunteers' === $default_calendar ? 'volunteers' : 'events',
 			'default_view'                => 'month' === $default_view ? 'month' : 'list',
 			'default_period'              => 'past' === $default_period ? 'past' : 'upcoming',
@@ -267,6 +341,12 @@ final class Memml_Settings {
 			'show_add_to_calendar'  => __( 'Add-to-calendar actions', 'memml' ),
 			'show_event_page'       => __( 'View event page links', 'memml' ),
 		);
+		$toolbar_preferences = array(
+			'calendar_switcher' => __( 'Let visitors switch between Events and Volunteer Opportunities on the combined calendar.', 'memml' ),
+			'layout_switcher'   => __( 'Let visitors switch between List and Month.', 'memml' ),
+			'period_switcher'   => __( 'Let visitors switch between Upcoming and Past in List view.', 'memml' ),
+			'subscribe_links'   => __( 'Show the subscription row with Google Calendar, Apple / Outlook, and RSS links.', 'memml' ),
+		);
 		?>
 		<div class="wrap memml-settings">
 			<h1><?php echo esc_html__( 'Memml Calendar Settings', 'memml' ); ?></h1>
@@ -275,289 +355,485 @@ final class Memml_Settings {
 					<p><?php echo esc_html__( 'Cached Memml data was cleared. The next page view will load fresh data.', 'memml' ); ?></p>
 				</div>
 			<?php endif; ?>
-			<p><?php echo esc_html__( 'Connect WordPress to your organization’s unauthenticated Memml public feeds.', 'memml' ); ?></p>
-			<form action="options.php" method="post">
-				<?php settings_fields( 'memml' ); ?>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row">
-							<label for="memml-organization-key"><?php echo esc_html__( 'Organization key', 'memml' ); ?></label>
-						</th>
-						<td>
-							<input
-								class="regular-text"
-								id="memml-organization-key"
-								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[organization_key]"
-								pattern="[A-Za-z0-9_-]+"
-								required
-								type="text"
-								value="<?php echo esc_attr( $options['organization_key'] ); ?>"
-							/>
-							<p class="description">
+			<p class="memml-settings__intro">
+				<?php echo esc_html__( 'These are site-wide settings. Every Memml block set to “Use site setting” and every shortcode without its own properties follows them. Blocks and shortcodes that make their own choices keep those choices.', 'memml' ); ?>
+			</p>
+			<div class="memml-settings__layout">
+				<div class="memml-settings__main">
+					<form action="options.php" id="memml-settings-form" method="post">
+						<?php settings_fields( 'memml' ); ?>
+
+						<section aria-labelledby="memml-section-connection" class="memml-settings__section">
+							<?php $this->render_section_heading( 'connection', __( 'Connection', 'memml' ) ); ?>
+							<p class="description"><?php echo esc_html__( 'Connect WordPress to your organization’s unauthenticated Memml public feeds.', 'memml' ); ?></p>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row">
+										<label for="memml-organization-key"><?php echo esc_html__( 'Organization key', 'memml' ); ?></label>
+									</th>
+									<td>
+										<input
+											class="regular-text"
+											id="memml-organization-key"
+											name="<?php echo esc_attr( self::OPTION_NAME ); ?>[organization_key]"
+											pattern="[A-Za-z0-9_-]+"
+											required
+											type="text"
+											value="<?php echo esc_attr( $options['organization_key'] ); ?>"
+										/>
+										<p class="description">
+											<?php
+											printf(
+												/* translators: 1: Example feed URL, 2: Organization key within that URL. */
+												esc_html__( 'The key used in your Memml public feed URL. In %1$s the key is %2$s.', 'memml' ),
+												'<code>/api/public/v1/river-city-neighbors/events.json</code>',
+												'<code>river-city-neighbors</code>'
+											);
+											?>
+										</p>
+										<p class="memml-settings__test">
+											<button class="button" id="memml-test-connection" type="button">
+												<?php echo esc_html__( 'Test connection', 'memml' ); ?>
+											</button>
+											<span aria-live="polite" class="memml-connection-result" id="memml-connection-result"></span>
+										</p>
+										<p class="description">
+											<?php echo esc_html__( 'Test connection checks the values in this section without saving them.', 'memml' ); ?>
+										</p>
+									</td>
+								</tr>
+							</table>
+							<details class="memml-advanced-settings">
+								<summary><?php echo esc_html__( 'Advanced', 'memml' ); ?></summary>
+								<table class="form-table" role="presentation">
+									<tr>
+										<th scope="row">
+											<label for="memml-base-url"><?php echo esc_html__( 'Memml base URL', 'memml' ); ?></label>
+										</th>
+										<td>
+											<input
+												class="regular-text code"
+												id="memml-base-url"
+												name="<?php echo esc_attr( self::OPTION_NAME ); ?>[base_url]"
+												type="url"
+												value="<?php echo esc_attr( $options['base_url'] ); ?>"
+											/>
+											<p class="description"><?php echo esc_html__( 'Change this only when testing against another Memml environment.', 'memml' ); ?></p>
+										</td>
+									</tr>
+								</table>
+							</details>
+						</section>
+
+						<section aria-labelledby="memml-section-display" class="memml-settings__section">
+							<?php $this->render_section_heading( 'display', __( 'Calendar display', 'memml' ) ); ?>
+							<p class="description"><?php echo esc_html__( 'What visitors see first, and which controls they can use to change it.', 'memml' ); ?></p>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row">
+										<label for="memml-default-calendar"><?php echo esc_html__( 'Initial calendar', 'memml' ); ?></label>
+									</th>
+									<td>
+										<?php
+										$this->render_select(
+											'default_calendar',
+											$options['default_calendar'],
+											array(
+												'events' => __( 'Events', 'memml' ),
+												'volunteers' => __( 'Volunteer Opportunities', 'memml' ),
+											)
+										);
+										?>
+										<p class="description"><?php echo esc_html__( 'Used by the combined Memml Calendar until a visitor chooses another calendar.', 'memml' ); ?></p>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">
+										<label for="memml-default-view"><?php echo esc_html__( 'Initial view', 'memml' ); ?></label>
+									</th>
+									<td>
+										<?php
+										$this->render_select(
+											'default_view',
+											$options['default_view'],
+											array(
+												'list'  => __( 'List', 'memml' ),
+												'month' => __( 'Month', 'memml' ),
+											)
+										);
+										?>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">
+										<label for="memml-default-period"><?php echo esc_html__( 'Initial list filter', 'memml' ); ?></label>
+									</th>
+									<td>
+										<?php
+										$this->render_select(
+											'default_period',
+											$options['default_period'],
+											array(
+												'upcoming' => __( 'Upcoming', 'memml' ),
+												'past'     => __( 'Past', 'memml' ),
+											)
+										);
+										?>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">
+										<label for="memml-default-limit"><?php echo esc_html__( 'Maximum items in list view', 'memml' ); ?></label>
+									</th>
+									<td>
+										<input
+											class="small-text"
+											id="memml-default-limit"
+											min="0"
+											name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_limit]"
+											step="1"
+											type="number"
+											value="<?php echo esc_attr( $options['default_limit'] ); ?>"
+										/>
+										<p class="description"><?php echo esc_html__( 'Enter 0 to show every item. Month view always shows every item.', 'memml' ); ?></p>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row"><?php echo esc_html__( 'Visitor toolbar', 'memml' ); ?></th>
+									<td>
+										<?php $this->render_checkboxes( __( 'Visitor toolbar', 'memml' ), $toolbar_preferences, $options ); ?>
+										<p class="description"><?php echo esc_html__( 'When a switcher is hidden, the initial calendar, view, or list filter above stays fixed.', 'memml' ); ?></p>
+									</td>
+								</tr>
+							</table>
+						</section>
+
+						<section aria-labelledby="memml-section-content" class="memml-settings__section">
+							<?php $this->render_section_heading( 'content', __( 'Content and actions', 'memml' ) ); ?>
+							<p class="description"><?php echo esc_html__( 'Choose the information and actions calendars show.', 'memml' ); ?></p>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row"><?php echo esc_html__( 'Content', 'memml' ); ?></th>
+									<td><?php $this->render_checkboxes( __( 'Visible calendar content', 'memml' ), $content_preferences, $options ); ?></td>
+								</tr>
+								<tr>
+									<th scope="row"><?php echo esc_html__( 'Actions', 'memml' ); ?></th>
+									<td><?php $this->render_checkboxes( __( 'Visible calendar actions', 'memml' ), $action_preferences, $options ); ?></td>
+								</tr>
+							</table>
+						</section>
+
+						<section aria-labelledby="memml-section-appearance" class="memml-settings__section">
+							<?php $this->render_section_heading( 'appearance', __( 'Appearance', 'memml' ) ); ?>
+							<p class="description"><?php echo esc_html__( 'Calendars inherit your theme’s fonts, colors, and spacing, and themes can adjust them further with CSS.', 'memml' ); ?></p>
+							<table class="form-table" role="presentation">
+								<tr>
+									<th scope="row">
+										<label for="memml-default-list-style"><?php echo esc_html__( 'List style', 'memml' ); ?></label>
+									</th>
+									<td>
+										<?php
+										$this->render_select(
+											'default_list_style',
+											$options['default_list_style'],
+											array(
+												'grid' => __( 'Cards', 'memml' ),
+												'rows' => __( 'Compact rows', 'memml' ),
+											)
+										);
+										?>
+										<p class="description"><?php echo esc_html__( 'Cards arrange items in columns. Compact rows stack them full width, which suits a narrow column or long descriptions.', 'memml' ); ?></p>
+									</td>
+								</tr>
+							</table>
+						</section>
+
+						<?php submit_button(); ?>
+					</form>
+
+					<section aria-labelledby="memml-section-status" class="memml-settings__section">
+						<?php $this->render_section_heading( 'status', __( 'Status', 'memml' ) ); ?>
+						<?php if ( $is_ready ) : ?>
+							<p>
 								<?php
 								printf(
-									/* translators: 1: Example feed URL, 2: Organization key within that URL. */
-									esc_html__( 'The key used in your Memml public feed URL. In %1$s the key is %2$s.', 'memml' ),
-									'<code>/api/public/v1/river-city-neighbors/events.json</code>',
-									'<code>river-city-neighbors</code>'
+									/* translators: %d: Number of minutes Memml responses are cached. */
+									esc_html( _n( 'Memml responses are cached for about %d minute.', 'Memml responses are cached for about %d minutes.', (int) round( Memml_Feed_Client::DEFAULT_CACHE_TTL / 60 ), 'memml' ) ),
+									(int) round( Memml_Feed_Client::DEFAULT_CACHE_TTL / 60 )
 								);
+								echo ' ';
+								echo esc_html__( 'Clear the cache to publish a Memml change on your site right away.', 'memml' );
 								?>
 							</p>
-						</td>
-					</tr>
-				</table>
-				<h2><?php echo esc_html__( 'Display defaults', 'memml' ); ?></h2>
-				<p class="description">
-					<?php echo esc_html__( 'Calendars use these settings unless a block or shortcode sets its own.', 'memml' ); ?>
-				</p>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row">
-							<label for="memml-default-calendar"><?php echo esc_html__( 'Initial calendar', 'memml' ); ?></label>
-						</th>
-						<td>
-							<select
-								id="memml-default-calendar"
-								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_calendar]"
-							>
-								<option value="events" <?php selected( 'volunteers' !== $options['default_calendar'] ); ?>><?php echo esc_html__( 'Events', 'memml' ); ?></option>
-								<option value="volunteers" <?php selected( 'volunteers' === $options['default_calendar'] ); ?>><?php echo esc_html__( 'Volunteer Opportunities', 'memml' ); ?></option>
-							</select>
-							<p class="description"><?php echo esc_html__( 'Used by the combined Memml Calendar until a visitor chooses another calendar.', 'memml' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="memml-default-view"><?php echo esc_html__( 'Initial view', 'memml' ); ?></label>
-						</th>
-						<td>
-							<select
-								id="memml-default-view"
-								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_view]"
-							>
-								<option value="list" <?php selected( 'month' !== $options['default_view'] ); ?>><?php echo esc_html__( 'List', 'memml' ); ?></option>
-								<option value="month" <?php selected( 'month' === $options['default_view'] ); ?>><?php echo esc_html__( 'Month', 'memml' ); ?></option>
-							</select>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="memml-default-period"><?php echo esc_html__( 'Initial list filter', 'memml' ); ?></label>
-						</th>
-						<td>
-							<select
-								id="memml-default-period"
-								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_period]"
-							>
-								<option value="upcoming" <?php selected( 'past' !== $options['default_period'] ); ?>><?php echo esc_html__( 'Upcoming', 'memml' ); ?></option>
-								<option value="past" <?php selected( 'past' === $options['default_period'] ); ?>><?php echo esc_html__( 'Past', 'memml' ); ?></option>
-							</select>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="memml-default-list-style"><?php echo esc_html__( 'List style', 'memml' ); ?></label>
-						</th>
-						<td>
-							<select
-								id="memml-default-list-style"
-								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_list_style]"
-							>
-								<option value="grid" <?php selected( 'rows' !== $options['default_list_style'] ); ?>><?php echo esc_html__( 'Cards', 'memml' ); ?></option>
-								<option value="rows" <?php selected( 'rows' === $options['default_list_style'] ); ?>><?php echo esc_html__( 'Compact rows', 'memml' ); ?></option>
-							</select>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row">
-							<label for="memml-default-limit"><?php echo esc_html__( 'Maximum items in list view', 'memml' ); ?></label>
-						</th>
-						<td>
-							<input
-								class="small-text"
-								id="memml-default-limit"
-								min="0"
-								name="<?php echo esc_attr( self::OPTION_NAME ); ?>[default_limit]"
-								step="1"
-								type="number"
-								value="<?php echo esc_attr( $options['default_limit'] ); ?>"
-							/>
-							<p class="description"><?php echo esc_html__( 'Enter 0 to show every item. Month view always shows every item.', 'memml' ); ?></p>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php echo esc_html__( 'Visitor toolbar', 'memml' ); ?></th>
-						<td>
-							<fieldset>
-								<legend class="screen-reader-text"><?php echo esc_html__( 'Visitor toolbar', 'memml' ); ?></legend>
-								<label for="memml-calendar-switcher">
-									<input
-										id="memml-calendar-switcher"
-										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[calendar_switcher]"
-										type="checkbox"
-										value="1"
-										<?php checked( ! empty( $options['calendar_switcher'] ) ); ?>
-									/>
-									<?php echo esc_html__( 'Let visitors switch between Events and Volunteer Opportunities on the combined calendar.', 'memml' ); ?>
-								</label>
-								<br />
-								<label for="memml-layout-switcher">
-									<input
-										id="memml-layout-switcher"
-										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[layout_switcher]"
-										type="checkbox"
-										value="1"
-										<?php checked( ! empty( $options['layout_switcher'] ) ); ?>
-									/>
-									<?php echo esc_html__( 'Let visitors switch between List and Month.', 'memml' ); ?>
-								</label>
-								<br />
-								<label for="memml-period-switcher">
-									<input
-										id="memml-period-switcher"
-										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[period_switcher]"
-										type="checkbox"
-										value="1"
-										<?php checked( ! empty( $options['period_switcher'] ) ); ?>
-									/>
-									<?php echo esc_html__( 'Let visitors switch between Upcoming and Past in List view.', 'memml' ); ?>
-								</label>
-								<br />
-								<label for="memml-subscribe-links">
-									<input
-										id="memml-subscribe-links"
-										name="<?php echo esc_attr( self::OPTION_NAME ); ?>[subscribe_links]"
-										type="checkbox"
-										value="1"
-										<?php checked( ! empty( $options['subscribe_links'] ) ); ?>
-									/>
-									<?php echo esc_html__( 'Show the subscription row with Google Calendar, Apple / Outlook, and RSS links.', 'memml' ); ?>
-								</label>
-							</fieldset>
-							<p class="description"><?php echo esc_html__( 'When a switcher is hidden, the initial calendar, view, or list filter above stays fixed.', 'memml' ); ?></p>
-						</td>
-					</tr>
-				</table>
-				<h2><?php echo esc_html__( 'Content and actions', 'memml' ); ?></h2>
-				<p class="description">
-					<?php echo esc_html__( 'Choose the information and actions calendars show. Blocks can use these site settings or make an intentional exception.', 'memml' ); ?>
-				</p>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><?php echo esc_html__( 'Content', 'memml' ); ?></th>
-						<td>
-							<fieldset>
-								<legend class="screen-reader-text"><?php echo esc_html__( 'Visible calendar content', 'memml' ); ?></legend>
-								<?php foreach ( $content_preferences as $name => $label ) : ?>
-									<label for="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>">
-										<input
-											id="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>"
-											name="<?php echo esc_attr( self::OPTION_NAME ); ?>[<?php echo esc_attr( $name ); ?>]"
-											type="checkbox"
-											value="1"
-											<?php checked( ! empty( $options[ $name ] ) ); ?>
-										/>
-										<?php echo esc_html( $label ); ?>
-									</label>
-									<br />
+							<p class="description">
+								<?php echo esc_html__( 'If your site uses LiteSpeed Cache, pages that show Memml content are refreshed on the same schedule, and clearing the cache here or saving these settings clears those pages too. If your site uses a different page cache, clear that cache as well.', 'memml' ); ?>
+							</p>
+							<p><?php echo esc_html__( 'This site reads:', 'memml' ); ?></p>
+							<ul class="memml-feed-urls">
+								<?php foreach ( $feed_urls as $feed_url ) : ?>
+									<li><code><?php echo esc_html( $feed_url ); ?></code></li>
 								<?php endforeach; ?>
-							</fieldset>
-						</td>
-					</tr>
-					<tr>
-						<th scope="row"><?php echo esc_html__( 'Actions', 'memml' ); ?></th>
-						<td>
-							<fieldset>
-								<legend class="screen-reader-text"><?php echo esc_html__( 'Visible calendar actions', 'memml' ); ?></legend>
-								<?php foreach ( $action_preferences as $name => $label ) : ?>
-									<label for="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>">
-										<input
-											id="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>"
-											name="<?php echo esc_attr( self::OPTION_NAME ); ?>[<?php echo esc_attr( $name ); ?>]"
-											type="checkbox"
-											value="1"
-											<?php checked( ! empty( $options[ $name ] ) ); ?>
-										/>
-										<?php echo esc_html( $label ); ?>
-									</label>
-									<br />
-								<?php endforeach; ?>
-							</fieldset>
-						</td>
-					</tr>
-				</table>
-				<details class="memml-advanced-settings">
-					<summary><?php echo esc_html__( 'Advanced', 'memml' ); ?></summary>
-					<table class="form-table" role="presentation">
-						<tr>
-							<th scope="row">
-								<label for="memml-base-url"><?php echo esc_html__( 'Memml base URL', 'memml' ); ?></label>
-							</th>
-							<td>
-								<input
-									class="regular-text code"
-									id="memml-base-url"
-									name="<?php echo esc_attr( self::OPTION_NAME ); ?>[base_url]"
-									type="url"
-									value="<?php echo esc_attr( $options['base_url'] ); ?>"
-								/>
-								<p class="description"><?php echo esc_html__( 'Change this only when testing against another Memml environment.', 'memml' ); ?></p>
-							</td>
-						</tr>
-					</table>
-				</details>
-				<p class="submit">
-					<?php submit_button( null, 'primary', 'submit', false ); ?>
-					<button class="button" id="memml-test-connection" type="button">
-						<?php echo esc_html__( 'Test connection', 'memml' ); ?>
-					</button>
-					<span aria-live="polite" class="memml-connection-result" id="memml-connection-result"></span>
-				</p>
-				<p class="description">
-					<?php echo esc_html__( 'Test connection checks the values in the fields above without saving them.', 'memml' ); ?>
-				</p>
-			</form>
+							</ul>
+							<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
+								<input name="action" type="hidden" value="<?php echo esc_attr( self::FLUSH_ACTION ); ?>" />
+								<?php wp_nonce_field( self::FLUSH_ACTION ); ?>
+								<?php submit_button( __( 'Clear cached data', 'memml' ), 'secondary', 'submit', false ); ?>
+							</form>
+						<?php else : ?>
+							<p><?php echo esc_html__( 'Save an organization key to see the feeds this site will read.', 'memml' ); ?></p>
+						<?php endif; ?>
+					</section>
 
-			<h2><?php echo esc_html__( 'Cached feed data', 'memml' ); ?></h2>
-			<?php if ( $is_ready ) : ?>
-				<p>
-					<?php
-					printf(
-						/* translators: %d: Number of minutes Memml responses are cached. */
-						esc_html( _n( 'Memml responses are cached for about %d minute.', 'Memml responses are cached for about %d minutes.', (int) round( Memml_Feed_Client::DEFAULT_CACHE_TTL / 60 ), 'memml' ) ),
-						(int) round( Memml_Feed_Client::DEFAULT_CACHE_TTL / 60 )
-					);
-					echo ' ';
-					echo esc_html__( 'Clear the cache to publish a Memml change on your site right away.', 'memml' );
-					?>
-				</p>
-				<p class="description">
-					<?php echo esc_html__( 'If your site uses LiteSpeed Cache, pages that show Memml content are refreshed on the same schedule, and clearing the cache here or saving these settings clears those pages too. If your site uses a different page cache, clear that cache as well.', 'memml' ); ?>
-				</p>
-				<p><?php echo esc_html__( 'This site reads:', 'memml' ); ?></p>
-				<ul class="memml-feed-urls">
-					<?php foreach ( $feed_urls as $feed_url ) : ?>
-						<li><code><?php echo esc_html( $feed_url ); ?></code></li>
-					<?php endforeach; ?>
-				</ul>
-				<form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="post">
-					<input name="action" type="hidden" value="<?php echo esc_attr( self::FLUSH_ACTION ); ?>" />
-					<?php wp_nonce_field( self::FLUSH_ACTION ); ?>
-					<?php submit_button( __( 'Clear cached data', 'memml' ), 'secondary', 'submit', false ); ?>
-				</form>
-			<?php else : ?>
-				<p><?php echo esc_html__( 'Save an organization key to see the feeds this site will read.', 'memml' ); ?></p>
-			<?php endif; ?>
+					<section aria-labelledby="memml-section-usage" class="memml-settings__section">
+						<?php $this->render_section_heading( 'usage', __( 'Adding a calendar to a page', 'memml' ) ); ?>
+						<p><?php echo esc_html__( 'Add the Memml Calendar, Memml Events, or Memml Volunteers block to any page, or use the matching shortcode:', 'memml' ); ?></p>
+						<ul class="memml-shortcodes">
+							<li><code>[memml_calendar]</code> — <?php echo esc_html__( 'events and volunteer opportunities, with a switcher.', 'memml' ); ?></li>
+							<li><code>[memml_events]</code> — <?php echo esc_html__( 'events only.', 'memml' ); ?></li>
+							<li><code>[memml_volunteers]</code> — <?php echo esc_html__( 'volunteer opportunities only.', 'memml' ); ?></li>
+						</ul>
+					</section>
+				</div>
 
-			<h2><?php echo esc_html__( 'Adding a calendar to a page', 'memml' ); ?></h2>
-			<p><?php echo esc_html__( 'Add the Memml Calendar, Memml Events, or Memml Volunteers block to any page, or use the matching shortcode:', 'memml' ); ?></p>
-			<ul class="memml-shortcodes">
-				<li><code>[memml_calendar]</code> — <?php echo esc_html__( 'events and volunteer opportunities, with a switcher.', 'memml' ); ?></li>
-				<li><code>[memml_events]</code> — <?php echo esc_html__( 'events only.', 'memml' ); ?></li>
-				<li><code>[memml_volunteers]</code> — <?php echo esc_html__( 'volunteer opportunities only.', 'memml' ); ?></li>
-			</ul>
+				<aside aria-labelledby="memml-preview-heading" class="memml-settings__preview">
+					<div class="memml-settings__preview-header">
+						<h2 id="memml-preview-heading"><?php echo esc_html__( 'Preview', 'memml' ); ?></h2>
+						<?php if ( $is_ready ) : ?>
+							<label for="memml-preview-calendar">
+								<span class="screen-reader-text"><?php echo esc_html__( 'Calendar to preview', 'memml' ); ?></span>
+								<select id="memml-preview-calendar">
+									<option value="calendar"><?php echo esc_html__( 'Memml Calendar', 'memml' ); ?></option>
+									<option value="events"><?php echo esc_html__( 'Memml Events', 'memml' ); ?></option>
+									<option value="volunteers"><?php echo esc_html__( 'Memml Volunteers', 'memml' ); ?></option>
+								</select>
+							</label>
+						<?php endif; ?>
+					</div>
+					<?php if ( $is_ready ) : ?>
+						<p class="description">
+							<?php echo esc_html__( 'Shows the choices on this page before you save them, using your saved organization key. Your site’s pages may differ slightly where your theme styles them.', 'memml' ); ?>
+						</p>
+						<iframe
+							class="memml-settings__preview-frame"
+							id="memml-preview-frame"
+							src="<?php echo esc_url( self::get_preview_url() ); ?>"
+							title="<?php echo esc_attr__( 'Calendar preview', 'memml' ); ?>"
+						></iframe>
+					<?php else : ?>
+						<p><?php echo esc_html__( 'Save an organization key to preview your calendar.', 'memml' ); ?></p>
+					<?php endif; ?>
+				</aside>
+			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Renders a section heading, with a reset action for preference sections.
+	 *
+	 * The reset button only fills in the form, so it starts hidden and the
+	 * settings script reveals it.
+	 *
+	 * @param string $section Section identifier.
+	 * @param string $label   Section heading.
+	 * @return void
+	 */
+	private function render_section_heading( $section, $label ) {
+		?>
+		<div class="memml-settings__section-header">
+			<h2 id="memml-section-<?php echo esc_attr( $section ); ?>"><?php echo esc_html( $label ); ?></h2>
+			<?php if ( isset( self::PREFERENCE_SECTIONS[ $section ] ) ) : ?>
+				<button
+					class="button button-small memml-settings__reset"
+					data-memml-reset="<?php echo esc_attr( $section ); ?>"
+					hidden
+					type="button"
+				>
+					<?php echo esc_html__( 'Reset section to defaults', 'memml' ); ?>
+				</button>
+				<span aria-live="polite" class="memml-settings__reset-result" data-memml-reset-result="<?php echo esc_attr( $section ); ?>"></span>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Renders a select for one preference.
+	 *
+	 * @param string $name    Preference name.
+	 * @param string $value   Current value.
+	 * @param array  $choices Values mapped to labels.
+	 * @return void
+	 */
+	private function render_select( $name, $value, $choices ) {
+		?>
+		<select
+			id="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>"
+			name="<?php echo esc_attr( self::OPTION_NAME ); ?>[<?php echo esc_attr( $name ); ?>]"
+		>
+			<?php foreach ( $choices as $choice => $choice_label ) : ?>
+				<option value="<?php echo esc_attr( $choice ); ?>" <?php selected( $choice, $value ); ?>><?php echo esc_html( $choice_label ); ?></option>
+			<?php endforeach; ?>
+		</select>
+		<?php
+	}
+
+	/**
+	 * Renders a fieldset of preference checkboxes.
+	 *
+	 * @param string $legend  Accessible fieldset name.
+	 * @param array  $choices Preference names mapped to labels.
+	 * @param array  $options Current settings.
+	 * @return void
+	 */
+	private function render_checkboxes( $legend, $choices, $options ) {
+		?>
+		<fieldset>
+			<legend class="screen-reader-text"><?php echo esc_html( $legend ); ?></legend>
+			<?php foreach ( $choices as $name => $label ) : ?>
+				<label for="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>">
+					<input
+						id="memml-<?php echo esc_attr( str_replace( '_', '-', $name ) ); ?>"
+						name="<?php echo esc_attr( self::OPTION_NAME ); ?>[<?php echo esc_attr( $name ); ?>]"
+						type="checkbox"
+						value="1"
+						<?php checked( ! empty( $options[ $name ] ) ); ?>
+					/>
+					<?php echo esc_html( $label ); ?>
+				</label>
+				<br />
+			<?php endforeach; ?>
+		</fieldset>
+		<?php
+	}
+
+	/**
+	 * Gets the URL of the settings preview with the saved settings.
+	 *
+	 * The settings script adds the calendar choice and unsaved form values.
+	 *
+	 * @return string
+	 */
+	public static function get_preview_url() {
+		return add_query_arg(
+			array(
+				'action'   => self::PREVIEW_ACTION,
+				'_wpnonce' => wp_create_nonce( self::PREVIEW_ACTION ),
+			),
+			admin_url( 'admin-post.php' )
+		);
+	}
+
+	/**
+	 * Gets a safe preview calendar choice.
+	 *
+	 * @param mixed $calendar Requested calendar.
+	 * @return string
+	 */
+	public static function get_preview_calendar( $calendar ) {
+		return is_string( $calendar ) && isset( self::PREVIEW_CALENDARS[ $calendar ] ) ? $calendar : 'calendar';
+	}
+
+	/**
+	 * Gets the settings a preview renders with.
+	 *
+	 * The connection always comes from the saved settings. Submitted
+	 * preference values replace the saved ones only for this request.
+	 *
+	 * @param mixed $input Unsaved form values, or null for the saved settings.
+	 * @return array
+	 */
+	public static function get_preview_options( $input ) {
+		$options = self::get_options();
+
+		if ( ! is_array( $input ) ) {
+			return $options;
+		}
+
+		return array_merge( $options, self::sanitize_preferences( $input ) );
+	}
+
+	/**
+	 * Gets each preference section's default values.
+	 *
+	 * @return array
+	 */
+	public static function get_section_defaults() {
+		$defaults = self::get_defaults();
+		$sections = array();
+
+		foreach ( self::PREFERENCE_SECTIONS as $section => $names ) {
+			$sections[ $section ] = array_intersect_key( $defaults, array_flip( $names ) );
+		}
+
+		return $sections;
+	}
+
+	/**
+	 * Outputs a standalone document previewing a calendar.
+	 *
+	 * Runs in the settings page's frame, so preview navigation stays out of
+	 * the settings page URL. The preview settings are supplied through the
+	 * option filter for this request only and are never saved.
+	 *
+	 * @return void
+	 */
+	public function render_preview() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die(
+				esc_html__( 'You are not allowed to manage these settings.', 'memml' ),
+				'',
+				array( 'response' => 403 )
+			);
+		}
+
+		check_admin_referer( self::PREVIEW_ACTION );
+
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Verified by check_admin_referer above.
+		$calendar = self::get_preview_calendar( isset( $_GET['calendar'] ) ? sanitize_key( wp_unslash( $_GET['calendar'] ) ) : '' );
+		$input    = isset( $_GET[ self::OPTION_NAME ] ) && is_array( $_GET[ self::OPTION_NAME ] )
+			? map_deep( wp_unslash( $_GET[ self::OPTION_NAME ] ), 'sanitize_text_field' )
+			: null;
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+		$options        = self::get_preview_options( $input );
+		$preview_option = static function () use ( $options ) {
+			return $options;
+		};
+
+		add_filter( 'pre_option_' . self::OPTION_NAME, $preview_option );
+		$markup = do_shortcode( '[' . self::PREVIEW_CALENDARS[ $calendar ] . ' url_key="preview"]' );
+		remove_filter( 'pre_option_' . self::OPTION_NAME, $preview_option );
+
+		wp_register_style( 'memml-preview', false, array(), MEMML_VERSION );
+		wp_add_inline_style(
+			'memml-preview',
+			'body{margin:0;padding:16px;background:#fff;color:#1e1e1e;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.5}'
+		);
+
+		if ( function_exists( 'wp_get_global_stylesheet' ) ) {
+			wp_add_inline_style( 'memml-preview', wp_get_global_stylesheet() );
+		}
+
+		nocache_headers();
+		header( 'Content-Type: text/html; charset=' . get_option( 'blog_charset' ) );
+		?>
+		<!DOCTYPE html>
+		<html <?php language_attributes(); ?>>
+		<head>
+			<meta charset="<?php echo esc_attr( get_option( 'blog_charset' ) ); ?>" />
+			<meta name="viewport" content="width=device-width, initial-scale=1" />
+			<meta name="robots" content="noindex" />
+			<base target="_blank" />
+			<title><?php echo esc_html__( 'Calendar preview', 'memml' ); ?></title>
+			<?php wp_print_styles( array( 'memml-preview', Memml_Renderer::ASSET_HANDLE ) ); ?>
+		</head>
+		<body>
+			<?php echo $markup; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Renderer output is escaped as it is built. ?>
+			<?php wp_print_scripts( Memml_Renderer::ASSET_HANDLE ); ?>
+		</body>
+		</html>
+		<?php
+		exit;
 	}
 
 	/**
@@ -571,6 +847,12 @@ final class Memml_Settings {
 			return;
 		}
 
+		wp_enqueue_style(
+			'memml-admin',
+			MEMML_PLUGIN_URL . 'assets/admin.css',
+			array(),
+			MEMML_VERSION
+		);
 		wp_enqueue_script(
 			'memml-admin',
 			MEMML_PLUGIN_URL . 'assets/admin.js',
@@ -587,6 +869,9 @@ final class Memml_Settings {
 				'nonce'        => wp_create_nonce( 'memml_test_connection' ),
 				'testing'      => __( 'Testing…', 'memml' ),
 				'unknownError' => __( 'The connection test could not be completed.', 'memml' ),
+				'optionName'   => self::OPTION_NAME,
+				'defaults'     => self::get_section_defaults(),
+				'resetDone'    => __( 'Defaults restored in this section. Select Save Changes to apply them.', 'memml' ),
 			)
 		);
 	}

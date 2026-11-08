@@ -28,11 +28,18 @@ shortcode lists every public committee for your organization, each with its
 seats and the current holder's name, or Vacant when a seat is unfilled. The
 charter and vacant seats are shown by default.
 
-Settings > Memml Calendar > Display defaults controls the initially selected
-calendar, initial List or Month view, initial Upcoming or Past filter, list style,
-maximum list items, the visitor switchers, and the subscription row. Blocks offer
-Use site setting for every matching preference, and shortcodes inherit the site
-settings when properties are omitted.
+Settings > Memml Calendar is arranged in Connection, Calendar display, Content
+and actions, Appearance, and Status sections. Calendar display controls the
+initially selected calendar, initial List or Month view, initial Upcoming or Past
+filter, maximum list items, the visitor switchers, and the subscription row.
+Appearance controls the list style. Blocks offer Use site setting for every
+matching preference, and shortcodes inherit the site settings when properties
+are omitted.
+
+A preview beside the settings shows the Memml Calendar, Memml Events, or Memml
+Volunteers block with the choices on the page before you save them. Each
+preference section has a Reset section to defaults button that fills in its
+defaults and updates the preview; Save Changes applies them.
 
 The Content and actions section controls images, descriptions, list item counts,
 details pop-ups, venue/location and cost, volunteer availability, cancelled
@@ -112,7 +119,7 @@ The plugin requests public data from memml.com, caches successful responses,
 revalidates them using ETags, and can show the last known-good response during a
 temporary service or network error. After a failed request it waits a short
 backoff period before contacting Memml again, so an outage cannot slow down every
-page view. Settings > Memml Calendar lists the feed URLs the site reads and
+page view. The Status section of Settings > Memml Calendar lists the feed URLs the site reads and
 provides a Clear cached data button for publishing a Memml change immediately.
 
 Pages that show a Memml calendar work with LiteSpeed Cache automatically: they are
