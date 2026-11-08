@@ -435,6 +435,213 @@ final class Memml_Renderer_Test extends TestCase {
 	}
 
 	/**
+	 * Multi-day all-day events use local dates and the feed's exclusive end.
+	 *
+	 * @return void
+	 */
+	public function test_google_event_url_uses_local_exclusive_end_for_multi_day_events() {
+		$url = $this->call_renderer(
+			'build_google_event_url',
+			array(
+				'title'    => 'Independence Weekend',
+				'allDay'   => true,
+				'startsAt' => '2026-07-04T04:00:00.000Z',
+				'endsAt'   => '2026-07-06T04:00:00.000Z',
+			),
+			new DateTimeZone( 'America/New_York' )
+		);
+
+		$this->assertStringContainsString( 'dates=20260704%2F20260706', $url );
+
+		$single = $this->call_renderer(
+			'build_google_event_url',
+			array(
+				'title'    => 'Founders Day',
+				'allDay'   => true,
+				'startsAt' => '2026-10-30T04:00:00.000Z',
+				'endsAt'   => '2026-10-31T04:00:00.000Z',
+			),
+			new DateTimeZone( 'America/New_York' )
+		);
+
+		$this->assertStringContainsString( 'dates=20261030%2F20261031', $single );
+	}
+
+	/**
+	 * An all-day item's end is the midnight after its last day.
+	 *
+	 * @return void
+	 */
+	public function test_last_day_follows_memml_end_rules() {
+		$timezone = new DateTimeZone( 'America/New_York' );
+		$last_day = function ( $item ) use ( $timezone ) {
+			return $this->call_renderer( 'get_item_last_datetime', $item, $timezone )->format( 'Y-m-d' );
+		};
+
+		$this->assertSame(
+			'2026-07-05',
+			$last_day(
+				array(
+					'allDay'   => true,
+					'startsAt' => '2026-07-04T04:00:00.000Z',
+					'endsAt'   => '2026-07-06T04:00:00.000Z',
+				)
+			)
+		);
+		$this->assertSame(
+			'2026-07-04',
+			$last_day(
+				array(
+					'allDay'   => true,
+					'startsAt' => '2026-07-04T04:00:00.000Z',
+					'endsAt'   => '2026-07-05T04:00:00.000Z',
+				)
+			)
+		);
+		$this->assertSame(
+			'2026-07-06',
+			$last_day(
+				array(
+					'startsAt' => '2026-07-04T13:00:00.000Z',
+					'endsAt'   => '2026-07-06T21:00:00.000Z',
+				)
+			)
+		);
+		$this->assertSame( '2026-07-04', $last_day( array( 'startsAt' => '2026-07-04T13:00:00.000Z' ) ) );
+		$this->assertSame(
+			'2026-07-04',
+			$last_day(
+				array(
+					'startsAt' => '2026-07-04T13:00:00.000Z',
+					'endsAt'   => '2026-07-03T13:00:00.000Z',
+				)
+			)
+		);
+		$this->assertSame( '2026-07-04', $last_day( array( 'eventDate' => '2026-07-04' ) ) );
+	}
+
+	/**
+	 * Multi-day items name their first and last day.
+	 *
+	 * @return void
+	 */
+	public function test_datetime_labels_multi_day_items() {
+		$timezone = new DateTimeZone( 'America/New_York' );
+		$all_day  = array(
+			'allDay'   => true,
+			'startsAt' => '2026-09-11T04:00:00.000Z',
+			'endsAt'   => '2026-09-14T04:00:00.000Z',
+		);
+		$timed    = array(
+			'startsAt' => '2026-09-11T21:00:00.000Z',
+			'endsAt'   => '2026-09-13T22:00:00.000Z',
+		);
+
+		$this->assertStringContainsString( 'Fri, Sep 11 – Sun, Sep 13 · All day', $this->call_renderer( 'render_datetime', $all_day, $timezone, 'compact' ) );
+		$this->assertStringContainsString( 'Friday, 09/11/2026 – Sunday, 09/13/2026<', $this->call_renderer( 'render_datetime', $all_day, $timezone, 'full' ) );
+		$this->assertStringContainsString( 'Fri, Sep 11 · 5:00 PM – Sun, Sep 13 · 6:00 PM', $this->call_renderer( 'render_datetime', $timed, $timezone, 'compact' ) );
+		$this->assertStringContainsString( 'Friday, 09/11/2026 · 5:00 PM – Sunday, 09/13/2026 · 6:00 PM', $this->call_renderer( 'render_datetime', $timed, $timezone, 'full' ) );
+
+		// A one-day all-day item whose end is the next midnight keeps the single-day label.
+		$single = array(
+			'allDay'   => true,
+			'startsAt' => '2026-09-12T04:00:00.000Z',
+			'endsAt'   => '2026-09-13T04:00:00.000Z',
+		);
+
+		$this->assertStringContainsString( 'Saturday · All day', $this->call_renderer( 'render_datetime', $single, $timezone, 'compact' ) );
+	}
+
+	/**
+	 * A multi-day item stays upcoming and actionable until its last day passes.
+	 *
+	 * @return void
+	 */
+	public function test_running_multi_day_items_stay_upcoming() {
+		$timezone = new DateTimeZone( 'America/New_York' );
+		$this->set_today( '2026-09-12', $timezone );
+
+		$festival = array(
+			'title'    => 'Harvest Festival',
+			'allDay'   => true,
+			'startsAt' => '2026-09-11T04:00:00.000Z',
+			'endsAt'   => '2026-09-14T04:00:00.000Z',
+		);
+		$finished = array(
+			'title'    => 'Finished Weekend',
+			'allDay'   => true,
+			'startsAt' => '2026-09-09T04:00:00.000Z',
+			'endsAt'   => '2026-09-12T04:00:00.000Z',
+		);
+		$items    = array( $festival, $finished );
+
+		$this->assertSame( array( $festival ), $this->call_renderer( 'filter_list_items', $items, 'upcoming', $timezone ) );
+		$this->assertSame( array( $finished ), $this->call_renderer( 'filter_list_items', $items, 'past', $timezone ) );
+		$this->assertFalse( $this->call_renderer( 'is_item_past', $festival, $timezone ) );
+		$this->assertTrue( $this->call_renderer( 'is_item_actionable', $festival, $timezone ) );
+		$this->assertTrue( $this->call_renderer( 'is_item_past', $finished, $timezone ) );
+	}
+
+	/**
+	 * Month view places a multi-day item on every day it runs, across months.
+	 *
+	 * @return void
+	 */
+	public function test_month_calendar_places_multi_day_items_on_every_day() {
+		$timezone = new DateTimeZone( 'America/New_York' );
+		$this->set_today( '2026-09-30', $timezone );
+		Functions\when( 'esc_attr__' )->returnArg();
+		Functions\when( 'add_query_arg' )->alias(
+			static function ( $arguments ) {
+				return '?' . http_build_query( $arguments );
+			}
+		);
+
+		$markup = $this->call_renderer(
+			'render_month_calendar',
+			array(
+				array(
+					'title'    => 'Overnight Vigil',
+					'startsAt' => '2026-09-30T23:00:00.000Z',
+					'endsAt'   => '2026-10-02T14:00:00.000Z',
+				),
+			),
+			'events',
+			$timezone,
+			array(
+				'query_prefix' => 'memml_test_',
+				'show_details' => false,
+			)
+		);
+
+		$this->assertSame( 3, substr_count( $markup, 'Overnight Vigil' ) );
+		$this->assertStringContainsString( 'data-month="2026-09"', $markup );
+		$this->assertStringContainsString( 'data-month="2026-10"', $markup );
+		$this->assertStringContainsString( '<article class="memml-calendar__month-entry" data-memml-item>', $markup );
+		$this->assertSame( 2, substr_count( $markup, 'memml-calendar__month-entry is-continued' ) );
+		$this->assertStringContainsString( '>7:00 PM</time>', $markup );
+		$this->assertStringContainsString( '<span class="memml-calendar__month-time">All day</span>', $markup );
+		$this->assertStringContainsString( '>Until 10:00 AM</time>', $markup );
+	}
+
+	/**
+	 * Pins the organization-local today used by date filtering.
+	 *
+	 * @param string       $date     Date in Y-m-d format.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return void
+	 */
+	private function set_today( $date, $timezone ) {
+		$today = new DateTimeImmutable( $date . ' 00:00:00', $timezone );
+
+		Functions\when( 'apply_filters' )->alias(
+			static function ( $hook, $value ) use ( $today ) {
+				return 'memml_calendar_today' === $hook ? $today : $value;
+			}
+		);
+	}
+
+	/**
 	 * Items without a title or start date produce no link.
 	 *
 	 * @return void

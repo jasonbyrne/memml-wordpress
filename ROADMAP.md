@@ -57,6 +57,7 @@ should show shortcodes without properties.
 | RM-004 | 0.5 Admin-first controls | **NEXT** | Reorganize settings and add a live calendar preview. |
 | RM-005 | 0.5 Admin-first controls | **PLANNED** | Add a small set of safe appearance presets. |
 | RM-015 | 0.6 Reliability | **DONE** | Keep page caches from serving outdated Memml content. |
+| RM-016 | 0.6 Reliability | **DONE** | Show multi-day events across every day they run. |
 | RM-006 | 0.6 Reliability | **PLANNED** | Show clear feed health and targeted refresh controls. |
 | RM-007 | 0.6 Reliability | **PLANNED** | Add useful, customizable empty states and calls to action. |
 | RM-008 | 0.6 Reliability | **PLANNED** | Support delegated calendar management and improve onboarding. |
@@ -185,6 +186,28 @@ volunteer opportunities on a live site for days.
 **Completion criteria:** Lifetime calculation, LiteSpeed tagging, purge on
 clear and settings changes, unit tests, README, readme.txt, and settings-page
 help are updated.
+
+### RM-016 — Multi-day events
+
+**Status:** DONE
+
+**Completed:** 2026-11-08
+
+Memml events and volunteer opportunities can run across several days, but the
+plugin treated every item as happening only on its start day. Match memml.com's
+own date rules, where an all-day item's end is the midnight after its last day:
+
+- Date labels show the first and last day of a multi-day item, and a timed
+  item shows its start and end day with their times.
+- Month view places a multi-day item on every day it runs, across month
+  boundaries, with continuation days showing All day or the end time.
+- An item stays in Upcoming, and keeps its timely actions, until its last day
+  has passed in the organization timezone.
+- The Google add-to-calendar link uses organization-local dates and the feed's
+  exclusive all-day end, so multi-day all-day events are not one day too long.
+
+**Completion criteria:** Renderer changes, unit tests for labels, month
+placement, Upcoming/Past, and Google links, README, and readme.txt are updated.
 
 ### RM-006 — Feed status and refresh tools
 

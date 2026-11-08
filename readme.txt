@@ -104,6 +104,10 @@ Past lists depend on the public Memml feeds retaining historical records; the pl
 does not create or synchronize a separate history archive. Expired registration,
 volunteer, online meeting, and Add to calendar actions are not shown for past items.
 
+Events and volunteer opportunities that run across several days show their first
+and last day, and Month view places them on every day they run, even across months.
+A multi-day item stays in Upcoming, with its actions, until its last day has passed.
+
 The plugin requests public data from memml.com, caches successful responses,
 revalidates them using ETags, and can show the last known-good response during a
 temporary service or network error. After a failed request it waits a short
@@ -161,6 +165,7 @@ can hide the switcher when a calendar should stay in one view.
 
 The organization-local calendar date is compared with today. Upcoming includes today
 and future dates in ascending order. Past includes dates before today in descending order.
+A multi-day item counts as upcoming until its last day has passed.
 
 = How quickly do Memml changes appear on my site? =
 

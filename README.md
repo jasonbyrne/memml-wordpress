@@ -161,8 +161,17 @@ description, which list cards clamp after a few lines — and events offer
 per-event Apple / Outlook and Google add-to-calendar links. When the feed
 supplies an online meeting URL, current and upcoming events also show a
 **Join online** action. RSVP, registration, volunteer, online meeting, and
-add-to-calendar actions are omitted after the event date in the organization's
-timezone.
+add-to-calendar actions are omitted after the event's last day in the
+organization's timezone.
+
+Events and volunteer opportunities that run across several days show their
+first and last day, such as "Fri, Sep 11 – Sun, Sep 13 · All day", and timed
+items pair each day with its time. Month view places a multi-day item on every
+day it runs, even across months; later days show "All day" or, on the last day,
+"Until" its end time, and carry an `is-continued` class for theme styling. A
+multi-day item stays in Upcoming until its last day has passed. Dates follow
+memml.com's rules, where an all-day item's end is the midnight after its last
+day.
 
 When an organizer advertises RSVP in Memml, the feed's `rsvp` object drives an
 **RSVP** action that links to the Memml RSVP page. While RSVPs are open the

@@ -17,6 +17,11 @@ final class Memml_Renderer {
 	const MAX_CONTIGUOUS_MONTHS = 60;
 
 	/**
+	 * Most month-grid days one multi-day item can occupy.
+	 */
+	const MAX_SPANNED_DAYS = 366;
+
+	/**
 	 * Shared handle for the front-end stylesheet and script.
 	 */
 	const ASSET_HANDLE = 'memml-calendar';
@@ -841,7 +846,8 @@ final class Memml_Renderer {
 				continue;
 			}
 
-			$is_past = $date->format( 'Y-m-d' ) < $today_date;
+			// A multi-day item stays upcoming until its last day has passed.
+			$is_past = $this->get_item_last_datetime( $item, $timezone )->format( 'Y-m-d' ) < $today_date;
 
 			if ( ( 'past' === $period ) !== $is_past ) {
 				continue;
@@ -896,21 +902,31 @@ final class Memml_Renderer {
 				continue;
 			}
 
-			$month_key = $date->format( 'Y-m' );
-			$day       = (int) $date->format( 'j' );
+			// A multi-day item appears on every local day it runs, even
+			// across month boundaries, as it does on memml.com.
+			$current  = $date->setTime( 0, 0 );
+			$last_key = $this->get_item_last_datetime( $item, $timezone )->format( 'Y-m-d' );
+			$spanned  = 0;
 
-			if ( ! isset( $months[ $month_key ] ) ) {
-				$months[ $month_key ] = array(
-					'first_day' => $date->modify( 'first day of this month' )->setTime( 0, 0 ),
-					'days'      => array(),
-				);
-			}
+			do {
+				$month_key = $current->format( 'Y-m' );
+				$day       = (int) $current->format( 'j' );
 
-			if ( ! isset( $months[ $month_key ]['days'][ $day ] ) ) {
-				$months[ $month_key ]['days'][ $day ] = array();
-			}
+				if ( ! isset( $months[ $month_key ] ) ) {
+					$months[ $month_key ] = array(
+						'first_day' => $current->modify( 'first day of this month' )->setTime( 0, 0 ),
+						'days'      => array(),
+					);
+				}
 
-			$months[ $month_key ]['days'][ $day ][] = $item;
+				if ( ! isset( $months[ $month_key ]['days'][ $day ] ) ) {
+					$months[ $month_key ]['days'][ $day ] = array();
+				}
+
+				$months[ $month_key ]['days'][ $day ][] = $item;
+				$current                                = $current->modify( '+1 day' );
+				++$spanned;
+			} while ( $current->format( 'Y-m-d' ) <= $last_key && $spanned < self::MAX_SPANNED_DAYS );
 		}
 
 		if ( empty( $months ) ) {
@@ -1059,7 +1075,7 @@ final class Memml_Renderer {
 					$overflow = '';
 
 					foreach ( $day_items as $item_index => $item ) {
-						$entry = $this->render_month_entry( $item, $feed, $timezone, $context );
+						$entry = $this->render_month_entry( $item, $feed, $timezone, $context, $date );
 
 						if ( $item_index < $shown ) {
 							$entries .= $entry;
@@ -1113,15 +1129,20 @@ final class Memml_Renderer {
 	/**
 	 * Renders one compact item in a month day.
 	 *
-	 * @param array        $item     Feed record.
-	 * @param string       $feed     Feed identifier.
-	 * @param DateTimeZone $timezone Organization timezone.
-	 * @param array        $context  Instance render context.
+	 * @param array                  $item     Feed record.
+	 * @param string                 $feed     Feed identifier.
+	 * @param DateTimeZone           $timezone Organization timezone.
+	 * @param array                  $context  Instance render context.
+	 * @param DateTimeInterface|null $day      Month-grid day the entry is shown on.
 	 * @return string
 	 */
-	private function render_month_entry( $item, $feed, $timezone, $context = array() ) {
+	private function render_month_entry( $item, $feed, $timezone, $context = array(), $day = null ) {
 		$title   = isset( $item['title'] ) ? (string) $item['title'] : '';
-		$time    = $this->render_time_only( $item, $timezone );
+		$time    = $this->render_time_only( $item, $timezone, $day );
+		$start   = $this->get_item_datetime( $item, $timezone );
+		$class   = $day && $start && $day->format( 'Y-m-d' ) !== $start->format( 'Y-m-d' )
+			? 'memml-calendar__month-entry is-continued'
+			: 'memml-calendar__month-entry';
 		$is_past = $this->is_item_past( $item, $timezone );
 		$status  = '';
 		$details = '';
@@ -1165,13 +1186,14 @@ final class Memml_Renderer {
 		}
 
 		return sprintf(
-			'<article class="memml-calendar__month-entry" data-memml-item>%1$s<h4 class="memml-calendar__month-title">%2$s</h4>%3$s%4$s%5$s%6$s</article>',
+			'<article class="%7$s" data-memml-item>%1$s<h4 class="memml-calendar__month-title">%2$s</h4>%3$s%4$s%5$s%6$s</article>',
 			$status,
 			esc_html( $title ),
 			$time,
 			$details,
 			$actions,
-			$this->render_details( $item, $feed, $timezone, $is_past, $context )
+			$this->render_details( $item, $feed, $timezone, $is_past, $context ),
+			esc_attr( $class )
 		);
 	}
 
@@ -1199,18 +1221,87 @@ final class Memml_Renderer {
 	}
 
 	/**
-	 * Renders a compact local time for month entries.
+	 * Gets the instant on an item's last day in the organization timezone.
+	 *
+	 * Matches memml.com: an all-day item's end is the midnight after its last
+	 * day, so that midnight belongs to the day before. An item without a
+	 * usable end finishes on the day it starts.
 	 *
 	 * @param array        $item     Feed record.
 	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return DateTimeImmutable|null Null when the item has no usable date.
+	 */
+	private function get_item_last_datetime( $item, $timezone ) {
+		$start = $this->get_item_datetime( $item, $timezone );
+
+		if ( ! $start || empty( $item['startsAt'] ) || empty( $item['endsAt'] ) || ! is_string( $item['endsAt'] ) ) {
+			return $start;
+		}
+
+		try {
+			$end = ( new DateTimeImmutable( $item['endsAt'] ) )->setTimezone( $timezone );
+		} catch ( Exception $exception ) {
+			unset( $exception );
+			return $start;
+		}
+
+		if ( ! empty( $item['allDay'] ) ) {
+			$end = $end->modify( '-1 second' );
+		}
+
+		return $end > $start ? $end : $start;
+	}
+
+	/**
+	 * Determines whether an item runs across more than one local day.
+	 *
+	 * @param array        $item     Feed record.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @return bool
+	 */
+	private function is_item_multi_day( $item, $timezone ) {
+		$start = $this->get_item_datetime( $item, $timezone );
+
+		return $start && $start->format( 'Y-m-d' ) !== $this->get_item_last_datetime( $item, $timezone )->format( 'Y-m-d' );
+	}
+
+	/**
+	 * Renders a compact local time for month entries.
+	 *
+	 * On the later days of a multi-day item the label says how the item
+	 * continues: All day for a middle day, or the end time on its last day.
+	 *
+	 * @param array                  $item     Feed record.
+	 * @param DateTimeZone           $timezone Organization timezone.
+	 * @param DateTimeInterface|null $day      Month-grid day the entry is shown on.
 	 * @return string
 	 */
-	private function render_time_only( $item, $timezone ) {
+	private function render_time_only( $item, $timezone, $day = null ) {
 		if ( ! empty( $item['allDay'] ) || empty( $item['startsAt'] ) ) {
 			return '<span class="memml-calendar__month-time">' . esc_html__( 'All day', 'memml' ) . '</span>';
 		}
 
 		$date = $this->get_item_datetime( $item, $timezone );
+
+		if ( $date && $day && $day->format( 'Y-m-d' ) !== $date->format( 'Y-m-d' ) ) {
+			$last = $this->get_item_last_datetime( $item, $timezone );
+
+			if ( $day->format( 'Y-m-d' ) !== $last->format( 'Y-m-d' ) ) {
+				return '<span class="memml-calendar__month-time">' . esc_html__( 'All day', 'memml' ) . '</span>';
+			}
+
+			return sprintf(
+				'<time class="memml-calendar__month-time" datetime="%1$s">%2$s</time>',
+				esc_attr( $item['endsAt'] ),
+				esc_html(
+					sprintf(
+						/* translators: %s: Time a multi-day item ends on its last day. */
+						__( 'Until %s', 'memml' ),
+						wp_date( get_option( 'time_format' ), $last->getTimestamp(), $timezone )
+					)
+				)
+			);
+		}
 
 		return $date
 			? '<time class="memml-calendar__month-time" datetime="' . esc_attr( $item['startsAt'] ) . '">' . esc_html( wp_date( get_option( 'time_format' ), $date->getTimestamp(), $timezone ) ) . '</time>'
@@ -1242,7 +1333,7 @@ final class Memml_Renderer {
 	 * @return bool
 	 */
 	private function is_item_past( $item, $timezone ) {
-		$date = $this->get_item_datetime( $item, $timezone );
+		$date = $this->get_item_last_datetime( $item, $timezone );
 
 		return $date && $date->format( 'Y-m-d' ) < $this->get_today( $timezone )->format( 'Y-m-d' );
 	}
@@ -1255,7 +1346,7 @@ final class Memml_Renderer {
 	 * @return bool
 	 */
 	private function is_item_actionable( $item, $timezone ) {
-		$date = $this->get_item_datetime( $item, $timezone );
+		$date = $this->get_item_last_datetime( $item, $timezone );
 
 		return $date && $date->format( 'Y-m-d' ) >= $this->get_today( $timezone )->format( 'Y-m-d' );
 	}
@@ -1799,7 +1890,7 @@ final class Memml_Renderer {
 		$status = isset( $event['status'] ) ? (string) $event['status'] : 'scheduled';
 		$status = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
 
-		$add_links = $this->render_add_to_calendar( $event, $context, $is_past );
+		$add_links = $this->render_add_to_calendar( $event, $context, $is_past, $timezone );
 
 		return sprintf(
 			'<article class="memml-calendar__row memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__row-body"><h3 class="memml-calendar__title">%3$s</h3><div class="memml-calendar__meta memml-calendar__meta--inline">%4$s</div>%5$s%6$s</div><div class="memml-calendar__row-aside">%7$s%8$s</div>%9$s</article>',
@@ -2251,7 +2342,7 @@ final class Memml_Renderer {
 		}
 
 		if ( $with_add_links ) {
-			$actions .= $this->render_add_to_calendar( $event, $context, $is_past );
+			$actions .= $this->render_add_to_calendar( $event, $context, $is_past, $timezone );
 		}
 
 		if ( $this->is_visible( $context, 'show_event_page' ) && ! empty( $event['url'] ) ) {
@@ -2268,12 +2359,13 @@ final class Memml_Renderer {
 	/**
 	 * Renders the labelled Apple / Outlook and Google add-to-calendar links.
 	 *
-	 * @param array $event   Event feed record.
-	 * @param array $context Instance render context.
-	 * @param bool  $is_past Whether the event is in the Past list.
+	 * @param array             $event    Event feed record.
+	 * @param array             $context  Instance render context.
+	 * @param bool              $is_past  Whether the event is in the Past list.
+	 * @param DateTimeZone|null $timezone Organization timezone.
 	 * @return string Empty when the links are hidden, expired, or unavailable.
 	 */
-	private function render_add_to_calendar( $event, $context = array(), $is_past = false ) {
+	private function render_add_to_calendar( $event, $context = array(), $is_past = false, $timezone = null ) {
 		if ( $is_past || ! $this->is_visible( $context, 'show_add_to_calendar' ) ) {
 			return '';
 		}
@@ -2288,7 +2380,7 @@ final class Memml_Renderer {
 			);
 		}
 
-		$google = $this->build_google_event_url( $event );
+		$google = $this->build_google_event_url( $event, $timezone );
 
 		if ( '' !== $google ) {
 			$add_links .= sprintf(
@@ -2405,10 +2497,15 @@ final class Memml_Renderer {
 	 * Builds a Google Calendar event template URL, matching memml.com's own
 	 * event pages.
 	 *
-	 * @param array $event Event feed record.
+	 * All-day events use organization-local dates. Like memml.com, the feed's
+	 * all-day end is already the exclusive day after the last day, and an end
+	 * that is missing or not after the start falls back to a one-day event.
+	 *
+	 * @param array             $event    Event feed record.
+	 * @param DateTimeZone|null $timezone Organization timezone; UTC when omitted.
 	 * @return string
 	 */
-	private function build_google_event_url( $event ) {
+	private function build_google_event_url( $event, $timezone = null ) {
 		if ( empty( $event['title'] ) || empty( $event['startsAt'] ) ) {
 			return '';
 		}
@@ -2421,13 +2518,24 @@ final class Memml_Renderer {
 
 		$end = empty( $event['endsAt'] ) ? false : strtotime( $event['endsAt'] );
 
-		if ( false === $end || $end < $start ) {
-			$end = $start + HOUR_IN_SECONDS;
-		}
+		if ( empty( $event['allDay'] ) ) {
+			if ( false === $end || $end < $start ) {
+				$end = $start + HOUR_IN_SECONDS;
+			}
 
-		$dates = empty( $event['allDay'] )
-			? gmdate( 'Ymd\THis\Z', $start ) . '/' . gmdate( 'Ymd\THis\Z', $end )
-			: gmdate( 'Ymd', $start ) . '/' . gmdate( 'Ymd', $end + DAY_IN_SECONDS );
+			$dates = gmdate( 'Ymd\THis\Z', $start ) . '/' . gmdate( 'Ymd\THis\Z', $end );
+		} else {
+			$timezone   = $timezone instanceof DateTimeZone ? $timezone : new DateTimeZone( 'UTC' );
+			$start_day  = ( new DateTimeImmutable( '@' . $start ) )->setTimezone( $timezone );
+			$start_date = $start_day->format( 'Ymd' );
+			$end_date   = false === $end ? '' : ( new DateTimeImmutable( '@' . $end ) )->setTimezone( $timezone )->format( 'Ymd' );
+
+			if ( '' === $end_date || $end_date <= $start_date ) {
+				$end_date = $start_day->modify( '+1 day' )->format( 'Ymd' );
+			}
+
+			$dates = $start_date . '/' . $end_date;
+		}
 
 		$arguments = array(
 			'action' => 'TEMPLATE',
@@ -2520,6 +2628,10 @@ final class Memml_Renderer {
 		$date_chip  = $with_chip ? $this->render_date_chip( $item, $timezone ) : '';
 		$label_open = '<span class="memml-calendar__date-label">';
 
+		if ( $this->is_item_multi_day( $item, $timezone ) ) {
+			return '<time class="memml-calendar__date" datetime="' . esc_attr( $item['startsAt'] ) . '">' . $date_chip . $label_open . esc_html( $this->get_multi_day_label( $item, $timezone, $style ) ) . '</span></time>';
+		}
+
 		if ( ! empty( $item['allDay'] ) ) {
 			$label = 'compact' === $style
 				/* translators: %s: Weekday name. */
@@ -2540,6 +2652,56 @@ final class Memml_Renderer {
 		}
 
 		return '<time class="memml-calendar__date" datetime="' . esc_attr( $item['startsAt'] ) . '">' . $date_chip . $label_open . esc_html( $day_label . ' · ' . $time ) . '</span></time>';
+	}
+
+	/**
+	 * Builds the date label for an item that runs across several days.
+	 *
+	 * All-day items name their first and last day. Timed items pair each day
+	 * with its time, because a bare time range would read as one day.
+	 *
+	 * @param array        $item     Event or opportunity with a usable start.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @param string       $style    Label style: compact or full.
+	 * @return string Unescaped label.
+	 */
+	private function get_multi_day_label( $item, $timezone, $style ) {
+		$start = $this->get_item_datetime( $item, $timezone )->getTimestamp();
+		$last  = $this->get_item_last_datetime( $item, $timezone )->getTimestamp();
+
+		$format_day = static function ( $timestamp ) use ( $timezone, $style ) {
+			if ( 'compact' === $style ) {
+				/* translators: Compact PHP date format for the first and last day of a multi-day item. */
+				return wp_date( __( 'D, M j', 'memml' ), $timestamp, $timezone );
+			}
+
+			return wp_date( 'l', $timestamp, $timezone ) . ', ' . wp_date( get_option( 'date_format' ), $timestamp, $timezone );
+		};
+
+		if ( ! empty( $item['allDay'] ) ) {
+			$range = sprintf(
+				/* translators: 1: First day, 2: Last day. */
+				__( '%1$s – %2$s', 'memml' ),
+				$format_day( $start ),
+				$format_day( $last )
+			);
+
+			return 'compact' === $style
+				/* translators: %s: Range of days. */
+				? sprintf( __( '%s · All day', 'memml' ), $range )
+				: $range;
+		}
+
+		$time_format = get_option( 'time_format' );
+
+		return sprintf(
+			/* translators: 1: First day, 2: Start time, 3: Last day, 4: End time. */
+			__( '%1$s · %2$s – %3$s · %4$s', 'memml' ),
+			$format_day( $start ),
+			wp_date( $time_format, $start, $timezone ),
+			$format_day( $last ),
+			wp_date( $time_format, $last, $timezone )
+		);
 	}
 
 	/**
