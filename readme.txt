@@ -29,7 +29,7 @@ seats and the current holder's name, or Vacant when a seat is unfilled. The
 charter and vacant seats are shown by default.
 
 Settings > Memml Calendar is arranged in Connection, Calendar display, Content
-and actions, Appearance, and Status sections. Calendar display controls the
+and actions, Empty calendars, Appearance, and Status sections. Calendar display controls the
 initially selected calendar, initial List or Month view, initial Upcoming or Past
 filter, maximum list items, the visitor switchers, and the subscription row.
 Appearance controls the list style and a few site-wide presets: a custom accent
@@ -42,7 +42,21 @@ are omitted.
 A preview beside the settings shows the Memml Calendar, Memml Events, or Memml
 Volunteers block with the choices on the page before you save them. Each
 preference section has a Reset section to defaults button that fills in its
-defaults and updates the preview; Save Changes applies them.
+defaults and updates the preview; Save Changes applies them. Show with nothing
+upcoming previews the calendar without its upcoming items.
+
+The Empty calendars section chooses, separately for Events and Volunteer
+opportunities, what visitors see when nothing is upcoming: the standard message
+(the default), your own message with an optional link such as a newsletter
+sign-up, an email address, or a page on this site, or nothing at all. A hidden
+feed leaves the combined calendar's switcher, and the combined calendar
+disappears only when both feeds are hidden; editors see a short note in its
+place in the block editor and settings preview. A calendar fixed to the Past
+list uses its past items instead. When Memml cannot be reached and no earlier
+copy is saved, visitors always see a short "temporarily unavailable" note rather
+than your message or a hidden calendar. Blocks have a When nothing is upcoming
+panel, and shortcodes accept `empty_state` (`standard`, `custom`, or `hide`),
+`empty_message`, `empty_link_url`, and `empty_link_label`.
 
 The Content and actions section controls images, descriptions, list item counts,
 details pop-ups, venue/location and cost, volunteer availability, cancelled
@@ -84,7 +98,8 @@ parking, and arrival details in the pop-up. Legacy location text remains fully
 supported.
 
 The blocks preview themselves in the editor using the same server-side renderer
-visitors get, so layouts and filters can be checked without leaving the post.
+visitors get, so layouts and filters can be checked without leaving the post. A
+calendar hidden because it has nothing upcoming shows editors a short note there.
 
 Set `calendar="volunteers"` on `[memml_calendar]` when volunteer opportunities should
 be selected first. Set `view="month"` on any shortcode when Month should be selected
@@ -196,6 +211,16 @@ LiteSpeed Cache is supported automatically: pages with Memml calendars expire fr
 its cache along with the feed data, and refreshing feeds clears them. For other
 page caches, exclude pages with Memml calendars from caching or give them a short
 cache lifetime, and clear the page cache after refreshing Memml feeds.
+
+= What do visitors see when there are no upcoming events? =
+
+By default, "No upcoming events are currently available." Under Settings > Memml
+Calendar > Empty calendars you can show your own message with an optional link,
+such as a newsletter sign-up, or hide the calendar until something is upcoming.
+Events and Volunteer opportunities each have their own choice, and a block or
+shortcode can make its own. If Memml is temporarily unreachable, visitors see a
+short "temporarily unavailable" note instead, so an outage never looks like an
+empty calendar.
 
 = Can I show only the next few events? =
 

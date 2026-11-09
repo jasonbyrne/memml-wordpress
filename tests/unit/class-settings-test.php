@@ -198,7 +198,7 @@ final class Memml_Settings_Test extends TestCase {
 		// The accent checkbox is a form-only field alongside the stored color.
 		unset( $combined['accent_custom'] );
 
-		$this->assertSame( array( 'display', 'content', 'appearance' ), array_keys( $sections ) );
+		$this->assertSame( array( 'display', 'content', 'empty', 'appearance' ), array_keys( $sections ) );
 		$this->assertEqualsCanonicalizing( array_keys( $saved ), array_keys( $combined ) );
 		$this->assertEqualsCanonicalizing( array_keys( Memml_Settings::sanitize_preferences( array() ) ), array_keys( $combined ) );
 		$this->assertSame( 'grid', $sections['appearance']['default_list_style'] );
@@ -207,6 +207,75 @@ final class Memml_Settings_Test extends TestCase {
 		$this->assertSame( Memml_Settings::DEFAULT_ACCENT, $sections['appearance']['accent_color'] );
 		$this->assertSame( 'list', $sections['display']['default_view'] );
 		$this->assertTrue( $sections['content']['show_event_page'] );
+		$this->assertSame( 'standard', $sections['empty']['empty_events_mode'] );
+		$this->assertSame( 'standard', $sections['empty']['empty_volunteers_mode'] );
+		$this->assertSame( '', $sections['empty']['empty_volunteers_message'] );
+	}
+
+	/**
+	 * Empty-calendar choices default to the standard message and reject junk.
+	 *
+	 * @return void
+	 */
+	public function test_sanitize_empty_states_per_feed() {
+		$defaults = Memml_Settings::sanitize_preferences( array() );
+
+		foreach ( Memml_Settings::EMPTY_STATE_FEEDS as $feed ) {
+			$this->assertSame( 'standard', $defaults[ 'empty_' . $feed . '_mode' ] );
+			$this->assertSame( '', $defaults[ 'empty_' . $feed . '_message' ] );
+			$this->assertSame( '', $defaults[ 'empty_' . $feed . '_link_url' ] );
+			$this->assertSame( '', $defaults[ 'empty_' . $feed . '_link_label' ] );
+		}
+
+		$result = Memml_Settings::sanitize_preferences(
+			array(
+				'empty_events_mode'           => 'custom',
+				'empty_events_message'        => '  Our next events are being planned.  ',
+				'empty_events_link_url'       => 'example.org/newsletter',
+				'empty_events_link_label'     => str_repeat( 'a', 120 ),
+				'empty_volunteers_mode'       => 'disappear',
+				'empty_volunteers_message'    => array( 'not', 'text' ),
+				'empty_volunteers_link_url'   => 'javascript:alert(1)',
+				'empty_volunteers_link_label' => 'Sign up',
+			)
+		);
+
+		$this->assertSame( 'custom', $result['empty_events_mode'] );
+		$this->assertSame( 'Our next events are being planned.', $result['empty_events_message'] );
+		$this->assertSame( 'https://example.org/newsletter', $result['empty_events_link_url'] );
+		$this->assertSame( Memml_Settings::EMPTY_LINK_LABEL_MAX_LENGTH, strlen( $result['empty_events_link_label'] ) );
+		$this->assertSame( 'standard', $result['empty_volunteers_mode'] );
+		$this->assertSame( '', $result['empty_volunteers_message'] );
+		$this->assertSame( '', $result['empty_volunteers_link_url'] );
+		$this->assertSame( 'Sign up', $result['empty_volunteers_link_label'] );
+
+		$hidden = Memml_Settings::sanitize_preferences( array( 'empty_volunteers_mode' => 'hide' ) );
+		$this->assertSame( 'hide', $hidden['empty_volunteers_mode'] );
+		$this->assertSame( 'standard', $hidden['empty_events_mode'] );
+
+		$long = Memml_Settings::sanitize_empty_text( str_repeat( 'b', 900 ), Memml_Settings::EMPTY_MESSAGE_MAX_LENGTH );
+		$this->assertSame( Memml_Settings::EMPTY_MESSAGE_MAX_LENGTH, strlen( $long ) );
+	}
+
+	/**
+	 * Link addresses accept web addresses and paths on this site only.
+	 *
+	 * @return void
+	 */
+	public function test_empty_state_link_addresses() {
+		$this->assertSame( 'https://example.org/join', Memml_Settings::sanitize_link_url( 'https://example.org/join' ) );
+		$this->assertSame( 'http://example.org', Memml_Settings::sanitize_link_url( ' http://example.org ' ) );
+		$this->assertSame( 'https://example.org/join', Memml_Settings::sanitize_link_url( 'example.org/join' ) );
+		$this->assertSame( '/get-involved', Memml_Settings::sanitize_link_url( '/get-involved' ) );
+		$this->assertSame( '', Memml_Settings::sanitize_link_url( '//elsewhere.example' ) );
+		$this->assertSame( '', Memml_Settings::sanitize_link_url( 'javascript:alert(1)' ) );
+		$this->assertSame( 'mailto:info@example.org', Memml_Settings::sanitize_link_url( 'mailto:info@example.org' ) );
+		$this->assertSame( 'mailto:info@example.org', Memml_Settings::sanitize_link_url( 'info@example.org' ) );
+		$this->assertSame( '', Memml_Settings::sanitize_link_url( 'mailto:' ) );
+		$this->assertSame( '', Memml_Settings::sanitize_link_url( 'ftp://example.org/file' ) );
+		$this->assertSame( '', Memml_Settings::sanitize_link_url( 'https://' ) );
+		$this->assertSame( '', Memml_Settings::sanitize_link_url( '' ) );
+		$this->assertSame( '', Memml_Settings::sanitize_link_url( array( 'https://example.org' ) ) );
 	}
 
 	/**

@@ -30,13 +30,15 @@ intentional exception.
 
 ## Settings page
 
-**Settings → Memml Calendar** is arranged in five sections:
+**Settings → Memml Calendar** is arranged in six sections:
 
 - **Connection** — the organization key, **Test connection**, and an
   **Advanced** Memml base URL for testing against another environment.
 - **Calendar display** — the initial calendar, view, and list filter, the
   maximum list items, the visitor switchers, and the subscription row.
 - **Content and actions** — which details and calls to action calendars show.
+- **Empty calendars** — what Events and Volunteer opportunities show when
+  nothing is upcoming. See [Empty calendars](#empty-calendars).
 - **Appearance** — the list style and a few safe presets: accent color,
   palette, spacing, corners, and card image size. See [Theming](#theming).
 - **Status** — a card for each feed with its health and a **Refresh** button,
@@ -52,7 +54,48 @@ choices currently on the page, before they are saved. It uses the saved
 organization key, renders with the calendar's own styles and the theme's global
 styles in a separate frame, and only administrators can open it. Each preference
 section has **Reset section to defaults**, which fills in that section's
-defaults and updates the preview; **Save Changes** applies them.
+defaults and updates the preview; **Save Changes** applies them. **Show with
+nothing upcoming** previews the calendar without its upcoming items, so the
+empty-calendar choices can be checked while Memml has events.
+
+## Empty calendars
+
+**Settings → Memml Calendar → Empty calendars** has separate choices for Events
+and Volunteer opportunities when a calendar has nothing upcoming:
+
+- **Show the standard message** (default) — "No upcoming events are currently
+  available." and its volunteer equivalent, exactly as before.
+- **Show my message** — your own plain-text message, with an optional link such
+  as a newsletter sign-up, an email address, or a page on this site like
+  `/get-involved`. The link text defaults to "Learn more". Leaving the message
+  blank keeps the standard wording with your link.
+- **Hide the calendar** — visitors see nothing until something is upcoming. On
+  the combined Memml Calendar, a hidden feed leaves the Events/Volunteer
+  switcher and the other feed shows alone; the calendar disappears only when
+  both feeds are hidden. In the block editor and the settings preview, editors
+  see a short note in its place instead of a blank space.
+
+"Nothing upcoming" means no items in the Upcoming list after the **Cancelled
+events** preference. A calendar fixed to the Past list (Past filter, List view,
+and both switchers hidden) uses its past items instead. Your message replaces
+the Upcoming list's empty message and the message shown when the feed has no
+items at all, and appears above Month view when nothing is upcoming; the Past
+list keeps its standard message.
+
+When Memml cannot be reached and no earlier copy is saved, visitors always see
+"This calendar is temporarily unavailable. Please try again later." — never
+your message, and never a hidden calendar — so an outage is not mistaken for
+an empty calendar. An older saved copy is shown as usual.
+
+Blocks have a **When nothing is upcoming** panel with **Use site setting**, and
+when **Show a message** is chosen, their own message and link; blank fields use
+the site message and link for that feed. Shortcodes accept `empty_state`
+(`standard`, `custom`, or `hide`), `empty_message`, `empty_link_url`, and
+`empty_link_label`:
+
+```text
+[memml_events empty_state="custom" empty_message="Our next events are being planned." empty_link_url="/newsletter" empty_link_label="Get the newsletter"]
+```
 
 ## Cached feed data
 
@@ -271,7 +314,9 @@ without a page load.
 The blocks preview themselves in the editor with the same server-side renderer
 visitors get, so the layout, filters, and item limit can be checked without
 leaving the post. Previews are non-interactive, and a block shows an actionable
-placeholder instead when no organization key has been saved yet.
+placeholder instead when no organization key has been saved yet. A calendar
+hidden because it has nothing upcoming shows editors a short note explaining
+why, while visitors see nothing.
 
 ## Updating a manual installation
 

@@ -71,6 +71,16 @@ final class Memml_Settings {
 			'show_add_to_calendar',
 			'show_event_page',
 		),
+		'empty'      => array(
+			'empty_events_mode',
+			'empty_events_message',
+			'empty_events_link_url',
+			'empty_events_link_label',
+			'empty_volunteers_mode',
+			'empty_volunteers_message',
+			'empty_volunteers_link_url',
+			'empty_volunteers_link_label',
+		),
 		'appearance' => array(
 			'default_list_style',
 			'accent_color',
@@ -92,6 +102,34 @@ final class Memml_Settings {
 		'appearance_corners' => array( 'rounded', 'square' ),
 		'image_size'         => array( 'wide', 'compact' ),
 	);
+
+	/**
+	 * What a calendar shows when it has nothing upcoming; the first is the default.
+	 *
+	 * @var array
+	 */
+	public const EMPTY_STATE_MODES = array( 'standard', 'custom', 'hide' );
+
+	/**
+	 * Feeds with their own empty-calendar preferences.
+	 *
+	 * @var array
+	 */
+	public const EMPTY_STATE_FEEDS = array( 'events', 'volunteers' );
+
+	/**
+	 * Longest accepted empty-calendar message, in characters.
+	 *
+	 * @var int
+	 */
+	public const EMPTY_MESSAGE_MAX_LENGTH = 500;
+
+	/**
+	 * Longest accepted empty-calendar link text, in characters.
+	 *
+	 * @var int
+	 */
+	public const EMPTY_LINK_LABEL_MAX_LENGTH = 80;
 
 	/**
 	 * The calendar's built-in accent color, shown when no custom color is set.
@@ -470,7 +508,7 @@ final class Memml_Settings {
 			$accent_color = '';
 		}
 
-		return $appearance + array(
+		return $appearance + self::sanitize_empty_states( $input ) + array(
 			'accent_color'                => $accent_color,
 			'default_calendar'            => 'volunteers' === $default_calendar ? 'volunteers' : 'events',
 			'default_view'                => 'month' === $default_view ? 'month' : 'list',
@@ -495,6 +533,80 @@ final class Memml_Settings {
 			'show_add_to_calendar'        => ! empty( $input['show_add_to_calendar'] ),
 			'show_event_page'             => ! empty( $input['show_event_page'] ),
 		);
+	}
+
+	/**
+	 * Sanitizes each feed's empty-calendar preferences.
+	 *
+	 * @param array $input Submitted settings.
+	 * @return array
+	 */
+	private static function sanitize_empty_states( $input ) {
+		$states = array();
+
+		foreach ( self::EMPTY_STATE_FEEDS as $feed ) {
+			$prefix = 'empty_' . $feed . '_';
+			$mode   = isset( $input[ $prefix . 'mode' ] ) ? $input[ $prefix . 'mode' ] : '';
+
+			$states[ $prefix . 'mode' ]       = in_array( $mode, self::EMPTY_STATE_MODES, true ) ? $mode : self::EMPTY_STATE_MODES[0];
+			$states[ $prefix . 'message' ]    = self::sanitize_empty_text( isset( $input[ $prefix . 'message' ] ) ? $input[ $prefix . 'message' ] : '', self::EMPTY_MESSAGE_MAX_LENGTH );
+			$states[ $prefix . 'link_url' ]   = self::sanitize_link_url( isset( $input[ $prefix . 'link_url' ] ) ? $input[ $prefix . 'link_url' ] : '' );
+			$states[ $prefix . 'link_label' ] = self::sanitize_empty_text( isset( $input[ $prefix . 'link_label' ] ) ? $input[ $prefix . 'link_label' ] : '', self::EMPTY_LINK_LABEL_MAX_LENGTH );
+		}
+
+		return $states;
+	}
+
+	/**
+	 * Sanitizes plain empty-calendar text to one line of limited length.
+	 *
+	 * @param mixed $value      Submitted text.
+	 * @param int   $max_length Longest accepted length, in characters.
+	 * @return string
+	 */
+	public static function sanitize_empty_text( $value, $max_length ) {
+		if ( ! is_string( $value ) ) {
+			return '';
+		}
+
+		$value = sanitize_text_field( $value );
+
+		return function_exists( 'mb_substr' ) ? mb_substr( $value, 0, $max_length ) : substr( $value, 0, $max_length );
+	}
+
+	/**
+	 * Sanitizes an empty-calendar link address.
+	 *
+	 * Accepts web addresses, email addresses, and paths on this site. An
+	 * address typed without https:// gets it, since administrators often
+	 * paste "example.org/join", and a bare email address becomes a mailto link.
+	 *
+	 * @param mixed $value Submitted address.
+	 * @return string Safe address, or '' when unusable.
+	 */
+	public static function sanitize_link_url( $value ) {
+		$url = is_string( $value ) ? trim( $value ) : '';
+
+		if ( '' === $url ) {
+			return '';
+		}
+
+		if ( '/' === $url[0] ) {
+			// A path on this site; "//host" would leave the site.
+			return '/' === substr( $url, 1, 1 ) ? '' : esc_url_raw( $url );
+		}
+
+		if ( preg_match( '/^[^\s@:\/]+@[^\s@:\/]+\.[^\s@:\/]+$/', $url ) ) {
+			$url = 'mailto:' . $url;
+		} elseif ( ! preg_match( '#^[a-z][a-z0-9+.-]*:#i', $url ) ) {
+			$url = 'https://' . $url;
+		}
+
+		if ( preg_match( '/^mailto:[^\s@]+@[^\s@]+$/i', $url ) ) {
+			return esc_url_raw( $url, array( 'mailto' ) );
+		}
+
+		return preg_match( '#^https?://[^/\s]#i', $url ) ? esc_url_raw( $url, array( 'http', 'https' ) ) : '';
 	}
 
 	/**
@@ -737,6 +849,16 @@ final class Memml_Settings {
 							</table>
 						</section>
 
+						<section aria-labelledby="memml-section-empty" class="memml-settings__section">
+							<?php $this->render_section_heading( 'empty', __( 'Empty calendars', 'memml' ) ); ?>
+							<p class="description"><?php echo esc_html__( 'What visitors see when a calendar has nothing upcoming. A calendar fixed to the Past list uses its past items instead. If Memml cannot be reached and no earlier copy is saved, visitors always see a short “temporarily unavailable” note, never your message, so they know to check back.', 'memml' ); ?></p>
+							<table class="form-table" role="presentation">
+								<?php foreach ( self::get_empty_state_labels() as $feed => $feed_label ) : ?>
+									<?php $this->render_empty_state_row( $feed, $feed_label, $options ); ?>
+								<?php endforeach; ?>
+							</table>
+						</section>
+
 						<section aria-labelledby="memml-section-appearance" class="memml-settings__section">
 							<?php $this->render_section_heading( 'appearance', __( 'Appearance', 'memml' ) ); ?>
 							<p class="description"><?php echo esc_html__( 'Calendars use your theme’s fonts. These presets adjust colors, spacing, and shapes, and your theme’s CSS can still change anything further.', 'memml' ); ?></p>
@@ -926,6 +1048,12 @@ final class Memml_Settings {
 						<?php endif; ?>
 					</div>
 					<?php if ( $is_ready ) : ?>
+						<p class="memml-settings__preview-option">
+							<label for="memml-preview-empty">
+								<input id="memml-preview-empty" type="checkbox" value="1" />
+								<?php echo esc_html__( 'Show with nothing upcoming', 'memml' ); ?>
+							</label>
+						</p>
 						<p class="description">
 							<?php echo esc_html__( 'Shows the choices on this page before you save them, using your saved organization key. Your site’s pages may differ slightly where your theme styles them.', 'memml' ); ?>
 						</p>
@@ -941,6 +1069,97 @@ final class Memml_Settings {
 				</aside>
 			</div>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Gets the feeds with empty-calendar preferences, mapped to their names.
+	 *
+	 * @return array
+	 */
+	public static function get_empty_state_labels() {
+		return array(
+			'events'     => __( 'Events', 'memml' ),
+			'volunteers' => __( 'Volunteer opportunities', 'memml' ),
+		);
+	}
+
+	/**
+	 * Renders one feed's empty-calendar choice, message, and link fields.
+	 *
+	 * @param string $feed       Feed identifier.
+	 * @param string $feed_label Feed name.
+	 * @param array  $options    Current settings.
+	 * @return void
+	 */
+	private function render_empty_state_row( $feed, $feed_label, $options ) {
+		$prefix  = 'empty_' . $feed . '_';
+		$id_base = 'memml-empty-' . $feed . '-';
+		?>
+		<tr>
+			<th scope="row">
+				<label for="<?php echo esc_attr( $id_base . 'mode' ); ?>"><?php echo esc_html( $feed_label ); ?></label>
+			</th>
+			<td>
+				<?php
+				$this->render_select(
+					$prefix . 'mode',
+					$options[ $prefix . 'mode' ],
+					array(
+						'standard' => __( 'Show the standard message', 'memml' ),
+						'custom'   => __( 'Show my message', 'memml' ),
+						'hide'     => __( 'Hide the calendar', 'memml' ),
+					)
+				);
+				?>
+				<p class="description">
+					<?php
+					echo esc_html(
+						'volunteers' === $feed
+							? __( 'The standard message is “No upcoming volunteer opportunities are currently available.” Hiding leaves the Volunteer Opportunities choice off the combined calendar until something is upcoming.', 'memml' )
+							: __( 'The standard message is “No upcoming events are currently available.” Hiding leaves the Events choice off the combined calendar until something is upcoming.', 'memml' )
+					);
+					?>
+				</p>
+				<div class="memml-settings__empty-fields">
+					<p>
+						<label for="<?php echo esc_attr( $id_base . 'message' ); ?>"><?php echo esc_html__( 'Your message', 'memml' ); ?></label><br />
+						<input
+							class="large-text"
+							id="<?php echo esc_attr( $id_base . 'message' ); ?>"
+							maxlength="<?php echo esc_attr( self::EMPTY_MESSAGE_MAX_LENGTH ); ?>"
+							name="<?php echo esc_attr( self::OPTION_NAME ); ?>[<?php echo esc_attr( $prefix . 'message' ); ?>]"
+							type="text"
+							value="<?php echo esc_attr( $options[ $prefix . 'message' ] ); ?>"
+						/>
+					</p>
+					<p>
+						<label for="<?php echo esc_attr( $id_base . 'link-url' ); ?>"><?php echo esc_html__( 'Link address (optional)', 'memml' ); ?></label><br />
+						<input
+							class="regular-text code"
+							id="<?php echo esc_attr( $id_base . 'link-url' ); ?>"
+							name="<?php echo esc_attr( self::OPTION_NAME ); ?>[<?php echo esc_attr( $prefix . 'link_url' ); ?>]"
+							placeholder="https://"
+							type="text"
+							value="<?php echo esc_attr( $options[ $prefix . 'link_url' ] ); ?>"
+						/>
+					</p>
+					<p>
+						<label for="<?php echo esc_attr( $id_base . 'link-label' ); ?>"><?php echo esc_html__( 'Link text', 'memml' ); ?></label><br />
+						<input
+							class="regular-text"
+							id="<?php echo esc_attr( $id_base . 'link-label' ); ?>"
+							maxlength="<?php echo esc_attr( self::EMPTY_LINK_LABEL_MAX_LENGTH ); ?>"
+							name="<?php echo esc_attr( self::OPTION_NAME ); ?>[<?php echo esc_attr( $prefix . 'link_label' ); ?>]"
+							placeholder="<?php echo esc_attr__( 'Learn more', 'memml' ); ?>"
+							type="text"
+							value="<?php echo esc_attr( $options[ $prefix . 'link_label' ] ); ?>"
+						/>
+					</p>
+					<p class="description"><?php echo esc_html__( 'Used with “Show my message.” Leave the message blank to keep the standard wording with your link. The link can be a web address, an email address, or a page on this site such as /get-involved.', 'memml' ); ?></p>
+				</div>
+			</td>
+		</tr>
 		<?php
 	}
 
@@ -1180,10 +1399,11 @@ final class Memml_Settings {
 		check_admin_referer( self::PREVIEW_ACTION );
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Verified by check_admin_referer above.
-		$calendar = self::get_preview_calendar( isset( $_GET['calendar'] ) ? sanitize_key( wp_unslash( $_GET['calendar'] ) ) : '' );
-		$input    = isset( $_GET[ self::OPTION_NAME ] ) && is_array( $_GET[ self::OPTION_NAME ] )
+		$calendar         = self::get_preview_calendar( isset( $_GET['calendar'] ) ? sanitize_key( wp_unslash( $_GET['calendar'] ) ) : '' );
+		$input            = isset( $_GET[ self::OPTION_NAME ] ) && is_array( $_GET[ self::OPTION_NAME ] )
 			? map_deep( wp_unslash( $_GET[ self::OPTION_NAME ] ), 'sanitize_text_field' )
 			: null;
+		$without_upcoming = ! empty( $_GET['empty'] );
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		$options        = self::get_preview_options( $input );
 		$preview_option = static function () use ( $options ) {
@@ -1191,7 +1411,9 @@ final class Memml_Settings {
 		};
 
 		add_filter( 'pre_option_' . self::OPTION_NAME, $preview_option );
+		Memml_Renderer::set_editor_preview( true, $without_upcoming );
 		$markup = do_shortcode( '[' . self::PREVIEW_CALENDARS[ $calendar ] . ' url_key="preview"]' );
+		Memml_Renderer::set_editor_preview( false );
 		remove_filter( 'pre_option_' . self::OPTION_NAME, $preview_option );
 
 		wp_register_style( 'memml-preview', false, array(), MEMML_VERSION );
@@ -1368,6 +1590,14 @@ final class Memml_Settings {
 			'show_volunteer_signup'       => true,
 			'show_add_to_calendar'        => true,
 			'show_event_page'             => true,
+			'empty_events_mode'           => 'standard',
+			'empty_events_message'        => '',
+			'empty_events_link_url'       => '',
+			'empty_events_link_label'     => '',
+			'empty_volunteers_mode'       => 'standard',
+			'empty_volunteers_message'    => '',
+			'empty_volunteers_link_url'   => '',
+			'empty_volunteers_link_label' => '',
 			'accent_color'                => '',
 			'appearance_palette'          => 'light',
 			'appearance_spacing'          => 'comfortable',

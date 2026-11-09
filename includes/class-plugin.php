@@ -208,6 +208,10 @@ final class Memml_Plugin {
 			array(
 				'calendar'                    => '',
 				'calendar_switcher'           => '',
+				'empty_link_label'            => '',
+				'empty_link_url'              => '',
+				'empty_message'               => '',
+				'empty_state'                 => '',
 				'layout_switcher'             => '',
 				'limit'                       => '',
 				'list_style'                  => '',

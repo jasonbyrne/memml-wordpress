@@ -540,6 +540,59 @@ try {
 		}
 	}
 
+	// Empty calendars: real sanitizing, escaping, hiding, and the unavailable notice.
+	$empty_preferences = Memml_Settings::sanitize_preferences(
+		array(
+			'empty_events_mode'     => 'custom',
+			'empty_events_message'  => '<strong>Back soon</strong>',
+			'empty_events_link_url' => 'info@example.org',
+		)
+	);
+
+	if ( 'Back soon' !== $empty_preferences['empty_events_message'] || 'mailto:info@example.org' !== $empty_preferences['empty_events_link_url'] ) {
+		throw new RuntimeException( 'Empty-calendar settings were not sanitized as expected.' );
+	}
+
+	$options_before_empty = get_option( Memml_Settings::OPTION_NAME );
+	$nothing_upcoming     = static function ( $today, $timezone ) {
+		unset( $today );
+
+		return new DateTimeImmutable( '2031-01-01 00:00:00', $timezone );
+	};
+
+	add_filter( 'memml_calendar_today', $nothing_upcoming, 20, 2 );
+	update_option(
+		Memml_Settings::OPTION_NAME,
+		array_merge(
+			$options_before_empty,
+			array(
+				'empty_events_mode'     => 'hide',
+				'empty_volunteers_mode' => 'custom',
+			)
+		)
+	);
+
+	try {
+		if ( '' !== trim( do_shortcode( '[memml_events url_key="empty-hidden"]' ) ) ) {
+			throw new RuntimeException( 'A calendar set to hide while empty still rendered.' );
+		}
+
+		$empty_custom = do_shortcode( '[memml_events url_key="empty-custom" empty_state="custom" empty_message="<b>Back soon</b>" empty_link_url="/get-involved"]' );
+
+		if ( false === strpos( $empty_custom, 'memml-calendar__notice--action' ) || false === strpos( $empty_custom, 'href="/get-involved"' ) || false !== strpos( $empty_custom, '<b>' ) ) {
+			throw new RuntimeException( 'A shortcode empty-calendar message did not render safely with its link.' );
+		}
+
+		$empty_combined = do_shortcode( '[memml_calendar url_key="empty-combined"]' );
+
+		if ( false === strpos( $empty_combined, 'data-calendar="volunteers"' ) || false !== strpos( $empty_combined, 'data-memml-view="events"' ) ) {
+			throw new RuntimeException( 'The combined calendar kept a feed that is hidden while empty.' );
+		}
+	} finally {
+		remove_filter( 'memml_calendar_today', $nothing_upcoming, 20 );
+		update_option( Memml_Settings::OPTION_NAME, $options_before_empty );
+	}
+
 	set_current_screen( 'settings_page_memml' );
 
 	ob_start();
@@ -569,6 +622,10 @@ try {
 		'memml-show-volunteer-signup',
 		'memml-show-add-to-calendar',
 		'memml-test-connection',
+		'memml-empty-events-mode',
+		'memml-empty-volunteers-message',
+		'memml-empty-volunteers-link-url',
+		'memml-preview-empty',
 		'api/public/v1/river-city-neighbors/events.json',
 		'api/public/v1/river-city-neighbors/volunteer-opportunities.json',
 		'value="memml_refresh_cache"',
@@ -600,7 +657,7 @@ try {
 		throw new RuntimeException( 'An invalid organization key discarded the saved key.' );
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, display-default inheritance, visitor-control visibility, explicit overrides, URL state, filtering, sorting, link controls, timezone, month view, page-cache, settings screen, and key-retention smoke test passed.' );
+	WP_CLI::success( 'Memml Calendar activation, connection, display-default inheritance, visitor-control visibility, explicit overrides, URL state, filtering, sorting, link controls, timezone, month view, page-cache, empty calendar, settings screen, and key-retention smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
 	remove_filter( 'memml_calendar_today', $today_filter, 10 );

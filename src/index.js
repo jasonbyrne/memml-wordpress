@@ -173,6 +173,94 @@ const VisibilityPanel = ( { attributes, setAttributes, fields, title } ) => (
 	</PanelBody>
 );
 
+const EMPTY_TEXT_ATTRIBUTES = {
+	emptyMessage: '',
+	emptyLinkUrl: '',
+	emptyLinkLabel: '',
+};
+
+/**
+ * Chooses what visitors see when the calendar has nothing upcoming.
+ *
+ * The message and link fields appear only for "Show a message"; choosing
+ * anything else clears them so a hidden value never applies later.
+ *
+ * @param {Object}   props               Component props.
+ * @param {Object}   props.attributes    Current block attributes.
+ * @param {Function} props.setAttributes Block attribute setter.
+ * @param {boolean}  props.isCombined    Whether the block shows both feeds.
+ * @return {Element} Empty calendar panel.
+ */
+const EmptyStatePanel = ( { attributes, setAttributes, isCombined } ) => (
+	<PanelBody title={ __( 'When nothing is upcoming', 'memml' ) }>
+		<SelectControl
+			label={ __( 'Empty calendar', 'memml' ) }
+			help={
+				isCombined
+					? __(
+							'Applies to Events and Volunteer Opportunities. A hidden feed leaves the switcher; the calendar disappears only when both are hidden. If Memml cannot be reached, visitors see a short unavailable note instead.',
+							'memml'
+					  )
+					: __(
+							'Hiding shows visitors nothing until something is upcoming. If Memml cannot be reached, visitors see a short unavailable note instead.',
+							'memml'
+					  )
+			}
+			value={ attributes.emptyState }
+			options={ [
+				{ label: __( 'Use site setting', 'memml' ), value: '' },
+				{
+					label: __( 'Show the standard message', 'memml' ),
+					value: 'standard',
+				},
+				{ label: __( 'Show a message', 'memml' ), value: 'custom' },
+				{ label: __( 'Hide the calendar', 'memml' ), value: 'hide' },
+			] }
+			onChange={ ( emptyState ) =>
+				setAttributes(
+					'custom' === emptyState
+						? { emptyState }
+						: { emptyState, ...EMPTY_TEXT_ATTRIBUTES }
+				)
+			}
+		/>
+		{ 'custom' === attributes.emptyState && (
+			<>
+				<TextControl
+					label={ __( 'Message', 'memml' ) }
+					help={ __(
+						'Leave blank to use the site message, or the standard wording when there is none.',
+						'memml'
+					) }
+					value={ attributes.emptyMessage }
+					onChange={ ( emptyMessage ) =>
+						setAttributes( { emptyMessage } )
+					}
+				/>
+				<TextControl
+					label={ __( 'Link address (optional)', 'memml' ) }
+					help={ __(
+						'A web address, an email address, or a page on this site such as /get-involved. Leave blank to use the site link.',
+						'memml'
+					) }
+					value={ attributes.emptyLinkUrl }
+					onChange={ ( emptyLinkUrl ) =>
+						setAttributes( { emptyLinkUrl } )
+					}
+				/>
+				<TextControl
+					label={ __( 'Link text', 'memml' ) }
+					placeholder={ __( 'Learn more', 'memml' ) }
+					value={ attributes.emptyLinkLabel }
+					onChange={ ( emptyLinkLabel ) =>
+						setAttributes( { emptyLinkLabel } )
+					}
+				/>
+			</>
+		) }
+	</PanelBody>
+);
+
 const PeriodControl = ( { value, onChange } ) => (
 	<SelectControl
 		label={ __( 'Initially selected list filter', 'memml' ) }
@@ -387,6 +475,11 @@ const createFeedEdit = ( metadata, icon, label ) =>
 						fields={ getActionFields( kind ) }
 						title={ __( 'Actions', 'memml' ) }
 					/>
+					<EmptyStatePanel
+						attributes={ attributes }
+						setAttributes={ setAttributes }
+						isCombined={ false }
+					/>
 				</InspectorControls>
 				<div { ...useBlockProps() }>
 					<CalendarPreview
@@ -488,6 +581,11 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 				setAttributes={ setAttributes }
 				fields={ getActionFields( 'calendar' ) }
 				title={ __( 'Actions', 'memml' ) }
+			/>
+			<EmptyStatePanel
+				attributes={ attributes }
+				setAttributes={ setAttributes }
+				isCombined
 			/>
 		</InspectorControls>
 		<div { ...useBlockProps() }>

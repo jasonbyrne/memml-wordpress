@@ -95,8 +95,8 @@ What the plugin needs to know:
 | RM-015 | 0.6 Reliability | **DONE** | Keep page caches from serving outdated Memml content. |
 | RM-016 | 0.6 Reliability | **DONE** | Show multi-day events across every day they run. |
 | RM-006 | 0.6 Reliability | **DONE** | Show clear feed health and targeted refresh controls. |
-| RM-007 | 0.6 Reliability | **NEXT** | Add useful, customizable empty states and calls to action. |
-| RM-008 | 0.6 Reliability | **PLANNED** | Support delegated calendar management and improve onboarding. |
+| RM-007 | 0.6 Reliability | **DONE** | Add useful, customizable empty states and calls to action. |
+| RM-008 | 0.6 Reliability | **NEXT** | Support delegated calendar management and improve onboarding. |
 | RM-009 | 0.7 Visitor experience | **PLANNED** | Add a mobile-friendly chronological agenda view. |
 | RM-010 | 0.7 Visitor experience | **PLANNED** | Add headings, introductions, and optional destination links. |
 | RM-011 | 0.7 Visitor experience | **PLANNED** | Add simple search and high-value visitor filters. |
@@ -309,21 +309,49 @@ settings-page help are updated.
 
 ### RM-007 — Empty states and calls to action
 
-**Status:** NEXT
+**Status:** DONE
 
-For Events and Volunteers, allow the administrator to select:
+**Completed:** 2026-11-09
 
-- Standard message
-- Custom message
-- Hide the empty calendar
-- Custom message with an optional link
+Add an Empty calendars settings section with separate Events and Volunteer
+opportunities choices for what visitors see when a calendar has nothing
+upcoming:
 
-Keep safe defaults and distinguish an empty feed from a temporarily unavailable
-feed.
+- Show the standard message (default; markup unchanged)
+- Show my message: a plain-text message with an optional link (address and
+  link text, defaulting to Learn more). A blank message keeps the standard
+  wording with the link.
+- Hide the calendar
+
+Rules:
+
+- "Nothing upcoming" means no Upcoming items after the Cancelled events
+  preference. A calendar fixed to the Past list (Past filter, List view, both
+  switchers hidden) uses its past items instead.
+- My message replaces the Upcoming list's empty message and the message shown
+  when the feed has no items at all, and appears above Month view when nothing
+  is upcoming. Past list messages are unchanged.
+- Hide renders nothing for visitors. On the combined calendar a hidden feed is
+  dropped from the Events/Volunteer switcher, and the calendar renders nothing
+  only when both feeds are hidden. The block editor and settings preview show
+  an editors-only note instead of a blank space.
+- A temporarily unavailable feed (Memml unreachable with no saved copy) always
+  shows the calm unavailable notice, never the custom message, and is never
+  hidden. An older saved copy counts as normal data.
+- Blocks offer Use site setting plus their own message and link, where blank
+  fields fall back to the site message for that feed. Shortcodes accept
+  `empty_state`, `empty_message`, `empty_link_url`, and `empty_link_label`.
+- The settings preview can show the calendar with nothing upcoming.
+
+**Completion criteria:** Sanitized per-feed settings with defaults, a resettable
+and previewed settings section, renderer behavior for each mode and for
+unavailable feeds, block controls and shortcode properties, unit tests for
+sanitization, resolution, rendering, and backward compatibility, README,
+readme.txt, and settings-page help are updated.
 
 ### RM-008 — Delegated management and onboarding
 
-**Status:** PLANNED
+**Status:** NEXT
 
 Introduce a dedicated `manage_memml_calendar` capability that can be assigned to
 an Events or Communications Manager without granting all administrator powers.

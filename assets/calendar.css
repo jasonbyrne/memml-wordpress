@@ -902,6 +902,28 @@
 	color: var(--memml-muted);
 }
 
+/* An administrator's empty-calendar message with its optional link. */
+:where(.memml-calendar__notice--action) {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 1rem;
+	align-items: center;
+	justify-content: space-between;
+}
+
+:where(.memml-calendar__notice--action > p) {
+	margin: 0;
+}
+
+:where(.memml-calendar__notice + .memml-calendar__month) {
+	margin-block-start: var(--memml-spacing);
+}
+
+/* Shown only to editors when a calendar is hidden while empty. */
+:where(.memml-calendar__editor-notice) {
+	border-style: dashed;
+}
+
 :where(.memml-calendar--committees) {
 	display: grid;
 	gap: var(--memml-spacing);

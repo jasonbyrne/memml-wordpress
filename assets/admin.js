@@ -63,6 +63,7 @@
 	// choices. The connection always comes from the saved settings.
 	const frame = document.getElementById( 'memml-preview-frame' );
 	const calendarChoice = document.getElementById( 'memml-preview-calendar' );
+	const emptyChoice = document.getElementById( 'memml-preview-empty' );
 	const previewNames = Object.keys( settings.defaults || {} ).reduce(
 		function ( names, section ) {
 			return names.concat(
@@ -88,6 +89,13 @@
 			'calendar',
 			calendarChoice ? calendarChoice.value : 'calendar'
 		);
+
+		// Shows the empty-calendar choices without waiting for an empty feed.
+		if ( emptyChoice && emptyChoice.checked ) {
+			url.searchParams.set( 'empty', '1' );
+		} else {
+			url.searchParams.delete( 'empty' );
+		}
 		// Unchecked boxes are absent and resolve to off. The selects are
 		// always present, so the preview never falls back to saved values.
 		data.forEach( function ( value, name ) {
@@ -121,12 +129,14 @@
 	form.addEventListener( 'input', schedulePreview );
 	form.addEventListener( 'change', schedulePreview );
 
-	if ( calendarChoice ) {
-		calendarChoice.addEventListener( 'change', function () {
-			window.clearTimeout( previewTimer );
-			updatePreview();
-		} );
-	}
+	[ calendarChoice, emptyChoice ].forEach( function ( choice ) {
+		if ( choice ) {
+			choice.addEventListener( 'change', function () {
+				window.clearTimeout( previewTimer );
+				updatePreview();
+			} );
+		}
+	} );
 
 	// Reset fills in a section's defaults; Save Changes applies them.
 	document

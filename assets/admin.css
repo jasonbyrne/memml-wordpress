@@ -56,6 +56,14 @@
 	justify-content: space-between;
 }
 
+.memml-settings__preview-option {
+	margin: 8px 0 0;
+}
+
+.memml-settings__empty-fields p {
+	margin: 8px 0 0;
+}
+
 .memml-settings__preview-frame {
 	display: block;
 	box-sizing: border-box;

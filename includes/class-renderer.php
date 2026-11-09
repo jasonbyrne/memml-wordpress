@@ -74,6 +74,32 @@ final class Memml_Renderer {
 	private static $feed_results = array();
 
 	/**
+	 * Whether the settings preview is rendering.
+	 *
+	 * @var bool
+	 */
+	private static $editor_preview = false;
+
+	/**
+	 * Whether the settings preview leaves out upcoming items.
+	 *
+	 * @var bool
+	 */
+	private static $preview_without_upcoming = false;
+
+	/**
+	 * Marks the settings preview so hidden calendars explain themselves.
+	 *
+	 * @param bool $is_preview       Whether a preview is rendering.
+	 * @param bool $without_upcoming Whether to preview the calendar with nothing upcoming.
+	 * @return void
+	 */
+	public static function set_editor_preview( $is_preview, $without_upcoming = false ) {
+		self::$editor_preview           = (bool) $is_preview;
+		self::$preview_without_upcoming = self::$editor_preview && (bool) $without_upcoming;
+	}
+
+	/**
 	 * Renders the general events calendar.
 	 *
 	 * @param array|string $attributes Block or shortcode attributes.
@@ -280,10 +306,9 @@ final class Memml_Renderer {
 		$show_calendar_switcher = $this->resolve_control_visibility( $calendar_switcher, 'calendar_switcher' );
 		$show_layout_switcher   = $this->resolve_control_visibility( $layout_switcher, 'layout_switcher' );
 		$show_period_switcher   = $this->resolve_control_visibility( $period_switcher, 'period_switcher' );
-		$calendar               = $this->get_initial_calendar( $calendar, $query_prefix, $show_calendar_switcher );
 		$context                = array_merge(
 			array(
-				'feeds'                => $show_calendar_switcher ? array( 'events', 'volunteers' ) : array( $calendar ),
+				'empty_states'         => $this->get_empty_states_from_attributes( $visibility ),
 				'instance_id'          => 'memml-calendar-' . self::$calendar_instance,
 				'layout'               => $this->get_initial_layout( $layout, $query_prefix, $show_layout_switcher ),
 				'limit'                => $this->resolve_limit( $limit ),
@@ -296,6 +321,28 @@ final class Memml_Renderer {
 			),
 			$this->get_visibility_from_attributes( $visibility )
 		);
+		$candidate_feeds        = $show_calendar_switcher ? array( 'events', 'volunteers' ) : array( $this->resolve_calendar( $calendar ) );
+		$shown_feeds            = array_values(
+			array_filter(
+				$candidate_feeds,
+				function ( $feed ) use ( $context ) {
+					return ! $this->is_hidden_when_empty( $feed, $context );
+				}
+			)
+		);
+
+		if ( empty( $shown_feeds ) ) {
+			return $this->render_hidden_calendar();
+		}
+
+		// A feed hidden while empty leaves the switcher, so the other feed shows alone.
+		if ( count( $shown_feeds ) < count( $candidate_feeds ) ) {
+			$show_calendar_switcher = false;
+			$calendar               = $shown_feeds[0];
+		}
+
+		$calendar         = $this->get_initial_calendar( $calendar, $query_prefix, $show_calendar_switcher );
+		$context['feeds'] = $show_calendar_switcher ? array( 'events', 'volunteers' ) : array( $calendar );
 
 		$events_id         = $context['instance_id'] . '-events';
 		$volunteers_id     = $context['instance_id'] . '-volunteers';
@@ -374,6 +421,7 @@ final class Memml_Renderer {
 		$show_period_switcher = $this->resolve_control_visibility( $period_switcher, 'period_switcher' );
 		$context              = array_merge(
 			array(
+				'empty_states'         => $this->get_empty_states_from_attributes( $visibility ),
 				'feeds'                => array( $feed ),
 				'instance_id'          => 'memml-calendar-' . self::$calendar_instance,
 				'layout'               => $this->get_initial_layout( $layout, $query_prefix, $show_layout_switcher ),
@@ -387,7 +435,12 @@ final class Memml_Renderer {
 			),
 			$this->get_visibility_from_attributes( $visibility )
 		);
-		$toolbar              = $this->render_toolbar( $this->render_period_controls( $context ) . $this->render_layout_controls( $context ) );
+
+		if ( $this->is_hidden_when_empty( $feed, $context ) ) {
+			return $this->render_hidden_calendar();
+		}
+
+		$toolbar = $this->render_toolbar( $this->render_period_controls( $context ) . $this->render_layout_controls( $context ) );
 
 		return sprintf(
 			'<div class="memml-calendar memml-calendar--%1$s%8$s" data-memml-calendar data-memml-url-prefix="%2$s" data-feed="%1$s" data-layout="%3$s" data-period="%4$s">%5$s%6$s%7$s</div>',
@@ -669,35 +722,26 @@ final class Memml_Renderer {
 			return $this->render_error( $result );
 		}
 
-		$events = isset( $result['data']['events'] ) && is_array( $result['data']['events'] )
-			? $result['data']['events']
-			: array();
-
-		if ( ! $this->is_visible( $context, 'show_cancelled_events' ) ) {
-			$events = array_values(
-				array_filter(
-					$events,
-					static function ( $event ) {
-						return ! is_array( $event ) || 'cancelled' !== ( isset( $event['status'] ) ? $event['status'] : '' );
-					}
-				)
-			);
-		}
+		$events = $this->get_feed_items( 'events', $result, $context );
 
 		if ( empty( $events ) ) {
-			return $this->render_notice( __( 'No events are currently available.', 'memml' ) );
+			return $this->render_empty_notice( 'events', $context, __( 'No events are currently available.', 'memml' ) );
 		}
 
 		$timezone = $this->get_timezone( $result['data'] );
 
 		if ( 'month' === $layout ) {
-			return $this->render_month_calendar( $events, 'events', $timezone, $context );
+			return $this->render_month_empty_notice( 'events', $events, $timezone, $context, __( 'No upcoming events are currently available.', 'memml' ) )
+				. $this->render_month_calendar( $events, 'events', $timezone, $context );
 		}
 
 		$events = $this->filter_list_items( $events, $period, $timezone, $context['limit'] );
 
 		if ( empty( $events ) ) {
-			return $this->render_notice(
+			return $this->render_period_empty_notice(
+				'events',
+				$period,
+				$context,
 				'past' === $period
 					? __( 'No past events are currently available.', 'memml' )
 					: __( 'No upcoming events are currently available.', 'memml' )
@@ -745,29 +789,26 @@ final class Memml_Renderer {
 			return $this->render_error( $result );
 		}
 
-		$data          = $result['data'];
-		$opportunities = array();
-
-		if ( isset( $data['volunteerOpportunities'] ) && is_array( $data['volunteerOpportunities'] ) ) {
-			$opportunities = $data['volunteerOpportunities'];
-		} elseif ( isset( $data['opportunities'] ) && is_array( $data['opportunities'] ) ) {
-			$opportunities = $data['opportunities'];
-		}
+		$opportunities = $this->get_feed_items( 'volunteers', $result, $context );
 
 		if ( empty( $opportunities ) ) {
-			return $this->render_notice( __( 'No volunteer opportunities are currently available.', 'memml' ) );
+			return $this->render_empty_notice( 'volunteers', $context, __( 'No volunteer opportunities are currently available.', 'memml' ) );
 		}
 
-		$timezone = $this->get_timezone( $data );
+		$timezone = $this->get_timezone( $result['data'] );
 
 		if ( 'month' === $layout ) {
-			return $this->render_month_calendar( $opportunities, 'volunteers', $timezone, $context );
+			return $this->render_month_empty_notice( 'volunteers', $opportunities, $timezone, $context, __( 'No upcoming volunteer opportunities are currently available.', 'memml' ) )
+				. $this->render_month_calendar( $opportunities, 'volunteers', $timezone, $context );
 		}
 
 		$opportunities = $this->filter_list_items( $opportunities, $period, $timezone, $context['limit'] );
 
 		if ( empty( $opportunities ) ) {
-			return $this->render_notice(
+			return $this->render_period_empty_notice(
+				'volunteers',
+				$period,
+				$context,
 				'past' === $period
 					? __( 'No past volunteer opportunities are currently available.', 'memml' )
 					: __( 'No upcoming volunteer opportunities are currently available.', 'memml' )
@@ -2775,6 +2816,289 @@ final class Memml_Renderer {
 	 */
 	private function render_notice( $message ) {
 		return '<p class="memml-calendar__notice" role="status">' . esc_html( $message ) . '</p>';
+	}
+
+	/**
+	 * Gets one feed's displayable items.
+	 *
+	 * Applies the Cancelled events preference, and leaves out upcoming items
+	 * when the settings preview shows a calendar with nothing upcoming.
+	 *
+	 * @param string $feed    Feed identifier.
+	 * @param array  $result  Successful feed client result.
+	 * @param array  $context Instance render context.
+	 * @return array
+	 */
+	private function get_feed_items( $feed, $result, $context ) {
+		$data  = isset( $result['data'] ) && is_array( $result['data'] ) ? $result['data'] : array();
+		$items = array();
+
+		if ( 'events' === $feed ) {
+			$items = isset( $data['events'] ) && is_array( $data['events'] ) ? $data['events'] : array();
+
+			if ( ! $this->is_visible( $context, 'show_cancelled_events' ) ) {
+				$items = array_values(
+					array_filter(
+						$items,
+						static function ( $event ) {
+							return ! is_array( $event ) || 'cancelled' !== ( isset( $event['status'] ) ? $event['status'] : '' );
+						}
+					)
+				);
+			}
+		} elseif ( isset( $data['volunteerOpportunities'] ) && is_array( $data['volunteerOpportunities'] ) ) {
+			$items = $data['volunteerOpportunities'];
+		} elseif ( isset( $data['opportunities'] ) && is_array( $data['opportunities'] ) ) {
+			$items = $data['opportunities'];
+		}
+
+		if ( self::$preview_without_upcoming ) {
+			$timezone = $this->get_timezone( $data );
+			$items    = array_values(
+				array_filter(
+					$items,
+					function ( $item ) use ( $timezone ) {
+						return is_array( $item ) && $this->is_item_past( $item, $timezone );
+					}
+				)
+			);
+		}
+
+		return $items;
+	}
+
+	/**
+	 * Gets the list period whose emptiness triggers the empty-calendar choice.
+	 *
+	 * A calendar fixed to the Past list never shows upcoming items, so its
+	 * past items decide instead.
+	 *
+	 * @param array $context Instance render context.
+	 * @return string
+	 */
+	private function get_empty_period( $context ) {
+		$is_fixed_past = empty( $context['show_period_switcher'] ) &&
+			empty( $context['show_layout_switcher'] ) &&
+			isset( $context['layout'], $context['period'] ) &&
+			'list' === $context['layout'] &&
+			'past' === $context['period'];
+
+		return $is_fixed_past ? 'past' : 'upcoming';
+	}
+
+	/**
+	 * Checks whether a calendar should be hidden because it has nothing to show.
+	 *
+	 * An unavailable feed is never hidden, so visitors learn to check back.
+	 *
+	 * @param string $feed    Feed identifier.
+	 * @param array  $context Instance render context.
+	 * @return bool
+	 */
+	private function is_hidden_when_empty( $feed, $context ) {
+		if ( 'hide' !== $this->get_empty_state( $context, $feed )['mode'] ) {
+			return false;
+		}
+
+		$result = $this->get_client_result( $feed );
+
+		if ( is_wp_error( $result ) ) {
+			return false;
+		}
+
+		$items = $this->get_feed_items( $feed, $result, $context );
+
+		return empty( $items ) || empty(
+			$this->filter_list_items( $items, $this->get_empty_period( $context ), $this->get_timezone( $result['data'] ) )
+		);
+	}
+
+	/**
+	 * Gets one feed's resolved empty-calendar preference.
+	 *
+	 * @param array  $context Instance render context.
+	 * @param string $feed    Feed identifier.
+	 * @return array
+	 */
+	private function get_empty_state( $context, $feed ) {
+		if ( is_array( $context ) && isset( $context['empty_states'][ $feed ] ) ) {
+			return $context['empty_states'][ $feed ];
+		}
+
+		return array(
+			'mode'       => 'standard',
+			'message'    => '',
+			'link_url'   => '',
+			'link_label' => '',
+		);
+	}
+
+	/**
+	 * Resolves each feed's empty-calendar preference.
+	 *
+	 * A block or shortcode choice wins over the site setting, and each blank
+	 * block or shortcode field falls back to the site value for that feed.
+	 *
+	 * @param array|string $attributes Block or shortcode attributes.
+	 * @return array Preferences keyed by feed.
+	 */
+	private function get_empty_states_from_attributes( $attributes ) {
+		$options   = Memml_Settings::get_options();
+		$mode      = strtolower( $this->get_text_attribute( $attributes, 'emptyState', 'empty_state' ) );
+		$mode      = in_array( $mode, Memml_Settings::EMPTY_STATE_MODES, true ) ? $mode : '';
+		$overrides = array(
+			'message'    => Memml_Settings::sanitize_empty_text( $this->get_text_attribute( $attributes, 'emptyMessage', 'empty_message' ), Memml_Settings::EMPTY_MESSAGE_MAX_LENGTH ),
+			'link_url'   => Memml_Settings::sanitize_link_url( $this->get_text_attribute( $attributes, 'emptyLinkUrl', 'empty_link_url' ) ),
+			'link_label' => Memml_Settings::sanitize_empty_text( $this->get_text_attribute( $attributes, 'emptyLinkLabel', 'empty_link_label' ), Memml_Settings::EMPTY_LINK_LABEL_MAX_LENGTH ),
+		);
+		$states    = array();
+
+		foreach ( Memml_Settings::EMPTY_STATE_FEEDS as $feed ) {
+			$prefix    = 'empty_' . $feed . '_';
+			$site_mode = isset( $options[ $prefix . 'mode' ] ) && in_array( $options[ $prefix . 'mode' ], Memml_Settings::EMPTY_STATE_MODES, true )
+				? $options[ $prefix . 'mode' ]
+				: Memml_Settings::EMPTY_STATE_MODES[0];
+			$state     = array( 'mode' => '' !== $mode ? $mode : $site_mode );
+
+			foreach ( $overrides as $field => $value ) {
+				$state[ $field ] = '' !== $value
+					? $value
+					: ( isset( $options[ $prefix . $field ] ) && is_string( $options[ $prefix . $field ] ) ? $options[ $prefix . $field ] : '' );
+			}
+
+			$states[ $feed ] = $state;
+		}
+
+		return $states;
+	}
+
+	/**
+	 * Gets a text attribute in either its block or shortcode spelling.
+	 *
+	 * @param array|string $attributes     Block or shortcode attributes.
+	 * @param string       $block_name     Camel-case block attribute name.
+	 * @param string       $shortcode_name Snake-case shortcode attribute name.
+	 * @return string '' when unset.
+	 */
+	private function get_text_attribute( $attributes, $block_name, $shortcode_name ) {
+		if ( ! is_array( $attributes ) ) {
+			return '';
+		}
+
+		foreach ( array( $block_name, $shortcode_name ) as $name ) {
+			if ( isset( $attributes[ $name ] ) && is_scalar( $attributes[ $name ] ) && '' !== trim( (string) $attributes[ $name ] ) ) {
+				return trim( (string) $attributes[ $name ] );
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Renders a list period's empty message.
+	 *
+	 * Only the period that decides emptiness uses the empty-calendar choice;
+	 * the other keeps its standard message.
+	 *
+	 * @param string $feed     Feed identifier.
+	 * @param string $period   List period.
+	 * @param array  $context  Instance render context.
+	 * @param string $standard Standard message.
+	 * @return string
+	 */
+	private function render_period_empty_notice( $feed, $period, $context, $standard ) {
+		return $period === $this->get_empty_period( $context )
+			? $this->render_empty_notice( $feed, $context, $standard )
+			: $this->render_notice( $standard );
+	}
+
+	/**
+	 * Renders the administrator's message above Month view when nothing is upcoming.
+	 *
+	 * @param string       $feed     Feed identifier.
+	 * @param array        $items    Displayable feed items.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @param array        $context  Instance render context.
+	 * @param string       $standard Standard Upcoming message.
+	 * @return string '' unless the feed uses a custom message and nothing is upcoming.
+	 */
+	private function render_month_empty_notice( $feed, $items, $timezone, $context, $standard ) {
+		if ( 'custom' !== $this->get_empty_state( $context, $feed )['mode'] || ! empty( $this->filter_list_items( $items, 'upcoming', $timezone ) ) ) {
+			return '';
+		}
+
+		return $this->render_empty_notice( $feed, $context, $standard );
+	}
+
+	/**
+	 * Renders an empty calendar's message, with the administrator's optional link.
+	 *
+	 * @param string $feed     Feed identifier.
+	 * @param array  $context  Instance render context.
+	 * @param string $standard Standard message.
+	 * @return string
+	 */
+	private function render_empty_notice( $feed, $context, $standard ) {
+		$state = $this->get_empty_state( $context, $feed );
+
+		if ( 'custom' !== $state['mode'] ) {
+			return $this->render_notice( $standard );
+		}
+
+		$message = '' !== $state['message'] ? $state['message'] : $standard;
+
+		if ( '' === $state['link_url'] ) {
+			return $this->render_notice( $message );
+		}
+
+		return sprintf(
+			'<div class="memml-calendar__notice memml-calendar__notice--action" role="status"><p>%1$s</p><p><a class="memml-calendar__button memml-calendar__button--primary" href="%2$s">%3$s</a></p></div>',
+			esc_html( $message ),
+			esc_url( $state['link_url'] ),
+			esc_html( '' !== $state['link_label'] ? $state['link_label'] : __( 'Learn more', 'memml' ) )
+		);
+	}
+
+	/**
+	 * Renders a calendar hidden while it has nothing to show.
+	 *
+	 * Visitors get nothing. Editors previewing the calendar get a note, so an
+	 * empty block is not mistaken for a broken one.
+	 *
+	 * @return string
+	 */
+	private function render_hidden_calendar() {
+		if ( ! $this->shows_editor_notices() ) {
+			return '';
+		}
+
+		return sprintf(
+			'<div class="memml-calendar memml-calendar--hidden%1$s"><p class="memml-calendar__notice memml-calendar__editor-notice">%2$s</p></div>',
+			esc_attr( self::get_appearance_classes( Memml_Settings::get_options() ) ),
+			esc_html__( 'Visitors don’t see this calendar right now: it has nothing to show, and it is set to hide when empty. It appears again on its own when Memml has something to show. Only editors see this note.', 'memml' )
+		);
+	}
+
+	/**
+	 * Checks whether the calendar is rendering for an editor preview.
+	 *
+	 * True in the settings preview and in the block editor's server-side
+	 * preview, which requires a user who can edit posts.
+	 *
+	 * @return bool
+	 */
+	private function shows_editor_notices() {
+		if ( self::$editor_preview ) {
+			return true;
+		}
+
+		if ( ! defined( 'REST_REQUEST' ) || ! REST_REQUEST || ! isset( $GLOBALS['wp'] ) || ! is_object( $GLOBALS['wp'] ) ) {
+			return false;
+		}
+
+		$route = isset( $GLOBALS['wp']->query_vars['rest_route'] ) ? (string) $GLOBALS['wp']->query_vars['rest_route'] : '';
+
+		return 0 === strpos( $route, '/wp/v2/block-renderer/' ) && current_user_can( 'edit_posts' );
 	}
 
 	/**

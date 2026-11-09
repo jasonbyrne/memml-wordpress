@@ -85,7 +85,7 @@ final class Memml_Renderer_Test extends TestCase {
 			}
 		);
 		Functions\when( 'add_query_arg' )->alias(
-			static function ( $arguments, $url ) {
+			static function ( $arguments, $url = '' ) {
 				$pairs = array();
 
 				foreach ( $arguments as $name => $value ) {
@@ -104,6 +104,11 @@ final class Memml_Renderer_Test extends TestCase {
 	 */
 	protected function tearDown(): void {
 		$_GET = array();
+		Memml_Renderer::set_editor_preview( false );
+		$feed_results = new ReflectionProperty( Memml_Renderer::class, 'feed_results' );
+		$feed_results->setAccessible( true );
+		$feed_results->setValue( null, array() );
+		Memml_Page_Cache::reset();
 		Monkey\tearDown();
 		parent::tearDown();
 	}
@@ -318,7 +323,7 @@ final class Memml_Renderer_Test extends TestCase {
 			$this->assertSame( '', $metadata['attributes']['layoutSwitcher']['default'] );
 			$this->assertSame( '', $metadata['attributes']['periodSwitcher']['default'] );
 
-			foreach ( array( 'showImages', 'showDescriptions', 'showItemCount', 'showDetails', 'showVenueCost', 'showVolunteerSignup' ) as $attribute ) {
+			foreach ( array( 'showImages', 'showDescriptions', 'showItemCount', 'showDetails', 'showVenueCost', 'showVolunteerSignup', 'emptyState', 'emptyMessage', 'emptyLinkUrl', 'emptyLinkLabel' ) as $attribute ) {
 				$this->assertSame( '', $metadata['attributes'][ $attribute ]['default'] );
 			}
 		}
@@ -1511,5 +1516,404 @@ final class Memml_Renderer_Test extends TestCase {
 			$feed_results->setValue( null, array() );
 			Memml_Page_Cache::reset();
 		}
+	}
+
+	/**
+	 * Stubs the WordPress runtime a full calendar render needs and supplies feeds.
+	 *
+	 * Today is 2026-09-10 in the organization timezone.
+	 *
+	 * @param array          $options    Site settings beyond the organization key.
+	 * @param array|WP_Error $events     Event records, or an error result.
+	 * @param array|WP_Error $volunteers Volunteer opportunity records, or an error result.
+	 * @return void
+	 */
+	private function prepare_feeds( $options, $events, $volunteers = array() ) {
+		$options = array_merge( array( 'organization_key' => 'river-city-neighbors' ), $options );
+
+		Functions\when( 'get_option' )->alias(
+			static function ( $name, $default_value = false ) use ( $options ) {
+				if ( Memml_Settings::OPTION_NAME === $name ) {
+					return $options;
+				}
+
+				if ( 'date_format' === $name ) {
+					return 'm/d/Y';
+				}
+
+				return 'time_format' === $name ? 'g:i A' : $default_value;
+			}
+		);
+		Functions\when( 'esc_attr__' )->returnArg();
+		Functions\when( 'esc_url_raw' )->returnArg();
+		Functions\when( 'sanitize_text_field' )->alias(
+			static function ( $value ) {
+				return trim( (string) $value );
+			}
+		);
+		Functions\when( 'wp_style_is' )->justReturn( true );
+		Functions\when( 'wp_enqueue_style' )->justReturn( null );
+		Functions\when( 'wp_enqueue_script' )->justReturn( null );
+		Functions\when( 'current_user_can' )->justReturn( true );
+		$this->set_today( '2026-09-10', new DateTimeZone( 'America/New_York' ) );
+
+		$envelope = static function ( $key, $records ) {
+			if ( $records instanceof WP_Error ) {
+				return $records;
+			}
+
+			return array(
+				'data'       => array(
+					'organization' => array(
+						'name'     => 'River City Neighbors',
+						'timezone' => 'America/New_York',
+					),
+					$key           => $records,
+				),
+				'expires_at' => time() + 300,
+				'is_stale'   => false,
+			);
+		};
+		$suffix   = '|river-city-neighbors|' . Memml_Feed_Client::DEFAULT_BASE_URL;
+		$results  = new ReflectionProperty( Memml_Renderer::class, 'feed_results' );
+		$results->setAccessible( true );
+		$results->setValue(
+			null,
+			array(
+				'events' . $suffix     => $envelope( 'events', $events ),
+				'volunteers' . $suffix => $envelope( 'volunteerOpportunities', $volunteers ),
+			)
+		);
+	}
+
+	/**
+	 * Builds a minimal timed feed record.
+	 *
+	 * @param string $title Record title.
+	 * @param string $date  Local date, Y-m-d.
+	 * @return array
+	 */
+	private function make_item( $title, $date ) {
+		return array(
+			'id'       => strtolower( str_replace( ' ', '-', $title ) ),
+			'title'    => $title,
+			'startsAt' => $date . 'T18:00:00.000Z',
+			'endsAt'   => $date . 'T20:00:00.000Z',
+		);
+	}
+
+	/**
+	 * The default empty state keeps the standard message markup.
+	 *
+	 * @return void
+	 */
+	public function test_empty_state_defaults_to_standard_messages() {
+		$this->prepare_feeds( array(), array( $this->make_item( 'Summer picnic', '2026-08-01' ) ) );
+
+		$html = ( new Memml_Renderer() )->render_events( array( 'view' => 'list' ) );
+
+		$this->assertStringContainsString( '<p class="memml-calendar__notice" role="status">No upcoming events are currently available.</p>', $html );
+		$this->assertStringContainsString( 'Summer picnic', $html, 'The Past list still shows past events.' );
+		$this->assertStringNotContainsString( 'memml-calendar__notice--action', $html );
+
+		$this->prepare_feeds( array(), array() );
+		$html = ( new Memml_Renderer() )->render_volunteers();
+
+		$this->assertStringContainsString( '<p class="memml-calendar__notice" role="status">No volunteer opportunities are currently available.</p>', $html );
+	}
+
+	/**
+	 * A custom message with a link replaces the Upcoming and fully empty messages.
+	 *
+	 * @return void
+	 */
+	public function test_custom_empty_message_with_link() {
+		$this->prepare_feeds(
+			array(
+				'empty_events_mode'       => 'custom',
+				'empty_events_message'    => 'Our next events are being planned.',
+				'empty_events_link_url'   => 'https://example.org/newsletter',
+				'empty_events_link_label' => 'Get the newsletter',
+			),
+			array( $this->make_item( 'Summer picnic', '2026-08-01' ) )
+		);
+
+		$html = ( new Memml_Renderer() )->render_events( array( 'view' => 'list' ) );
+
+		$this->assertStringContainsString(
+			'<div class="memml-calendar__notice memml-calendar__notice--action" role="status"><p>Our next events are being planned.</p><p><a class="memml-calendar__button memml-calendar__button--primary" href="https://example.org/newsletter">Get the newsletter</a></p></div>',
+			$html
+		);
+		$this->assertStringNotContainsString( 'No upcoming events', $html );
+		$this->assertStringContainsString( 'Summer picnic', $html );
+
+		// Month view keeps the grid of past months and adds the message above it.
+		$month = ( new Memml_Renderer() )->render_events( array( 'view' => 'month' ) );
+		$this->assertMatchesRegularExpression( '/memml-calendar__notice--action.*?<div class="memml-calendar__month"/s', $month );
+
+		// Volunteers keep their own standard message.
+		$volunteers = ( new Memml_Renderer() )->render_volunteers();
+		$this->assertStringContainsString( 'No volunteer opportunities are currently available.', $volunteers );
+	}
+
+	/**
+	 * A blank custom message keeps the standard wording, and the link text defaults.
+	 *
+	 * @return void
+	 */
+	public function test_custom_empty_state_with_blank_message_keeps_standard_wording() {
+		$this->prepare_feeds(
+			array(
+				'empty_volunteers_mode'     => 'custom',
+				'empty_volunteers_link_url' => '/get-involved',
+			),
+			array(),
+			array()
+		);
+
+		$html = ( new Memml_Renderer() )->render_volunteers();
+
+		$this->assertStringContainsString( '<p>No volunteer opportunities are currently available.</p><p><a class="memml-calendar__button memml-calendar__button--primary" href="/get-involved">Learn more</a></p>', $html );
+
+		// Without a link, the message is a plain notice.
+		$this->prepare_feeds(
+			array(
+				'empty_volunteers_mode'    => 'custom',
+				'empty_volunteers_message' => 'Check back soon!',
+			),
+			array(),
+			array()
+		);
+
+		$this->assertStringContainsString(
+			'<p class="memml-calendar__notice" role="status">Check back soon!</p>',
+			( new Memml_Renderer() )->render_volunteers()
+		);
+	}
+
+	/**
+	 * Hide renders nothing for visitors until something is upcoming.
+	 *
+	 * @return void
+	 */
+	public function test_hidden_empty_calendar_renders_nothing_for_visitors() {
+		$past = array( $this->make_item( 'Summer picnic', '2026-08-01' ) );
+
+		$this->prepare_feeds( array( 'empty_events_mode' => 'hide' ), $past );
+		$this->assertSame( '', ( new Memml_Renderer() )->render_events() );
+
+		$this->prepare_feeds( array( 'empty_events_mode' => 'hide' ), array_merge( $past, array( $this->make_item( 'Fall fair', '2026-10-03' ) ) ) );
+		$this->assertStringContainsString( 'Fall fair', ( new Memml_Renderer() )->render_events() );
+
+		// Hidden cancelled events do not count as something upcoming.
+		$cancelled           = $this->make_item( 'Fall fair', '2026-10-03' );
+		$cancelled['status'] = 'cancelled';
+		$this->prepare_feeds(
+			array(
+				'empty_events_mode'     => 'hide',
+				'show_cancelled_events' => false,
+			),
+			array( $cancelled )
+		);
+		$this->assertSame( '', ( new Memml_Renderer() )->render_events() );
+	}
+
+	/**
+	 * An unavailable feed is never hidden and never shows the custom message.
+	 *
+	 * @return void
+	 */
+	public function test_unavailable_feed_shows_unavailable_notice_in_every_mode() {
+		foreach ( array( 'hide', 'custom' ) as $mode ) {
+			$this->prepare_feeds(
+				array(
+					'empty_events_mode'    => $mode,
+					'empty_events_message' => 'Our next events are being planned.',
+				),
+				new WP_Error( 'memml_http_error', 'Memml is unavailable.' )
+			);
+
+			$html = ( new Memml_Renderer() )->render_events();
+
+			$this->assertStringContainsString( 'This calendar is temporarily unavailable. Please try again later.', $html );
+			$this->assertStringNotContainsString( 'Our next events are being planned.', $html );
+		}
+	}
+
+	/**
+	 * The combined calendar drops a hidden feed and disappears only when both hide.
+	 *
+	 * @return void
+	 */
+	public function test_combined_calendar_drops_hidden_feeds() {
+		$this->prepare_feeds(
+			array(
+				'empty_events_mode'     => 'hide',
+				'empty_volunteers_mode' => 'hide',
+			),
+			array(),
+			array( $this->make_item( 'Park cleanup', '2026-09-20' ) )
+		);
+		$_GET['memml_combined_calendar'] = 'events';
+
+		$html = ( new Memml_Renderer() )->render_calendar( '', '', '', 'combined' );
+
+		$this->assertStringContainsString( 'data-calendar="volunteers"', $html, 'The visible feed wins over an old share link.' );
+		$this->assertStringNotContainsString( 'Choose a calendar', $html );
+		$this->assertStringContainsString( 'Park cleanup', $html );
+
+		$this->prepare_feeds(
+			array(
+				'empty_events_mode'     => 'hide',
+				'empty_volunteers_mode' => 'hide',
+			),
+			array(),
+			array()
+		);
+		$this->assertSame( '', ( new Memml_Renderer() )->render_calendar() );
+
+		// With both feeds shown, the switcher stays.
+		$this->prepare_feeds(
+			array( 'empty_events_mode' => 'hide' ),
+			array( $this->make_item( 'Fall fair', '2026-10-03' ) ),
+			array()
+		);
+		$this->assertStringContainsString( 'Choose a calendar', ( new Memml_Renderer() )->render_calendar() );
+	}
+
+	/**
+	 * Editors see a note where a hidden calendar would be.
+	 *
+	 * @return void
+	 */
+	public function test_hidden_calendar_explains_itself_to_editors() {
+		$this->prepare_feeds( array( 'empty_events_mode' => 'hide' ), array() );
+		Memml_Renderer::set_editor_preview( true );
+
+		$html = ( new Memml_Renderer() )->render_events();
+
+		$this->assertStringContainsString( 'memml-calendar__editor-notice', $html );
+		$this->assertStringContainsString( 'Only editors see this note.', $html );
+	}
+
+	/**
+	 * The settings preview can show a calendar with nothing upcoming.
+	 *
+	 * @return void
+	 */
+	public function test_preview_without_upcoming_items() {
+		$this->prepare_feeds(
+			array(
+				'empty_events_mode'    => 'custom',
+				'empty_events_message' => 'Our next events are being planned.',
+			),
+			array(
+				$this->make_item( 'Summer picnic', '2026-08-01' ),
+				$this->make_item( 'Fall fair', '2026-10-03' ),
+			)
+		);
+
+		$this->assertStringContainsString( 'Fall fair', ( new Memml_Renderer() )->render_events() );
+
+		Memml_Renderer::set_editor_preview( true, true );
+		$html = ( new Memml_Renderer() )->render_events( array( 'view' => 'list' ) );
+
+		$this->assertStringNotContainsString( 'Fall fair', $html );
+		$this->assertStringContainsString( 'Summer picnic', $html );
+		$this->assertStringContainsString( 'Our next events are being planned.', $html );
+
+		// Leaving out upcoming items is a preview-only switch.
+		Memml_Renderer::set_editor_preview( false, true );
+		$this->assertStringContainsString( 'Fall fair', ( new Memml_Renderer() )->render_events() );
+	}
+
+	/**
+	 * Block and shortcode choices win, and blank fields use the site value.
+	 *
+	 * @return void
+	 */
+	public function test_empty_state_block_and_shortcode_overrides() {
+		$this->prepare_feeds(
+			array(
+				'empty_events_mode'        => 'hide',
+				'empty_events_link_url'    => 'https://example.org/events',
+				'empty_volunteers_mode'    => 'custom',
+				'empty_volunteers_message' => 'Volunteer with us soon!',
+			),
+			array()
+		);
+
+		$states = $this->call_renderer( 'get_empty_states_from_attributes', array() );
+		$this->assertSame( 'hide', $states['events']['mode'] );
+		$this->assertSame( 'custom', $states['volunteers']['mode'] );
+		$this->assertSame( 'Volunteer with us soon!', $states['volunteers']['message'] );
+
+		$states = $this->call_renderer(
+			'get_empty_states_from_attributes',
+			array(
+				'emptyState'   => 'custom',
+				'emptyMessage' => 'Our calendar is resting.',
+			)
+		);
+		$this->assertSame( 'custom', $states['events']['mode'] );
+		$this->assertSame( 'Our calendar is resting.', $states['events']['message'] );
+		$this->assertSame( 'https://example.org/events', $states['events']['link_url'], 'A blank block link falls back to the site link.' );
+		$this->assertSame( 'Our calendar is resting.', $states['volunteers']['message'] );
+
+		$states = $this->call_renderer(
+			'get_empty_states_from_attributes',
+			array(
+				'empty_state'      => 'CUSTOM',
+				'empty_link_url'   => 'javascript:alert(1)',
+				'empty_link_label' => 'Join us',
+			)
+		);
+		$this->assertSame( 'custom', $states['events']['mode'] );
+		$this->assertSame( 'https://example.org/events', $states['events']['link_url'], 'An unsafe address is ignored.' );
+		$this->assertSame( 'Join us', $states['events']['link_label'] );
+
+		$states = $this->call_renderer( 'get_empty_states_from_attributes', array( 'empty_state' => 'vanish' ) );
+		$this->assertSame( 'hide', $states['events']['mode'], 'An unknown choice follows the site setting.' );
+
+		// A block set to the standard message renders even when the site hides empty calendars.
+		$html = ( new Memml_Renderer() )->render_events( array( 'emptyState' => 'standard' ) );
+		$this->assertStringContainsString( 'No events are currently available.', $html );
+
+		$html = ( new Memml_Renderer() )->render_events(
+			array(
+				'empty_state'   => 'custom',
+				'empty_message' => 'Our calendar is resting.',
+			)
+		);
+		$this->assertStringContainsString( 'Our calendar is resting.', $html );
+	}
+
+	/**
+	 * A calendar fixed to the Past list uses its past items for the empty state.
+	 *
+	 * @return void
+	 */
+	public function test_fixed_past_calendar_uses_past_items_for_empty_state() {
+		$fixed_past = array(
+			'view'           => 'list',
+			'period'         => 'past',
+			'layoutSwitcher' => 'no',
+			'periodSwitcher' => 'no',
+		);
+
+		$this->prepare_feeds( array( 'empty_events_mode' => 'hide' ), array( $this->make_item( 'Summer picnic', '2026-08-01' ) ) );
+		$this->assertStringContainsString( 'Summer picnic', ( new Memml_Renderer() )->render_events( $fixed_past ) );
+
+		$this->prepare_feeds( array( 'empty_events_mode' => 'hide' ), array( $this->make_item( 'Fall fair', '2026-10-03' ) ) );
+		$this->assertSame( '', ( new Memml_Renderer() )->render_events( $fixed_past ) );
+
+		$this->prepare_feeds(
+			array(
+				'empty_events_mode'    => 'custom',
+				'empty_events_message' => 'Our archive starts soon.',
+			),
+			array( $this->make_item( 'Fall fair', '2026-10-03' ) )
+		);
+		$this->assertStringContainsString( 'Our archive starts soon.', ( new Memml_Renderer() )->render_events( $fixed_past ) );
 	}
 }

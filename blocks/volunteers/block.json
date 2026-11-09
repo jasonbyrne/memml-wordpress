@@ -85,6 +85,23 @@
       "type": "string",
       "default": "",
       "enum": ["", "yes", "no"]
+    },
+    "emptyState": {
+      "type": "string",
+      "default": "",
+      "enum": ["", "standard", "custom", "hide"]
+    },
+    "emptyMessage": {
+      "type": "string",
+      "default": ""
+    },
+    "emptyLinkUrl": {
+      "type": "string",
+      "default": ""
+    },
+    "emptyLinkLabel": {
+      "type": "string",
+      "default": ""
     }
   },
   "supports": {
