@@ -48,6 +48,42 @@
 	color: #d63638;
 }
 
+.memml-connected {
+	margin: 12px 0 16px;
+	padding: 4px 16px 8px;
+	border-left: 4px solid #00a32a;
+	background: #f6f7f7;
+}
+
+.memml-connected--failed {
+	border-left-color: #d63638;
+}
+
+.memml-connected__title {
+	margin: 12px 0 8px;
+}
+
+.memml-connected__facts {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: 4px 16px;
+	margin: 0 0 12px;
+}
+
+.memml-connected__facts dt {
+	font-weight: 600;
+}
+
+.memml-connected__facts dd,
+.memml-connected__facts ul {
+	margin: 0;
+}
+
+.memml-shortcodes .button {
+	margin-inline: 4px;
+	vertical-align: middle;
+}
+
 .memml-settings__preview-header {
 	display: flex;
 	flex-wrap: wrap;

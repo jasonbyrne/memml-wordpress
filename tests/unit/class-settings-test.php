@@ -51,6 +51,15 @@ final class Memml_Settings_Test extends TestCase {
 			}
 		);
 		Functions\when( 'esc_url_raw' )->returnArg();
+		Functions\when( 'is_user_logged_in' )->justReturn( false );
+		Functions\when( 'current_user_can' )->justReturn( false );
+		Functions\when( '__' )->returnArg();
+		Functions\when( 'number_format_i18n' )->alias( 'strval' );
+		Functions\when( '_n' )->alias(
+			static function ( $single, $plural, $number ) {
+				return 1 === (int) $number ? $single : $plural;
+			}
+		);
 		Functions\when( 'untrailingslashit' )->alias(
 			static function ( $value ) {
 				return rtrim( (string) $value, '/' );
@@ -198,7 +207,7 @@ final class Memml_Settings_Test extends TestCase {
 		}
 
 		$saved = Memml_Settings::get_options();
-		unset( $saved['organization_key'], $saved['base_url'] );
+		unset( $saved['organization_key'], $saved['base_url'], $saved['editors_can_manage'] );
 
 		// The accent checkbox is a form-only field alongside the stored color.
 		unset( $combined['accent_custom'] );
@@ -543,5 +552,165 @@ final class Memml_Settings_Test extends TestCase {
 				1800000000
 			)['summary']
 		);
+	}
+
+	/**
+	 * Administrators always manage the calendar; Editors only when an administrator allows it.
+	 *
+	 * @return void
+	 */
+	public function test_capability_granted_to_administrators_and_opted_in_editors() {
+		$capability    = array( Memml_Settings::CAPABILITY );
+		$administrator = (object) array( 'roles' => array( 'administrator' ) );
+		$editor        = (object) array( 'roles' => array( 'editor' ) );
+		$author        = (object) array( 'roles' => array( 'author' ) );
+		$admin_caps    = array( 'manage_options' => true );
+		$editor_caps   = array( 'edit_others_posts' => true );
+
+		$this->assertTrue( Memml_Settings::grant_capability( $admin_caps, $capability, array(), $administrator )[ Memml_Settings::CAPABILITY ] );
+		$this->assertArrayNotHasKey( Memml_Settings::CAPABILITY, Memml_Settings::grant_capability( $editor_caps, $capability, array(), $editor ) );
+		$this->assertFalse( Memml_Settings::get_options()['editors_can_manage'], 'Editors are not managers by default.' );
+
+		$this->saved_options['editors_can_manage'] = true;
+
+		$this->assertTrue( Memml_Settings::grant_capability( $editor_caps, $capability, array(), $editor )[ Memml_Settings::CAPABILITY ] );
+		$this->assertArrayNotHasKey( Memml_Settings::CAPABILITY, Memml_Settings::grant_capability( array(), $capability, array(), $author ) );
+
+		// An explicit denial, such as one set with a role editor plugin, wins.
+		$denied = Memml_Settings::grant_capability( array( Memml_Settings::CAPABILITY => false ) + $editor_caps, $capability, array(), $editor );
+		$this->assertFalse( $denied[ Memml_Settings::CAPABILITY ] );
+
+		// Other capability checks are untouched.
+		$this->assertSame( $admin_caps, Memml_Settings::grant_capability( $admin_caps, array( 'edit_posts' ), array(), $administrator ) );
+		$this->assertSame( Memml_Settings::CAPABILITY, Memml_Settings::get_capability() );
+	}
+
+	/**
+	 * Calendar managers who are not administrators cannot change the connection.
+	 *
+	 * @return void
+	 */
+	public function test_managers_keep_the_saved_connection() {
+		$this->saved_options['editors_can_manage'] = true;
+		$input                                     = array(
+			'organization_key'   => 'another-organization',
+			'base_url'           => 'https://staging.memml.example',
+			'editors_can_manage' => '',
+			'default_view'       => 'month',
+		);
+
+		Functions\when( 'is_user_logged_in' )->justReturn( true );
+		$result = ( new Memml_Settings() )->sanitize( $input );
+
+		$this->assertSame( 'river-city-neighbors', $result['organization_key'] );
+		$this->assertSame( Memml_Feed_Client::DEFAULT_BASE_URL, $result['base_url'] );
+		$this->assertTrue( $result['editors_can_manage'] );
+		$this->assertSame( 'month', $result['default_view'], 'Managers still change display preferences.' );
+
+		// Administrators can change who manages the calendar.
+		Functions\when( 'current_user_can' )->alias(
+			static function ( $capability ) {
+				return 'manage_options' === $capability;
+			}
+		);
+		$result = ( new Memml_Settings() )->sanitize(
+			array(
+				'organization_key' => 'river-city-neighbors',
+				'base_url'         => Memml_Feed_Client::DEFAULT_BASE_URL,
+			)
+		);
+		$this->assertFalse( $result['editors_can_manage'] );
+
+		// WP-CLI and code without a logged-in user are trusted.
+		Functions\when( 'is_user_logged_in' )->justReturn( false );
+		Functions\when( 'current_user_can' )->justReturn( false );
+		$result = ( new Memml_Settings() )->sanitize(
+			array(
+				'organization_key'   => 'river-city-neighbors',
+				'base_url'           => Memml_Feed_Client::DEFAULT_BASE_URL,
+				'editors_can_manage' => '1',
+			)
+		);
+		$this->assertTrue( $result['editors_can_manage'] );
+	}
+
+	/**
+	 * The Connected panel summarizes whichever feeds have loaded.
+	 *
+	 * @return void
+	 */
+	public function test_connection_summary_describes_loaded_feeds() {
+		$status = static function ( $state, $count, $error = null ) {
+			return array(
+				'state'        => $state,
+				'organization' => null === $count ? '' : 'River City Neighbors',
+				'timezone'     => null === $count ? '' : 'America/New_York',
+				'item_count'   => $count,
+				'error'        => $error,
+			);
+		};
+
+		$summary = Memml_Settings::get_connection_summary(
+			array(
+				'events'     => $status( 'fresh', 12 ),
+				'volunteers' => $status( 'stale', 3, 'Memml did not respond.' ),
+				'committees' => $status( 'cached', 0 ),
+			)
+		);
+
+		$this->assertSame( 'connected', $summary['state'] );
+		$this->assertSame( 'River City Neighbors', $summary['organization'] );
+		$this->assertSame( 'America/New_York', $summary['timezone'] );
+		$this->assertSame(
+			array(
+				'events'     => 12,
+				'volunteers' => 3,
+				'committees' => 0,
+			),
+			$summary['feeds']
+		);
+
+		$failed = Memml_Settings::get_connection_summary(
+			array(
+				'events'     => $status( 'error', null, 'The Memml organization was not found.' ),
+				'volunteers' => $status( 'not_loaded', null ),
+			)
+		);
+		$this->assertSame( 'failed', $failed['state'] );
+		$this->assertSame( 'The Memml organization was not found.', $failed['error'] );
+
+		$this->assertSame( 'unknown', Memml_Settings::get_connection_summary( array( 'events' => $status( 'not_loaded', null ) ) )['state'] );
+		$this->assertSame( 'unknown', Memml_Settings::get_connection_summary( array() )['state'] );
+	}
+
+	/**
+	 * Test connection names the organization, timezone, and item counts.
+	 *
+	 * @return void
+	 */
+	public function test_connection_test_describes_the_organization() {
+		$events     = array(
+			'data' => array(
+				'organization' => array(
+					'name'     => 'River City Neighbors',
+					'timezone' => 'America/New_York',
+				),
+				'events'       => array( array(), array() ),
+			),
+		);
+		$volunteers = array( 'data' => array( 'volunteerOpportunities' => array( array() ) ) );
+
+		$this->assertSame(
+			'Connected to River City Neighbors (America/New_York): 2 events, 1 volunteer opportunity.',
+			Memml_Settings::describe_connection( $events, $volunteers )
+		);
+		$this->assertSame(
+			'Connected to River City Neighbors (America/New_York): 2 events.',
+			Memml_Settings::describe_connection( $events, new WP_Error( 'memml_http_error', 'Unavailable.' ) )
+		);
+
+		unset( $events['data']['organization']['timezone'] );
+		$events['data']['events'] = array( array() );
+		$this->assertSame( 'Connected to River City Neighbors: 1 event, 1 volunteer opportunity.', Memml_Settings::describe_connection( $events, $volunteers ) );
 	}
 }

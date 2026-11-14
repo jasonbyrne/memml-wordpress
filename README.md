@@ -21,8 +21,13 @@ Memml Calendar is a WordPress plugin that displays a nonprofit's public events a
    https://memml.com/api/public/v1/river-city-neighbors/events.json
    ```
 
-7. Confirm that the connection test displays the organization's name, then save the settings.
-8. Add the **Memml Calendar**, **Memml Events**, or **Memml Volunteers** block to a page.
+7. Confirm that the connection test displays the organization's name, timezone,
+   and how many events and volunteer opportunities it found, then save the
+   settings.
+8. The **Connected** panel at the top of the settings now lists your feeds,
+   links to the preview, and has copy buttons for the basic shortcodes. Add the
+   **Memml Calendar**, **Memml Events**, or **Memml Volunteers** block to a page,
+   or paste a shortcode.
 
 The organization key and display defaults are configured once for the WordPress
 site. Blocks and shortcodes inherit those defaults unless a placement needs an
@@ -32,8 +37,16 @@ intentional exception.
 
 **Settings → Memml Calendar** is arranged in six sections:
 
-- **Connection** — the organization key, **Test connection**, and an
-  **Advanced** Memml base URL for testing against another environment.
+- **Connection** — the organization key, **Test connection**, **Calendar
+  managers**, and an **Advanced** Memml base URL for testing against another
+  environment. Once a key is saved, a **Connected** panel shows the
+  organization, its timezone, each available feed with its item count, a
+  **Preview your calendar** button, and copy buttons for `[memml_calendar]`,
+  `[memml_events]`, `[memml_volunteers]`, and `[memml_committees]` once the
+  committees feed has loaded. If Memml has not been checked since the key
+  changed, opening the page loads Events and Volunteer opportunities once; if
+  that fails, the panel says so instead. See
+  [Calendar managers](#calendar-managers).
 - **Calendar display** — the initial calendar, view, and list filter, Month
   view on phones, the maximum list items, the visitor switchers, and the
   subscription row. See [Month view on phones](#month-view-on-phones).
@@ -53,13 +66,32 @@ A **Preview** beside the settings (below them on narrower screens) shows the
 Memml Calendar, Memml Events, or Memml Volunteers block as it will look with the
 choices currently on the page, before they are saved. It uses the saved
 organization key, renders with the calendar's own styles and the theme's global
-styles in a separate frame, and only administrators can open it. Each preference
+styles in a separate frame, and only calendar managers can open it. Each preference
 section has **Reset section to defaults**, which fills in that section's
 defaults and updates the preview; **Save Changes** applies them. **Show with
 nothing upcoming** previews the calendar without its upcoming items, so the
 empty-calendar choices can be checked while Memml has events. **Show at phone
 width** narrows the preview to a phone screen; otherwise the preview shows the
 wide-screen layout, even when the preview itself is narrow.
+
+### Calendar managers
+
+Managing Memml Calendar needs the `manage_memml_calendar` capability.
+Administrators (anyone who can `manage_options`) always have it; it is granted
+at runtime rather than stored on roles, so nothing needs migrating and nothing
+is left behind on uninstall.
+
+- **Let Editors manage Memml Calendar** (Connection section, administrators
+  only, off by default) gives it to the Editor role. Editors then see
+  **Settings → Memml Calendar** and can change every preference, test the
+  connection, refresh feeds, and use the preview.
+- To choose other roles or individual people, grant `manage_memml_calendar`
+  with a role-editor plugin or `add_cap()`. An explicit grant or denial on a
+  role or user always wins, so a site can also withhold it from one Editor.
+- The organization key, Memml base URL, and the Editors switch stay with
+  administrators. Calendar managers who are not administrators see them
+  read-only, and saving keeps the stored values. WP-CLI and code running
+  without a logged-in user can still change them.
 
 ### Month view on phones
 

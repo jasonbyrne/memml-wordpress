@@ -40,6 +40,17 @@ the original look. Blocks offer Use site setting for every matching display and
 content preference, and shortcodes inherit the site settings when properties
 are omitted.
 
+Once an organization key is saved, a Connected panel at the top of the settings
+shows the organization name, its timezone, each available feed with its item
+count, a Preview your calendar button, and copy buttons for the basic
+shortcodes. If the key does not work, the panel says so instead.
+
+Administrators can let Editors manage Memml Calendar with the Calendar managers
+setting. Editors can then change the display, content, empty-calendar, and
+appearance settings, refresh feeds, and use the preview, but only administrators
+can change the organization key, the Memml base URL, or who manages the
+calendar.
+
 A preview beside the settings shows the Memml Calendar, Memml Events, or Memml
 Volunteers block with the choices on the page before you save them. Each
 preference section has a Reset section to defaults button that fills in its
@@ -166,8 +177,8 @@ Deleting the plugin removes its settings and cached feed data.
 2. In WordPress Admin, open Plugins > Add New Plugin and select Upload Plugin.
 3. Choose the downloaded ZIP, select Install Now, and then activate Memml Calendar.
 4. Open Settings > Memml Calendar and enter your Memml organization key. For a feed URL containing `/api/public/v1/river-city-neighbors/events.json`, the key is `river-city-neighbors`.
-5. Select Test connection and confirm that your organization name appears.
-6. Add the Memml Calendar, Memml Events, or Memml Volunteers block to a page. Shortcodes are also available as described above.
+5. Select Test connection and confirm that your organization name, timezone, and item counts appear, then save.
+6. The Connected panel lists your feeds, links to the preview, and has copy buttons for the basic shortcodes. Add the Memml Calendar, Memml Events, or Memml Volunteers block to a page, or paste a shortcode.
 
 To update a manually installed copy, download the newer release ZIP and upload it
 through Plugins > Add New Plugin > Upload Plugin. WordPress will offer to replace the
@@ -193,6 +204,14 @@ Yes. Each page can use the events block, the volunteers block, or both.
 Yes. Visitors can switch between List and Month by default. The block setting or
 `view` shortcode property controls which view they see first, and administrators
 can hide the switcher when a calendar should stay in one view.
+
+= Can someone manage the calendar without being an administrator? =
+
+Yes. In Settings > Memml Calendar, an administrator can turn on Let Editors
+manage Memml Calendar. Editors then get Settings > Memml Calendar and can change
+every setting except the Connection section, which stays with administrators.
+To choose other roles or individual people instead, give them the
+`manage_memml_calendar` capability with a role editor plugin.
 
 = Why do phones show List view when I chose Month? =
 

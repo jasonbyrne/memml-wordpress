@@ -642,12 +642,88 @@ try {
 		'api/public/v1/river-city-neighbors/volunteer-opportunities.json',
 		'value="memml_refresh_cache"',
 		'[memml_calendar]',
+		'data-memml-copy="[memml_events]"',
+		'Connected to River City Neighbors',
+		'America/New_York',
+		'href="#memml-preview"',
+		'memml-editors-can-manage',
 	);
 
 	foreach ( $settings_expectations as $expectation ) {
 		if ( false === strpos( $settings_html, $expectation ) ) {
 			throw new RuntimeException( 'Missing settings-screen output: ' . $expectation );
 		}
+	}
+
+	// Delegated management: Editors manage the calendar only when allowed,
+	// and never change the connection.
+	$options_before_editor = get_option( Memml_Settings::OPTION_NAME );
+	$editor_id             = wp_insert_user(
+		array(
+			'user_login' => 'memml-smoke-editor-' . wp_generate_password( 6, false ),
+			'user_pass'  => wp_generate_password(),
+			'role'       => 'editor',
+		)
+	);
+
+	if ( is_wp_error( $editor_id ) ) {
+		throw new RuntimeException( 'Could not create the smoke-test Editor.' );
+	}
+
+	try {
+		if ( user_can( $editor_id, Memml_Settings::CAPABILITY ) || ! user_can( 1, Memml_Settings::CAPABILITY ) ) {
+			throw new RuntimeException( 'Memml Calendar management was not limited to administrators by default.' );
+		}
+
+		update_option( Memml_Settings::OPTION_NAME, array_merge( $options_before_editor, array( 'editors_can_manage' => true ) ) );
+
+		if ( ! user_can( $editor_id, Memml_Settings::CAPABILITY ) || user_can( $editor_id, 'manage_options' ) ) {
+			throw new RuntimeException( 'Let Editors manage Memml Calendar did not grant only the Memml capability.' );
+		}
+
+		wp_set_current_user( $editor_id );
+
+		if ( Memml_Settings::get_capability() !== apply_filters( 'option_page_capability_memml', 'manage_options' ) ) {
+			throw new RuntimeException( 'Saving Memml Calendar settings still required manage_options.' );
+		}
+
+		ob_start();
+		( new Memml_Settings() )->render_page();
+		$editor_html = ob_get_clean();
+
+		if (
+			false === strpos( $editor_html, 'Connected to River City Neighbors' ) ||
+			false === strpos( $editor_html, 'memml-default-view' ) ||
+			false !== strpos( $editor_html, 'memml-editors-can-manage' ) ||
+			false !== strpos( $editor_html, '[organization_key]' ) ||
+			false !== strpos( $editor_html, '[base_url]' ) ||
+			! preg_match( '/id="memml-organization-key"\s+readonly/', $editor_html )
+		) {
+			throw new RuntimeException( 'An Editor saw editable connection settings or missed the calendar settings.' );
+		}
+
+		$editor_saved = ( new Memml_Settings() )->sanitize(
+			array(
+				'organization_key'   => 'another-organization',
+				'base_url'           => 'https://staging.memml.example',
+				'editors_can_manage' => '',
+				'default_view'       => 'month',
+			)
+		);
+
+		if (
+			'river-city-neighbors' !== $editor_saved['organization_key'] ||
+			Memml_Feed_Client::DEFAULT_BASE_URL !== $editor_saved['base_url'] ||
+			true !== $editor_saved['editors_can_manage'] ||
+			'month' !== $editor_saved['default_view']
+		) {
+			throw new RuntimeException( 'An Editor changed the connection or could not change display settings.' );
+		}
+	} finally {
+		wp_set_current_user( 1 );
+		update_option( Memml_Settings::OPTION_NAME, $options_before_editor );
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		wp_delete_user( $editor_id );
 	}
 
 	ob_start();
@@ -669,7 +745,7 @@ try {
 		throw new RuntimeException( 'An invalid organization key discarded the saved key.' );
 	}
 
-	WP_CLI::success( 'Memml Calendar activation, connection, display-default inheritance, visitor-control visibility, explicit overrides, URL state, filtering, sorting, link controls, timezone, month view, page-cache, empty calendar, settings screen, and key-retention smoke test passed.' );
+	WP_CLI::success( 'Memml Calendar activation, connection, display-default inheritance, visitor-control visibility, explicit overrides, URL state, filtering, sorting, link controls, timezone, month view, page-cache, empty calendar, settings screen, delegated management, and key-retention smoke test passed.' );
 } finally {
 	remove_filter( 'pre_http_request', $mock_request, 10 );
 	remove_filter( 'memml_calendar_today', $today_filter, 10 );

@@ -51,6 +51,36 @@
 		} );
 	}
 
+	// Copy buttons stay hidden unless the browser can copy for them.
+	const copyResult = document.querySelector( '[data-memml-copy-result]' );
+
+	document
+		.querySelectorAll( '[data-memml-copy]' )
+		.forEach( function ( copyButton ) {
+			if ( ! window.navigator.clipboard ) {
+				return;
+			}
+
+			copyButton.hidden = false;
+			copyButton.addEventListener( 'click', async function () {
+				const text = copyButton.dataset.memmlCopy;
+
+				try {
+					await window.navigator.clipboard.writeText( text );
+					if ( copyResult ) {
+						copyResult.textContent = settings.copied.replace(
+							'%s',
+							text
+						);
+					}
+				} catch {
+					if ( copyResult ) {
+						copyResult.textContent = settings.copyFailed;
+					}
+				}
+			} );
+		} );
+
 	if ( ! form ) {
 		return;
 	}

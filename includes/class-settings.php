@@ -27,6 +27,16 @@ final class Memml_Settings {
 	public const PAGE_SLUG = 'memml';
 
 	/**
+	 * Capability that lets a user manage Memml Calendar.
+	 *
+	 * Administrators always have it. It is granted at runtime rather than
+	 * stored on roles; see grant_capability().
+	 *
+	 * @var string
+	 */
+	public const CAPABILITY = 'manage_memml_calendar';
+
+	/**
 	 * Feed-refresh admin-post action.
 	 *
 	 * @var string
@@ -163,10 +173,64 @@ final class Memml_Settings {
 		add_action( 'wp_ajax_memml_test_connection', array( $this, 'test_connection' ) );
 		add_action( 'admin_post_' . self::FLUSH_ACTION, array( $this, 'refresh_feeds' ) );
 		add_action( 'admin_post_' . self::PREVIEW_ACTION, array( $this, 'render_preview' ) );
+		add_filter( 'user_has_cap', array( __CLASS__, 'grant_capability' ), 10, 4 );
+		add_filter( 'option_page_capability_memml', array( __CLASS__, 'get_capability' ) );
 		add_filter(
 			'plugin_action_links_' . plugin_basename( MEMML_PLUGIN_FILE ),
 			array( $this, 'add_plugin_action_links' )
 		);
+	}
+
+	/**
+	 * Grants the Memml Calendar capability at runtime.
+	 *
+	 * Users who can manage options always have it, and Editors have it when an
+	 * administrator turns on Let Editors manage Memml Calendar. An explicit
+	 * grant or denial on a role or user, such as one made with a role-editor
+	 * plugin, is left as it is.
+	 *
+	 * @param array   $allcaps Capabilities the user has.
+	 * @param array   $caps    Primitive capabilities being checked.
+	 * @param array   $args    Requested capability and its arguments.
+	 * @param WP_User $user    User being checked.
+	 * @return array
+	 */
+	public static function grant_capability( $allcaps, $caps, $args, $user ) {
+		unset( $args );
+
+		if ( ! in_array( self::CAPABILITY, (array) $caps, true ) || array_key_exists( self::CAPABILITY, $allcaps ) ) {
+			return $allcaps;
+		}
+
+		$is_editor = is_object( $user ) && isset( $user->roles ) && in_array( 'editor', (array) $user->roles, true );
+
+		if ( ! empty( $allcaps['manage_options'] ) || ( $is_editor && ! empty( self::get_options()['editors_can_manage'] ) ) ) {
+			$allcaps[ self::CAPABILITY ] = true;
+		}
+
+		return $allcaps;
+	}
+
+	/**
+	 * Gets the capability needed to save Memml Calendar settings.
+	 *
+	 * @return string
+	 */
+	public static function get_capability() {
+		return self::CAPABILITY;
+	}
+
+	/**
+	 * Checks whether the current request may change the connection settings.
+	 *
+	 * The organization key, base URL, and who can manage the calendar stay
+	 * with administrators. WP-CLI and code running without a logged-in user
+	 * are trusted.
+	 *
+	 * @return bool
+	 */
+	public static function can_change_connection() {
+		return ! is_user_logged_in() || current_user_can( 'manage_options' );
 	}
 
 	/**
@@ -197,7 +261,7 @@ final class Memml_Settings {
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 
 		if (
-			! current_user_can( 'manage_options' ) ||
+			! current_user_can( self::CAPABILITY ) ||
 			'' !== self::get_options()['organization_key'] ||
 			( $screen && 'settings_page_' . self::PAGE_SLUG === $screen->id )
 		) {
@@ -222,7 +286,7 @@ final class Memml_Settings {
 	 * @return void
 	 */
 	public function refresh_feeds() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
 			wp_die(
 				esc_html__( 'You are not allowed to manage these settings.', 'memml' ),
 				'',
@@ -302,6 +366,107 @@ final class Memml_Settings {
 		}
 
 		return $statuses;
+	}
+
+	/**
+	 * Gets feed statuses for the settings page, loading the main feeds once.
+	 *
+	 * Right after the organization key changes there is no saved copy, so
+	 * the Connected panel would have nothing to show. Events and Volunteer
+	 * opportunities are loaded the way a calendar page would load them; a
+	 * failed check is remembered briefly, so reloading the page does not
+	 * contact Memml again straight away.
+	 *
+	 * @param Memml_Feed_Client $client           Feed client.
+	 * @param string            $organization_key Memml organization key.
+	 * @return array Statuses keyed by feed.
+	 */
+	public static function load_feed_statuses( $client, $organization_key ) {
+		$statuses = self::get_feed_statuses( $client, $organization_key );
+		$loaders  = array(
+			'events'     => 'get_events',
+			'volunteers' => 'get_volunteer_opportunities',
+		);
+		$loaded   = false;
+
+		foreach ( $loaders as $feed => $method ) {
+			if ( isset( $statuses[ $feed ] ) && 'not_loaded' === $statuses[ $feed ]['state'] ) {
+				$client->$method( $organization_key );
+				$loaded = true;
+			}
+		}
+
+		return $loaded ? self::get_feed_statuses( $client, $organization_key ) : $statuses;
+	}
+
+	/**
+	 * Summarizes the connection for the Connected panel.
+	 *
+	 * @param array $statuses Feed statuses keyed by feed.
+	 * @return array State (connected, failed, or unknown), organization,
+	 *               timezone, item counts keyed by feed, and the latest error.
+	 */
+	public static function get_connection_summary( $statuses ) {
+		$summary = array(
+			'state'        => 'unknown',
+			'organization' => '',
+			'timezone'     => '',
+			'feeds'        => array(),
+			'error'        => '',
+		);
+
+		foreach ( $statuses as $feed => $status ) {
+			if ( null !== $status['item_count'] ) {
+				$summary['state']          = 'connected';
+				$summary['feeds'][ $feed ] = (int) $status['item_count'];
+				$summary['organization']   = '' !== $summary['organization'] ? $summary['organization'] : $status['organization'];
+				$summary['timezone']       = '' !== $summary['timezone'] ? $summary['timezone'] : $status['timezone'];
+			} elseif ( '' === $summary['error'] && ! empty( $status['error'] ) ) {
+				$summary['error'] = $status['error'];
+			}
+		}
+
+		if ( 'unknown' === $summary['state'] && '' !== $summary['error'] ) {
+			$summary['state'] = 'failed';
+		}
+
+		return $summary;
+	}
+
+	/**
+	 * Describes a successful connection test in one sentence.
+	 *
+	 * @param array          $events     Events feed result.
+	 * @param array|WP_Error $volunteers Volunteer opportunities feed result, or an error.
+	 * @return string
+	 */
+	public static function describe_connection( $events, $volunteers ) {
+		$organization = isset( $events['data']['organization'] ) && is_array( $events['data']['organization'] ) ? $events['data']['organization'] : array();
+		$name         = isset( $organization['name'] ) ? (string) $organization['name'] : '';
+		$timezone     = isset( $organization['timezone'] ) ? (string) $organization['timezone'] : '';
+		$event_count  = isset( $events['data']['events'] ) && is_array( $events['data']['events'] ) ? count( $events['data']['events'] ) : 0;
+		$counts       = array(
+			/* translators: %s: Number of events. */
+			sprintf( _n( '%s event', '%s events', $event_count, 'memml' ), number_format_i18n( $event_count ) ),
+		);
+
+		if ( is_array( $volunteers ) && ! is_wp_error( $volunteers ) ) {
+			$data            = isset( $volunteers['data'] ) && is_array( $volunteers['data'] ) ? $volunteers['data'] : array();
+			$items           = isset( $data['volunteerOpportunities'] ) ? $data['volunteerOpportunities'] : ( isset( $data['opportunities'] ) ? $data['opportunities'] : array() );
+			$volunteer_count = is_array( $items ) ? count( $items ) : 0;
+			/* translators: %s: Number of volunteer opportunities. */
+			$counts[] = sprintf( _n( '%s volunteer opportunity', '%s volunteer opportunities', $volunteer_count, 'memml' ), number_format_i18n( $volunteer_count ) );
+		}
+
+		$count_list = function_exists( 'wp_sprintf_l' ) ? wp_sprintf_l( '%l', $counts ) : implode( ', ', $counts );
+
+		if ( '' === $timezone ) {
+			/* translators: 1: Memml organization name, 2: List of item counts, such as "12 events and 3 volunteer opportunities". */
+			return sprintf( __( 'Connected to %1$s: %2$s.', 'memml' ), $name, $count_list );
+		}
+
+		/* translators: 1: Memml organization name, 2: Organization timezone, 3: List of item counts, such as "12 events and 3 volunteer opportunities". */
+		return sprintf( __( 'Connected to %1$s (%2$s): %3$s.', 'memml' ), $name, $timezone, $count_list );
 	}
 
 	/**
@@ -409,7 +574,7 @@ final class Memml_Settings {
 		add_options_page(
 			__( 'Memml Calendar Settings', 'memml' ),
 			__( 'Memml Calendar', 'memml' ),
-			'manage_options',
+			self::CAPABILITY,
 			self::PAGE_SLUG,
 			array( $this, 'render_page' )
 		);
@@ -439,8 +604,21 @@ final class Memml_Settings {
 	 * @return array
 	 */
 	public function sanitize( $input ) {
-		$input            = is_array( $input ) ? $input : array();
-		$saved            = self::get_options();
+		$input = is_array( $input ) ? $input : array();
+		$saved = self::get_options();
+
+		// Calendar managers who are not administrators keep the saved connection.
+		if ( ! self::can_change_connection() ) {
+			return array_merge(
+				array(
+					'organization_key'   => $saved['organization_key'],
+					'base_url'           => $saved['base_url'],
+					'editors_can_manage' => (bool) $saved['editors_can_manage'],
+				),
+				self::sanitize_preferences( $input )
+			);
+		}
+
 		$organization_key = isset( $input['organization_key'] ) ? trim( sanitize_text_field( $input['organization_key'] ) ) : '';
 		$base_url         = isset( $input['base_url'] ) ? untrailingslashit( esc_url_raw( $input['base_url'] ) ) : '';
 
@@ -471,8 +649,9 @@ final class Memml_Settings {
 
 		return array_merge(
 			array(
-				'organization_key' => $organization_key,
-				'base_url'         => $base_url,
+				'organization_key'   => $organization_key,
+				'base_url'           => $base_url,
+				'editors_can_manage' => ! empty( $input['editors_can_manage'] ),
 			),
 			self::sanitize_preferences( $input )
 		);
@@ -618,7 +797,7 @@ final class Memml_Settings {
 	 * @return void
 	 */
 	public function render_page() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
 			return;
 		}
 
@@ -628,9 +807,11 @@ final class Memml_Settings {
 		$failed_names    = isset( $_GET['memml-refresh-failed'] ) ? self::get_feed_names( sanitize_text_field( wp_unslash( $_GET['memml-refresh-failed'] ) ) ) : '';
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		$is_ready            = '' !== $options['organization_key'];
+		$can_connect         = self::can_change_connection();
 		$feed_client         = new Memml_Feed_Client( $options['base_url'] );
 		$feed_urls           = $is_ready ? $feed_client->get_feed_urls( $options['organization_key'] ) : array();
-		$feed_statuses       = $is_ready ? self::get_feed_statuses( $feed_client, $options['organization_key'] ) : array();
+		$feed_statuses       = $is_ready ? self::load_feed_statuses( $feed_client, $options['organization_key'] ) : array();
+		$connection_summary  = self::get_connection_summary( $feed_statuses );
 		$feed_labels         = self::get_feed_labels();
 		$content_preferences = array(
 			'show_images'                 => __( 'Images', 'memml' ),
@@ -695,21 +876,34 @@ final class Memml_Settings {
 						<section aria-labelledby="memml-section-connection" class="memml-settings__section">
 							<?php $this->render_section_heading( 'connection', __( 'Connection', 'memml' ) ); ?>
 							<p class="description"><?php echo esc_html__( 'Connect WordPress to your organization’s unauthenticated Memml public feeds.', 'memml' ); ?></p>
+							<?php $this->render_connection_summary( $connection_summary ); ?>
 							<table class="form-table" role="presentation">
 								<tr>
 									<th scope="row">
 										<label for="memml-organization-key"><?php echo esc_html__( 'Organization key', 'memml' ); ?></label>
 									</th>
 									<td>
-										<input
-											class="regular-text"
-											id="memml-organization-key"
-											name="<?php echo esc_attr( self::OPTION_NAME ); ?>[organization_key]"
-											pattern="[A-Za-z0-9_-]+"
-											required
-											type="text"
-											value="<?php echo esc_attr( $options['organization_key'] ); ?>"
-										/>
+										<?php if ( $can_connect ) : ?>
+											<input
+												class="regular-text"
+												id="memml-organization-key"
+												name="<?php echo esc_attr( self::OPTION_NAME ); ?>[organization_key]"
+												pattern="[A-Za-z0-9_-]+"
+												required
+												type="text"
+												value="<?php echo esc_attr( $options['organization_key'] ); ?>"
+											/>
+										<?php else : ?>
+											<input
+												aria-describedby="memml-connection-admins"
+												class="regular-text"
+												id="memml-organization-key"
+												readonly
+												type="text"
+												value="<?php echo esc_attr( $options['organization_key'] ); ?>"
+											/>
+											<p class="description" id="memml-connection-admins"><?php echo esc_html__( 'Only administrators can change the organization key, the Memml base URL, and who can manage Memml Calendar.', 'memml' ); ?></p>
+										<?php endif; ?>
 										<p class="description">
 											<?php
 											printf(
@@ -731,6 +925,33 @@ final class Memml_Settings {
 										</p>
 									</td>
 								</tr>
+								<?php if ( current_user_can( 'manage_options' ) ) : ?>
+									<tr>
+										<th scope="row"><?php echo esc_html__( 'Calendar managers', 'memml' ); ?></th>
+										<td>
+											<label for="memml-editors-can-manage">
+												<input
+													<?php checked( ! empty( $options['editors_can_manage'] ) ); ?>
+													aria-describedby="memml-editors-can-manage-help"
+													id="memml-editors-can-manage"
+													name="<?php echo esc_attr( self::OPTION_NAME ); ?>[editors_can_manage]"
+													type="checkbox"
+													value="1"
+												/>
+												<?php echo esc_html__( 'Let Editors manage Memml Calendar', 'memml' ); ?>
+											</label>
+											<p class="description" id="memml-editors-can-manage-help">
+												<?php
+												printf(
+													/* translators: %s: Capability name. */
+													esc_html__( 'Administrators can always manage Memml Calendar. Editors can then change every setting on this page except this Connection section, refresh feeds, and use the preview. To choose other roles or people, give them the %s capability with a role editor plugin.', 'memml' ),
+													'<code>' . esc_html( self::CAPABILITY ) . '</code>'
+												);
+												?>
+											</p>
+										</td>
+									</tr>
+								<?php endif; ?>
 							</table>
 							<details class="memml-advanced-settings">
 								<summary><?php echo esc_html__( 'Advanced', 'memml' ); ?></summary>
@@ -743,7 +964,11 @@ final class Memml_Settings {
 											<input
 												class="regular-text code"
 												id="memml-base-url"
-												name="<?php echo esc_attr( self::OPTION_NAME ); ?>[base_url]"
+												<?php if ( $can_connect ) : ?>
+													name="<?php echo esc_attr( self::OPTION_NAME ); ?>[base_url]"
+												<?php else : ?>
+													readonly
+												<?php endif; ?>
 												type="url"
 												value="<?php echo esc_attr( $options['base_url'] ); ?>"
 											/>
@@ -1043,18 +1268,9 @@ final class Memml_Settings {
 						<?php endif; ?>
 					</section>
 
-					<section aria-labelledby="memml-section-usage" class="memml-settings__section">
-						<?php $this->render_section_heading( 'usage', __( 'Adding a calendar to a page', 'memml' ) ); ?>
-						<p><?php echo esc_html__( 'Add the Memml Calendar, Memml Events, or Memml Volunteers block to any page, or use the matching shortcode:', 'memml' ); ?></p>
-						<ul class="memml-shortcodes">
-							<li><code>[memml_calendar]</code> — <?php echo esc_html__( 'events and volunteer opportunities, with a switcher.', 'memml' ); ?></li>
-							<li><code>[memml_events]</code> — <?php echo esc_html__( 'events only.', 'memml' ); ?></li>
-							<li><code>[memml_volunteers]</code> — <?php echo esc_html__( 'volunteer opportunities only.', 'memml' ); ?></li>
-						</ul>
-					</section>
 				</div>
 
-				<aside aria-labelledby="memml-preview-heading" class="memml-settings__preview">
+				<aside aria-labelledby="memml-preview-heading" class="memml-settings__preview" id="memml-preview" tabindex="-1">
 					<div class="memml-settings__preview-header">
 						<h2 id="memml-preview-heading"><?php echo esc_html__( 'Preview', 'memml' ); ?></h2>
 						<?php if ( $is_ready ) : ?>
@@ -1187,6 +1403,98 @@ final class Memml_Settings {
 				</div>
 			</td>
 		</tr>
+		<?php
+	}
+
+	/**
+	 * Renders the Connected panel: who the site is connected to, its feeds,
+	 * a preview action, and shortcodes to copy.
+	 *
+	 * @param array $summary Connection summary from get_connection_summary().
+	 * @return void
+	 */
+	private function render_connection_summary( $summary ) {
+		if ( 'failed' === $summary['state'] ) {
+			?>
+			<div class="memml-connected memml-connected--failed">
+				<p>
+					<strong><?php echo esc_html__( 'Memml could not be reached with this organization key.', 'memml' ); ?></strong>
+					<?php echo esc_html( $summary['error'] ); ?>
+				</p>
+				<p><?php echo esc_html__( 'Check the key, then select Test connection. Calendars show a short message until the connection works.', 'memml' ); ?></p>
+			</div>
+			<?php
+			return;
+		}
+
+		if ( 'connected' !== $summary['state'] ) {
+			return;
+		}
+
+		$labels     = self::get_feed_labels();
+		$shortcodes = array(
+			'memml_calendar'   => __( 'events and volunteer opportunities, with a switcher.', 'memml' ),
+			'memml_events'     => __( 'events only.', 'memml' ),
+			'memml_volunteers' => __( 'volunteer opportunities only.', 'memml' ),
+		);
+
+		if ( isset( $summary['feeds']['committees'] ) ) {
+			$shortcodes['memml_committees'] = __( 'committee rosters, such as a board of directors.', 'memml' );
+		}
+		?>
+		<div class="memml-connected">
+			<h3 class="memml-connected__title">
+				<?php
+				printf(
+					/* translators: %s: Memml organization name. */
+					esc_html__( 'Connected to %s', 'memml' ),
+					esc_html( '' !== $summary['organization'] ? $summary['organization'] : __( 'Memml', 'memml' ) )
+				);
+				?>
+			</h3>
+			<dl class="memml-connected__facts">
+				<?php if ( '' !== $summary['timezone'] ) : ?>
+					<dt><?php echo esc_html__( 'Timezone', 'memml' ); ?></dt>
+					<dd><?php echo esc_html( $summary['timezone'] ); ?></dd>
+				<?php endif; ?>
+				<dt><?php echo esc_html__( 'Feeds', 'memml' ); ?></dt>
+				<dd>
+					<ul>
+						<?php foreach ( $summary['feeds'] as $feed => $count ) : ?>
+							<li>
+								<?php
+								printf(
+									/* translators: 1: Feed name, such as "Events", 2: Number of items. */
+									esc_html__( '%1$s: %2$s', 'memml' ),
+									esc_html( $labels[ $feed ] ),
+									/* translators: %s: Number of items in a feed. */
+									esc_html( sprintf( _n( '%s item', '%s items', $count, 'memml' ), number_format_i18n( $count ) ) )
+								);
+								?>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				</dd>
+			</dl>
+			<p><a class="button button-primary" href="#memml-preview"><?php echo esc_html__( 'Preview your calendar', 'memml' ); ?></a></p>
+			<p><?php echo esc_html__( 'Add a calendar to any page with a Memml block, or paste one of these shortcodes:', 'memml' ); ?></p>
+			<ul class="memml-shortcodes">
+				<?php foreach ( $shortcodes as $shortcode => $description ) : ?>
+					<li>
+						<code>[<?php echo esc_html( $shortcode ); ?>]</code>
+						<button
+							aria-label="<?php /* translators: %s: Shortcode, such as [memml_calendar]. */ echo esc_attr( sprintf( __( 'Copy %s', 'memml' ), '[' . $shortcode . ']' ) ); ?>"
+							class="button button-small"
+							data-memml-copy="[<?php echo esc_attr( $shortcode ); ?>]"
+							hidden
+							type="button"
+						><?php echo esc_html__( 'Copy', 'memml' ); ?></button>
+						— <?php echo esc_html( $description ); ?>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+			<p aria-live="polite" class="memml-connected__copy-result" data-memml-copy-result></p>
+		</div>
 		<?php
 	}
 
@@ -1415,7 +1723,7 @@ final class Memml_Settings {
 	 * @return void
 	 */
 	public function render_preview() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
 			wp_die(
 				esc_html__( 'You are not allowed to manage these settings.', 'memml' ),
 				'',
@@ -1522,6 +1830,9 @@ final class Memml_Settings {
 				'optionName'   => self::OPTION_NAME,
 				'defaults'     => self::get_section_defaults(),
 				'resetDone'    => __( 'Defaults restored in this section. Select Save Changes to apply them.', 'memml' ),
+				/* translators: %s: Shortcode, such as [memml_calendar]. */
+				'copied'       => __( 'Copied %s.', 'memml' ),
+				'copyFailed'   => __( 'Copying did not work. Select the shortcode and copy it instead.', 'memml' ),
 			)
 		);
 	}
@@ -1532,7 +1843,7 @@ final class Memml_Settings {
 	 * @return void
 	 */
 	public function test_connection() {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
 			wp_send_json_error(
 				array( 'message' => __( 'You are not allowed to manage these settings.', 'memml' ) ),
 				403
@@ -1562,16 +1873,12 @@ final class Memml_Settings {
 			);
 		}
 
-		$organization_name = $result['data']['organization']['name'];
+		$volunteers = $client->get_volunteer_opportunities( $organization_key, true );
 
 		wp_send_json_success(
 			array(
-				'organization' => $organization_name,
-				'message'      => sprintf(
-					/* translators: %s: Memml organization name. */
-					__( 'Connected to %s.', 'memml' ),
-					$organization_name
-				),
+				'organization' => $result['data']['organization']['name'],
+				'message'      => self::describe_connection( $result, $volunteers ),
 			)
 		);
 	}
@@ -1596,6 +1903,7 @@ final class Memml_Settings {
 		return array(
 			'organization_key'            => '',
 			'base_url'                    => Memml_Feed_Client::DEFAULT_BASE_URL,
+			'editors_can_manage'          => false,
 			'default_calendar'            => 'events',
 			'default_view'                => 'list',
 			'phone_view'                  => 'list',

@@ -97,8 +97,8 @@ What the plugin needs to know:
 | RM-006 | 0.6 Reliability | **DONE** | Show clear feed health and targeted refresh controls. |
 | RM-007 | 0.6 Reliability | **DONE** | Add useful, customizable empty states and calls to action. |
 | RM-020 | 0.6 Reliability | **DONE** | Open calendars in List view on phones instead of a clipped month grid. |
-| RM-008 | 0.6 Reliability | **NEXT** | Support delegated calendar management and improve onboarding. |
-| RM-021 | 0.7 Visitor experience | **PLANNED** | Fit Month view on phones with a compact grid and day list. |
+| RM-008 | 0.6 Reliability | **DONE** | Support delegated calendar management and improve onboarding. |
+| RM-021 | 0.7 Visitor experience | **NEXT** | Fit Month view on phones with a compact grid and day list. |
 | RM-009 | 0.7 Visitor experience | **PLANNED** | Add a mobile-friendly chronological agenda view. |
 | RM-010 | 0.7 Visitor experience | **PLANNED** | Add headings, introductions, and optional destination links. |
 | RM-011 | 0.7 Visitor experience | **PLANNED** | Add simple search and high-value visitor filters. |
@@ -394,18 +394,56 @@ help are updated.
 
 ### RM-008 — Delegated management and onboarding
 
-**Status:** NEXT
+**Status:** DONE
+
+**Completed:** 2026-11-14
 
 Introduce a dedicated `manage_memml_calendar` capability that can be assigned to
 an Events or Communications Manager without granting all administrator powers.
 After a successful connection, show the organization name, timezone, available
 feeds, a preview action, and copyable basic shortcodes without properties.
 
+Scope refined 2026-11-14:
+
+- **Capability.** Users with `manage_options` always have
+  `manage_memml_calendar`. It is granted at runtime rather than stored on
+  roles, so updates need no migration and uninstall leaves nothing behind. A
+  role-editor plugin or `add_cap()` can grant it to any role or user, and an
+  explicit grant or denial on a role or user wins.
+- **Editors switch.** Small organizations rarely run a role-editor plugin, so
+  an administrator-only Connection setting, *Let Editors manage Memml
+  Calendar* (off by default), grants the capability to the Editor role.
+- **What managers can do.** The settings page and menu item, saving settings,
+  Test connection, Refresh and Refresh all, the settings preview, and the
+  setup notice require `manage_memml_calendar` instead of `manage_options`.
+- **What stays with administrators.** The organization key, Memml base URL,
+  and Editors switch are shown read-only to managers who are not
+  administrators, and saving keeps their stored values. WP-CLI and code with
+  no logged-in user can still change them.
+- **Onboarding.** Once a key is saved, the Connection section shows a
+  Connected panel: organization name, timezone, each available feed with its
+  item count, a Preview your calendar action, and copy buttons for
+  `[memml_calendar]`, `[memml_events]`, `[memml_volunteers]`, and
+  `[memml_committees]` when the committees feed has loaded. It replaces the
+  separate Adding a calendar to a page section. If Memml has not been checked
+  since the key changed, opening the settings page loads the Events and
+  Volunteer opportunities feeds once. When the check fails, the panel says so
+  in plain language instead.
+- **Test connection** reports the organization, timezone, and the number of
+  events and volunteer opportunities.
+
+**Completion criteria:** Capability filter and checks, option-page capability,
+read-only connection fields with sanitize protection, Editors switch, Connected
+panel with copy buttons, richer Test connection result, unit tests for
+capability grants, protected sanitization, and the connection summary, wp-env
+smoke coverage for an Editor with and without the switch, README, readme.txt,
+and settings-page help are updated.
+
 ## 0.7 — Visitor usefulness and reach
 
 ### RM-021 — Phone-friendly Month view
 
-**Status:** PLANNED
+**Status:** NEXT
 
 Follows RM-020 so visitors who choose Month on a phone get a grid that fits
 instead of one that scrolls sideways.
