@@ -504,6 +504,24 @@
 	opacity: 0.4;
 }
 
+/* The month grid is wider than a phone screen. A calendar marked
+   --phone-list renders both layouts unhidden, and these rules show the list
+   on narrow screens and the month grid elsewhere until the script takes over
+   and removes the class. Keep the breakpoint in step with calendar.js. */
+@media (max-width: 41.99rem) {
+
+	:where(.memml-calendar--phone-list) [data-memml-layout-panel="month"] {
+		display: none;
+	}
+}
+
+@media (min-width: 42rem) {
+
+	:where(.memml-calendar--phone-list) :is([data-memml-layout-panel="list"], [data-memml-period-controls]) {
+		display: none;
+	}
+}
+
 /* Focusable so the grid can be scrolled by keyboard on narrow screens. */
 :where(.memml-calendar__month-scroll) {
 	overflow-x: auto;

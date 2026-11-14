@@ -33,6 +33,23 @@ const LayoutControl = ( { value, onChange } ) => (
 	/>
 );
 
+const PhoneViewControl = ( { value, onChange } ) => (
+	<SelectControl
+		label={ __( 'Month view on phones', 'memml' ) }
+		help={ __(
+			'Month view is too wide for phones. Switch to List opens this calendar in List view on narrow screens; visitors can still choose Month.',
+			'memml'
+		) }
+		value={ value }
+		options={ [
+			{ label: __( 'Use site setting', 'memml' ), value: '' },
+			{ label: __( 'Switch to List', 'memml' ), value: 'list' },
+			{ label: __( 'Keep Month', 'memml' ), value: 'month' },
+		] }
+		onChange={ onChange }
+	/>
+);
+
 const ListStyleControl = ( { value, onChange } ) => (
 	<SelectControl
 		label={ __( 'List style', 'memml' ) }
@@ -410,6 +427,12 @@ const createFeedEdit = ( metadata, icon, label ) =>
 							value={ attributes.view }
 							onChange={ ( view ) => setAttributes( { view } ) }
 						/>
+						<PhoneViewControl
+							value={ attributes.phoneView }
+							onChange={ ( phoneView ) =>
+								setAttributes( { phoneView } )
+							}
+						/>
 						<ListStyleControl
 							value={ attributes.listStyle }
 							onChange={ ( listStyle ) =>
@@ -513,6 +536,10 @@ const CalendarEdit = ( { attributes, setAttributes } ) => (
 				<LayoutControl
 					value={ attributes.view }
 					onChange={ ( view ) => setAttributes( { view } ) }
+				/>
+				<PhoneViewControl
+					value={ attributes.phoneView }
+					onChange={ ( phoneView ) => setAttributes( { phoneView } ) }
 				/>
 				<ListStyleControl
 					value={ attributes.listStyle }

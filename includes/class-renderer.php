@@ -88,15 +88,24 @@ final class Memml_Renderer {
 	private static $preview_without_upcoming = false;
 
 	/**
+	 * Whether the settings preview is shown at phone width.
+	 *
+	 * @var bool
+	 */
+	private static $preview_phone = false;
+
+	/**
 	 * Marks the settings preview so hidden calendars explain themselves.
 	 *
 	 * @param bool $is_preview       Whether a preview is rendering.
 	 * @param bool $without_upcoming Whether to preview the calendar with nothing upcoming.
+	 * @param bool $phone            Whether the preview is shown at phone width.
 	 * @return void
 	 */
-	public static function set_editor_preview( $is_preview, $without_upcoming = false ) {
+	public static function set_editor_preview( $is_preview, $without_upcoming = false, $phone = false ) {
 		self::$editor_preview           = (bool) $is_preview;
 		self::$preview_without_upcoming = self::$editor_preview && (bool) $without_upcoming;
+		self::$preview_phone            = self::$editor_preview && (bool) $phone;
 	}
 
 	/**
@@ -321,6 +330,7 @@ final class Memml_Renderer {
 			),
 			$this->get_visibility_from_attributes( $visibility )
 		);
+		$context                = $this->apply_phone_layout( $context, $visibility );
 		$candidate_feeds        = $show_calendar_switcher ? array( 'events', 'volunteers' ) : array( $this->resolve_calendar( $calendar ) );
 		$shown_feeds            = array_values(
 			array_filter(
@@ -393,7 +403,7 @@ final class Memml_Renderer {
 			$toolbar,
 			$panels,
 			$this->render_live_region(),
-			esc_attr( self::get_appearance_classes( Memml_Settings::get_options() ) )
+			esc_attr( $this->get_calendar_classes( $context ) )
 		);
 	}
 
@@ -436,6 +446,8 @@ final class Memml_Renderer {
 			$this->get_visibility_from_attributes( $visibility )
 		);
 
+		$context = $this->apply_phone_layout( $context, $visibility );
+
 		if ( $this->is_hidden_when_empty( $feed, $context ) ) {
 			return $this->render_hidden_calendar();
 		}
@@ -451,7 +463,7 @@ final class Memml_Renderer {
 			$toolbar,
 			$this->render_layout_panels( $feed, $context, $this->get_client_result( $feed ) ),
 			$this->render_live_region(),
-			esc_attr( self::get_appearance_classes( Memml_Settings::get_options() ) )
+			esc_attr( $this->get_calendar_classes( $context ) )
 		);
 	}
 
@@ -463,6 +475,63 @@ final class Memml_Renderer {
 	 */
 	private function render_toolbar( $controls ) {
 		return '' === $controls ? '' : '<div class="memml-calendar__toolbar">' . $controls . '</div>';
+	}
+
+	/**
+	 * Gets the extra classes on a calendar's root element.
+	 *
+	 * @param array $context Instance render context.
+	 * @return string Space-prefixed classes, or ''.
+	 */
+	private function get_calendar_classes( $context ) {
+		return self::get_appearance_classes( Memml_Settings::get_options() ) .
+			( empty( $context['phone_list'] ) ? '' : ' memml-calendar--phone-list' );
+	}
+
+	/**
+	 * Gets the layout phones use for a calendar that opens in Month view.
+	 *
+	 * @param array|string $attributes Block or shortcode attributes.
+	 * @return string list or month.
+	 */
+	private function resolve_phone_view( $attributes ) {
+		$phone_view = strtolower( $this->get_text_attribute( $attributes, 'phoneView', 'phone_view' ) );
+
+		if ( 'list' === $phone_view || 'month' === $phone_view ) {
+			return $phone_view;
+		}
+
+		return 'month' === Memml_Settings::get_options()['phone_view'] ? 'month' : 'list';
+	}
+
+	/**
+	 * Marks a calendar that opens in List view on phones instead of Month.
+	 *
+	 * The month grid is wider than a phone screen. Page caches serve the same
+	 * markup to every device, so the server renders both layouts and the
+	 * stylesheet and script choose by screen width. A shared link to a view
+	 * is the visitor's own choice and is never replaced. A calendar fixed to
+	 * Month shows its upcoming items, since it has no Upcoming/Past controls.
+	 *
+	 * @param array        $context    Instance render context.
+	 * @param array|string $attributes Block or shortcode attributes.
+	 * @return array Context with phone_list set.
+	 */
+	private function apply_phone_layout( $context, $attributes ) {
+		$from_link = ! empty( $context['show_layout_switcher'] ) &&
+			'' !== $this->get_query_choice( $context['query_prefix'] . 'view', array( 'list', 'month' ) );
+
+		// The settings preview shows the full-width layout unless it is set to phone width.
+		$context['phone_list'] = 'month' === $context['layout'] &&
+			! $from_link &&
+			( ! self::$editor_preview || self::$preview_phone ) &&
+			'list' === $this->resolve_phone_view( $attributes );
+
+		if ( $context['phone_list'] && empty( $context['show_layout_switcher'] ) ) {
+			$context['period'] = 'upcoming';
+		}
+
+		return $context;
 	}
 
 	/**
@@ -561,7 +630,7 @@ final class Memml_Renderer {
 		return sprintf(
 			'<div class="memml-calendar__filter memml-calendar__period-filter" data-memml-period-controls role="group" aria-label="%1$s"%2$s>%3$s%4$s</div>',
 			esc_attr__( 'Filter by date', 'memml' ),
-			'list' === $context['layout'] ? '' : ' hidden',
+			'list' === $context['layout'] || ! empty( $context['phone_list'] ) ? '' : ' hidden',
 			$this->render_control_link( $context, 'data-memml-period', 'upcoming', __( 'Upcoming', 'memml' ), implode( ' ', $upcoming_ids ), 'upcoming' === $context['period'], array( 'period' => 'upcoming' ) ),
 			$this->render_control_link( $context, 'data-memml-period', 'past', __( 'Past', 'memml' ), implode( ' ', $past_ids ), 'past' === $context['period'], array( 'period' => 'past' ) )
 		);
@@ -576,11 +645,12 @@ final class Memml_Renderer {
 	 * @return string
 	 */
 	private function render_layout_panels( $feed, $context, $result ) {
-		$list_id   = $context['instance_id'] . '-' . $feed . '-list';
-		$month_id  = $context['instance_id'] . '-' . $feed . '-month';
-		$subscribe = empty( $context['subscribe'] ) ? '' : $this->render_subscribe_row( $feed, $result );
+		$list_id    = $context['instance_id'] . '-' . $feed . '-list';
+		$month_id   = $context['instance_id'] . '-' . $feed . '-month';
+		$subscribe  = empty( $context['subscribe'] ) ? '' : $this->render_subscribe_row( $feed, $result );
+		$phone_list = ! empty( $context['phone_list'] );
 
-		if ( empty( $context['show_layout_switcher'] ) ) {
+		if ( empty( $context['show_layout_switcher'] ) && ! $phone_list ) {
 			if ( 'month' === $context['layout'] ) {
 				return $subscribe . sprintf(
 					'<div data-memml-layout-panel="month" id="%1$s">%2$s</div>',
@@ -599,10 +669,12 @@ final class Memml_Renderer {
 		$list_html  = $this->render_period_panels( $feed, $context, $result );
 		$month_html = $this->render_feed_panel( $feed, 'month', $result, 'upcoming', $context );
 
+		// On phones the stylesheet shows the list instead of the month grid
+		// until the script takes over, so neither panel starts hidden.
 		return $subscribe . sprintf(
 			'<div data-memml-layout-panel="list" id="%1$s"%2$s>%3$s</div><div data-memml-layout-panel="month" id="%4$s"%5$s>%6$s</div>',
 			esc_attr( $list_id ),
-			'list' === $context['layout'] ? '' : ' hidden',
+			'list' === $context['layout'] || $phone_list ? '' : ' hidden',
 			$list_html,
 			esc_attr( $month_id ),
 			'month' === $context['layout'] ? '' : ' hidden',

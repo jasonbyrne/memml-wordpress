@@ -78,6 +78,7 @@ final class Memml_Settings_Test extends TestCase {
 
 		$this->assertSame( 'events', $options['default_calendar'] );
 		$this->assertSame( 'list', $options['default_view'] );
+		$this->assertSame( 'list', $options['phone_view'], 'Phones open Month calendars in List view by default.' );
 		$this->assertSame( 'upcoming', $options['default_period'] );
 		$this->assertSame( 'grid', $options['default_list_style'] );
 		$this->assertSame( 0, $options['default_limit'] );
@@ -105,6 +106,7 @@ final class Memml_Settings_Test extends TestCase {
 				'base_url'                    => Memml_Feed_Client::DEFAULT_BASE_URL,
 				'default_calendar'            => 'volunteers',
 				'default_view'                => 'month',
+				'phone_view'                  => 'month',
 				'default_period'              => 'past',
 				'default_list_style'          => 'rows',
 				'default_limit'               => '12',
@@ -130,6 +132,7 @@ final class Memml_Settings_Test extends TestCase {
 
 		$this->assertSame( 'volunteers', $result['default_calendar'] );
 		$this->assertSame( 'month', $result['default_view'] );
+		$this->assertSame( 'month', $result['phone_view'] );
 		$this->assertSame( 'past', $result['default_period'] );
 		$this->assertSame( 'rows', $result['default_list_style'] );
 		$this->assertSame( 12, $result['default_limit'] );
@@ -157,6 +160,7 @@ final class Memml_Settings_Test extends TestCase {
 				'base_url'           => Memml_Feed_Client::DEFAULT_BASE_URL,
 				'default_calendar'   => 'other',
 				'default_view'       => 'agenda',
+				'phone_view'         => 'agenda',
 				'default_period'     => 'today',
 				'default_list_style' => 'table',
 				'default_limit'      => '-4',
@@ -165,6 +169,7 @@ final class Memml_Settings_Test extends TestCase {
 
 		$this->assertSame( 'events', $result['default_calendar'] );
 		$this->assertSame( 'list', $result['default_view'] );
+		$this->assertSame( 'list', $result['phone_view'] );
 		$this->assertSame( 'upcoming', $result['default_period'] );
 		$this->assertSame( 'grid', $result['default_list_style'] );
 		$this->assertSame( 0, $result['default_limit'] );
@@ -206,6 +211,7 @@ final class Memml_Settings_Test extends TestCase {
 		$this->assertFalse( $sections['appearance']['accent_custom'] );
 		$this->assertSame( Memml_Settings::DEFAULT_ACCENT, $sections['appearance']['accent_color'] );
 		$this->assertSame( 'list', $sections['display']['default_view'] );
+		$this->assertSame( 'list', $sections['display']['phone_view'] );
 		$this->assertTrue( $sections['content']['show_event_page'] );
 		$this->assertSame( 'standard', $sections['empty']['empty_events_mode'] );
 		$this->assertSame( 'standard', $sections['empty']['empty_volunteers_mode'] );

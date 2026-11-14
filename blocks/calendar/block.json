@@ -23,6 +23,11 @@
       "default": "",
       "enum": ["", "list", "month"]
     },
+    "phoneView": {
+      "type": "string",
+      "default": "",
+      "enum": ["", "list", "month"]
+    },
     "listStyle": {
       "type": "string",
       "default": "",

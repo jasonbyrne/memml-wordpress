@@ -354,6 +354,7 @@ try {
 			'base_url'                    => Memml_Feed_Client::DEFAULT_BASE_URL,
 			'default_calendar'            => 'volunteers',
 			'default_view'                => 'month',
+			'phone_view'                  => 'month',
 			'default_period'              => 'past',
 			'default_list_style'          => 'rows',
 			'default_limit'               => 1,
@@ -380,6 +381,7 @@ try {
 	$_GET['memml_defaults_period']   = 'upcoming';
 
 	$inherited         = do_shortcode( '[memml_calendar url_key="defaults"]' );
+	$phone_fixed       = do_shortcode( '[memml_calendar phone_view="list" url_key="phone-fixed"]' );
 	$inherited_list    = do_shortcode( '[memml_events view="list" url_key="fixed-list"]' );
 	$hidden_events     = do_shortcode( '[memml_events view="list" period="upcoming" limit="0" url_key="hidden-events"]' );
 	$hidden_volunteers = do_shortcode( '[memml_volunteers view="list" period="upcoming" limit="0" url_key="hidden-volunteers"]' );
@@ -401,6 +403,16 @@ try {
 		false !== strpos( $inherited, '-events"' )
 	) {
 		throw new RuntimeException( 'A bare shortcode did not inherit the hidden visitor controls or fixed display state.' );
+	}
+
+	if (
+		false === strpos( $phone_fixed, ' memml-calendar--phone-list"' ) ||
+		false === strpos( $phone_fixed, 'data-period="upcoming"' ) ||
+		false === strpos( $phone_fixed, 'data-memml-layout-panel="list"' ) ||
+		false === strpos( $phone_fixed, 'data-memml-layout-panel="month"' ) ||
+		false !== strpos( $phone_fixed, 'memml-calendar__toolbar' )
+	) {
+		throw new RuntimeException( 'A calendar fixed to Month did not add its upcoming list for phones.' );
 	}
 
 	if (

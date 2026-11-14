@@ -34,8 +34,9 @@ intentional exception.
 
 - **Connection** — the organization key, **Test connection**, and an
   **Advanced** Memml base URL for testing against another environment.
-- **Calendar display** — the initial calendar, view, and list filter, the
-  maximum list items, the visitor switchers, and the subscription row.
+- **Calendar display** — the initial calendar, view, and list filter, Month
+  view on phones, the maximum list items, the visitor switchers, and the
+  subscription row. See [Month view on phones](#month-view-on-phones).
 - **Content and actions** — which details and calls to action calendars show.
 - **Empty calendars** — what Events and Volunteer opportunities show when
   nothing is upcoming. See [Empty calendars](#empty-calendars).
@@ -56,7 +57,30 @@ styles in a separate frame, and only administrators can open it. Each preference
 section has **Reset section to defaults**, which fills in that section's
 defaults and updates the preview; **Save Changes** applies them. **Show with
 nothing upcoming** previews the calendar without its upcoming items, so the
-empty-calendar choices can be checked while Memml has events.
+empty-calendar choices can be checked while Memml has events. **Show at phone
+width** narrows the preview to a phone screen; otherwise the preview shows the
+wide-screen layout, even when the preview itself is narrow.
+
+### Month view on phones
+
+The month grid is wider than a phone screen, so on screens narrower than 42rem
+(672 pixels) part of the week would be cut off. With **Month view on phones**
+set to **Switch to List** (the default), a calendar that opens in Month view
+opens in List view on those screens instead:
+
+- Wide screens still open in Month view, and visitors can still choose Month
+  from the List/Month switcher on a phone.
+- A shared link that names a view (`memml_<key>_view=month` or `list`) always
+  opens that view.
+- A calendar fixed to Month (List/Month switcher hidden) also renders its
+  upcoming list, which phones show instead of the grid.
+- Page caches serve the same page to every device, so the server renders both
+  layouts and `assets/calendar.css` and `assets/calendar.js` choose by screen
+  width. Without JavaScript, the stylesheet alone shows the right layout.
+
+**Keep Month** renders exactly what earlier versions did. Blocks offer the same
+choice under Calendar settings, and shortcodes accept `phone_view="list"` or
+`phone_view="month"`.
 
 ## Empty calendars
 
@@ -212,8 +236,9 @@ parameters, so the resulting URL can be shared.
 
 Most calendars need no shortcode properties because they inherit **Settings →
 Memml Calendar**. Advanced placements can explicitly set
-`calendar` (`events` or `volunteers`), `view` (`list` or `month`), `period`
-(`upcoming` or `past`), `list_style` (`grid` or `rows`), `limit`, `subscribe`,
+`calendar` (`events` or `volunteers`), `view` (`list` or `month`), `phone_view`
+(`list` or `month`), `period` (`upcoming` or `past`), `list_style` (`grid` or
+`rows`), `limit`, `subscribe`,
 `calendar_switcher`, `layout_switcher`, and `period_switcher`. Boolean overrides
 accept `yes` or `no`:
 
@@ -233,8 +258,8 @@ up from row to row — which suits a narrow column or a text-heavy feed. `subscr
 Google Calendar / Apple / Outlook / RSS subscription links shown above the
 calendar (`yes` or `no`).
 
-Site-wide defaults cover the initially selected calendar, initial view, initial
-list filter, list style, maximum list items, the three visitor switchers, and the
+Site-wide defaults cover the initially selected calendar, initial view, Month
+view on phones, initial list filter, list style, maximum list items, the three visitor switchers, and the
 subscription row. Every matching block control offers **Use site setting**.
 Hiding a switcher fixes the calendar to its configured calendar, view, or list
 filter, omits the unused alternate content, and ignores conflicting visitor

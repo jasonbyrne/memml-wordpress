@@ -30,8 +30,9 @@ charter and vacant seats are shown by default.
 
 Settings > Memml Calendar is arranged in Connection, Calendar display, Content
 and actions, Empty calendars, Appearance, and Status sections. Calendar display controls the
-initially selected calendar, initial List or Month view, initial Upcoming or Past
-filter, maximum list items, the visitor switchers, and the subscription row.
+initially selected calendar, initial List or Month view, Month view on phones,
+initial Upcoming or Past filter, maximum list items, the visitor switchers, and
+the subscription row.
 Appearance controls the list style and a few site-wide presets: a custom accent
 color, a Light, Neutral, or Theme colors palette, comfortable or compact spacing,
 rounded or square corners, and wide or compact card images. The defaults keep
@@ -103,7 +104,8 @@ calendar hidden because it has nothing upcoming shows editors a short note there
 
 Set `calendar="volunteers"` on `[memml_calendar]` when volunteer opportunities should
 be selected first. Set `view="month"` on any shortcode when Month should be selected
-first. These properties set the initial selections; visitors can change them
+first; on phones, the Month view on phones setting or `phone_view` property decides
+whether those calendars open in List view instead. These properties set the initial selections; visitors can change them
 when the matching switcher is enabled. When a switcher is hidden, the selected
 state stays fixed and conflicting query parameters are ignored.
 In List view, visitors can choose Upcoming or Past. The site setting controls the
@@ -191,6 +193,18 @@ Yes. Each page can use the events block, the volunteers block, or both.
 Yes. Visitors can switch between List and Month by default. The block setting or
 `view` shortcode property controls which view they see first, and administrators
 can hide the switcher when a calendar should stay in one view.
+
+= Why do phones show List view when I chose Month? =
+
+The month grid is too wide for a phone, so part of the week would be cut off.
+With Settings > Memml Calendar > Month view on phones set to Switch to List (the
+default), calendars that open in Month view open in List view on phones and other
+narrow screens. Wide screens still open in Month view, visitors can still choose
+Month, and a shared link to Month view always opens Month. A calendar fixed to
+Month shows its upcoming list on phones. Choose Keep Month to show the month grid
+everywhere, as earlier versions did. Blocks have the same setting, and shortcodes
+accept `phone_view="list"` or `phone_view="month"`. The settings preview shows
+the phone layout when Show at phone width is checked.
 
 = How are Upcoming and Past lists determined? =
 

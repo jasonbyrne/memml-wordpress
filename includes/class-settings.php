@@ -49,6 +49,7 @@ final class Memml_Settings {
 		'display'    => array(
 			'default_calendar',
 			'default_view',
+			'phone_view',
 			'default_period',
 			'default_limit',
 			'calendar_switcher',
@@ -491,6 +492,7 @@ final class Memml_Settings {
 		$input              = is_array( $input ) ? $input : array();
 		$default_calendar   = isset( $input['default_calendar'] ) ? $input['default_calendar'] : '';
 		$default_view       = isset( $input['default_view'] ) ? $input['default_view'] : '';
+		$phone_view         = isset( $input['phone_view'] ) ? $input['phone_view'] : '';
 		$default_period     = isset( $input['default_period'] ) ? $input['default_period'] : '';
 		$default_list_style = isset( $input['default_list_style'] ) ? $input['default_list_style'] : '';
 		$default_limit      = isset( $input['default_limit'] ) ? max( 0, (int) $input['default_limit'] ) : 0;
@@ -512,6 +514,7 @@ final class Memml_Settings {
 			'accent_color'                => $accent_color,
 			'default_calendar'            => 'volunteers' === $default_calendar ? 'volunteers' : 'events',
 			'default_view'                => 'month' === $default_view ? 'month' : 'list',
+			'phone_view'                  => 'month' === $phone_view ? 'month' : 'list',
 			'default_period'              => 'past' === $default_period ? 'past' : 'upcoming',
 			'default_list_style'          => 'rows' === $default_list_style ? 'rows' : 'grid',
 			'default_limit'               => $default_limit,
@@ -792,6 +795,24 @@ final class Memml_Settings {
 								</tr>
 								<tr>
 									<th scope="row">
+										<label for="memml-phone-view"><?php echo esc_html__( 'Month view on phones', 'memml' ); ?></label>
+									</th>
+									<td>
+										<?php
+										$this->render_select(
+											'phone_view',
+											$options['phone_view'],
+											array(
+												'list'  => __( 'Switch to List', 'memml' ),
+												'month' => __( 'Keep Month', 'memml' ),
+											)
+										);
+										?>
+										<p class="description"><?php echo esc_html__( 'Month view is too wide for phones and other narrow screens. Switch to List opens those calendars in List view instead; visitors can still choose Month, and a shared link to Month view always opens Month.', 'memml' ); ?></p>
+									</td>
+								</tr>
+								<tr>
+									<th scope="row">
 										<label for="memml-default-period"><?php echo esc_html__( 'Initial list filter', 'memml' ); ?></label>
 									</th>
 									<td>
@@ -1052,6 +1073,12 @@ final class Memml_Settings {
 							<label for="memml-preview-empty">
 								<input id="memml-preview-empty" type="checkbox" value="1" />
 								<?php echo esc_html__( 'Show with nothing upcoming', 'memml' ); ?>
+							</label>
+						</p>
+						<p class="memml-settings__preview-option">
+							<label for="memml-preview-phone">
+								<input id="memml-preview-phone" type="checkbox" value="1" />
+								<?php echo esc_html__( 'Show at phone width', 'memml' ); ?>
 							</label>
 						</p>
 						<p class="description">
@@ -1404,6 +1431,7 @@ final class Memml_Settings {
 			? map_deep( wp_unslash( $_GET[ self::OPTION_NAME ] ), 'sanitize_text_field' )
 			: null;
 		$without_upcoming = ! empty( $_GET['empty'] );
+		$phone            = ! empty( $_GET['phone'] );
 		// phpcs:enable WordPress.Security.NonceVerification.Recommended
 		$options        = self::get_preview_options( $input );
 		$preview_option = static function () use ( $options ) {
@@ -1411,7 +1439,7 @@ final class Memml_Settings {
 		};
 
 		add_filter( 'pre_option_' . self::OPTION_NAME, $preview_option );
-		Memml_Renderer::set_editor_preview( true, $without_upcoming );
+		Memml_Renderer::set_editor_preview( true, $without_upcoming, $phone );
 		$markup = do_shortcode( '[' . self::PREVIEW_CALENDARS[ $calendar ] . ' url_key="preview"]' );
 		Memml_Renderer::set_editor_preview( false );
 		remove_filter( 'pre_option_' . self::OPTION_NAME, $preview_option );
@@ -1570,6 +1598,7 @@ final class Memml_Settings {
 			'base_url'                    => Memml_Feed_Client::DEFAULT_BASE_URL,
 			'default_calendar'            => 'events',
 			'default_view'                => 'list',
+			'phone_view'                  => 'list',
 			'default_period'              => 'upcoming',
 			'default_list_style'          => 'grid',
 			'default_limit'               => 0,

@@ -323,7 +323,7 @@ final class Memml_Renderer_Test extends TestCase {
 			$this->assertSame( '', $metadata['attributes']['layoutSwitcher']['default'] );
 			$this->assertSame( '', $metadata['attributes']['periodSwitcher']['default'] );
 
-			foreach ( array( 'showImages', 'showDescriptions', 'showItemCount', 'showDetails', 'showVenueCost', 'showVolunteerSignup', 'emptyState', 'emptyMessage', 'emptyLinkUrl', 'emptyLinkLabel' ) as $attribute ) {
+			foreach ( array( 'showImages', 'showDescriptions', 'showItemCount', 'showDetails', 'showVenueCost', 'showVolunteerSignup', 'emptyState', 'emptyMessage', 'emptyLinkUrl', 'emptyLinkLabel', 'phoneView' ) as $attribute ) {
 				$this->assertSame( '', $metadata['attributes'][ $attribute ]['default'] );
 			}
 		}
@@ -1915,5 +1915,188 @@ final class Memml_Renderer_Test extends TestCase {
 			array( $this->make_item( 'Fall fair', '2026-10-03' ) )
 		);
 		$this->assertStringContainsString( 'Our archive starts soon.', ( new Memml_Renderer() )->render_events( $fixed_past ) );
+	}
+
+	/**
+	 * Calendars that open in Month view open in List view on phones by default.
+	 *
+	 * @return void
+	 */
+	public function test_month_calendar_opens_list_on_phones_by_default() {
+		$this->prepare_feeds( array(), array( $this->make_item( 'Fall fair', '2026-10-03' ) ) );
+
+		$html = ( new Memml_Renderer() )->render_events( array( 'view' => 'month' ) );
+
+		$this->assertStringContainsString( ' memml-calendar--phone-list"', $html );
+		$this->assertStringContainsString( 'data-layout="month"', $html, 'Wide screens still open in Month view.' );
+		$this->assertMatchesRegularExpression( '/<div data-memml-layout-panel="list" id="[^"]+">/', $html, 'The list is not hidden, so phones can show it without JavaScript.' );
+		$this->assertMatchesRegularExpression( '/<div data-memml-layout-panel="month" id="[^"]+">/', $html );
+		$this->assertStringContainsString( 'aria-label="Filter by date">', $html, 'Upcoming/Past controls are not hidden for phones.' );
+		$this->assertMatchesRegularExpression( '/data-memml-layout="month" href="[^"]*"/', $html );
+
+		// The site's initial view and the combined calendar adapt the same way.
+		$this->prepare_feeds( array( 'default_view' => 'month' ), array( $this->make_item( 'Fall fair', '2026-10-03' ) ) );
+		$this->assertStringContainsString( 'memml-calendar--phone-list', ( new Memml_Renderer() )->render_events() );
+		$this->assertStringContainsString( 'memml-calendar--phone-list', ( new Memml_Renderer() )->render_calendar() );
+
+		// Calendars that open in List view are unchanged.
+		$list = ( new Memml_Renderer() )->render_events( array( 'view' => 'list' ) );
+		$this->assertStringNotContainsString( 'memml-calendar--phone-list', $list );
+		$this->assertMatchesRegularExpression( '/<div data-memml-layout-panel="month" id="[^"]+" hidden>/', $list );
+	}
+
+	/**
+	 * Keep Month renders the Month markup unchanged, and blocks and shortcodes can override the site.
+	 *
+	 * @return void
+	 */
+	public function test_keep_month_on_phones_preserves_month_markup() {
+		$items = array( $this->make_item( 'Fall fair', '2026-10-03' ) );
+
+		$this->prepare_feeds( array( 'phone_view' => 'month' ), $items );
+		$html = ( new Memml_Renderer() )->render_events( array( 'view' => 'month' ) );
+
+		$this->assertStringNotContainsString( 'memml-calendar--phone-list', $html );
+		$this->assertMatchesRegularExpression( '/<div data-memml-layout-panel="list" id="[^"]+" hidden>/', $html );
+		$this->assertStringContainsString( 'aria-label="Filter by date" hidden>', $html );
+		$this->assertStringContainsString(
+			'memml-calendar--phone-list',
+			( new Memml_Renderer() )->render_events(
+				array(
+					'view'      => 'month',
+					'phoneView' => 'list',
+				)
+			)
+		);
+		$this->assertStringContainsString(
+			'memml-calendar--phone-list',
+			( new Memml_Renderer() )->render_events(
+				array(
+					'view'       => 'month',
+					'phone_view' => 'list',
+				)
+			)
+		);
+
+		$this->prepare_feeds( array(), $items );
+		$this->assertStringNotContainsString(
+			'memml-calendar--phone-list',
+			( new Memml_Renderer() )->render_events(
+				array(
+					'view'      => 'month',
+					'phoneView' => 'month',
+				)
+			)
+		);
+		$this->assertStringNotContainsString(
+			'memml-calendar--phone-list',
+			( new Memml_Renderer() )->render_volunteers(
+				array(
+					'view'       => 'month',
+					'phone_view' => 'month',
+				)
+			)
+		);
+		$this->assertStringContainsString(
+			'memml-calendar--phone-list',
+			( new Memml_Renderer() )->render_events(
+				array(
+					'view'      => 'month',
+					'phoneView' => 'other',
+				)
+			),
+			'An unknown value follows the site setting.'
+		);
+	}
+
+	/**
+	 * A shared link to a view is the visitor's choice and is never replaced on phones.
+	 *
+	 * @return void
+	 */
+	public function test_shared_view_link_is_never_replaced_on_phones() {
+		$this->prepare_feeds( array(), array( $this->make_item( 'Fall fair', '2026-10-03' ) ) );
+
+		$_GET['memml_phonelink_view'] = 'month';
+		$html                         = ( new Memml_Renderer() )->render_events(
+			array(
+				'view'   => 'month',
+				'urlKey' => 'phonelink',
+			)
+		);
+		$this->assertStringNotContainsString( 'memml-calendar--phone-list', $html );
+		$this->assertStringContainsString( 'data-layout="month"', $html );
+
+		$_GET['memml_phonelist_view'] = 'list';
+		$html                         = ( new Memml_Renderer() )->render_events(
+			array(
+				'view'   => 'month',
+				'urlKey' => 'phonelist',
+			)
+		);
+		$this->assertStringNotContainsString( 'memml-calendar--phone-list', $html );
+		$this->assertStringContainsString( 'data-layout="list"', $html );
+
+		// A hidden switcher ignores links, so a fixed Month calendar still adapts.
+		$_GET['memml_phonefixed_view'] = 'month';
+		$html                          = ( new Memml_Renderer() )->render_events(
+			array(
+				'view'           => 'month',
+				'layoutSwitcher' => 'no',
+				'urlKey'         => 'phonefixed',
+			)
+		);
+		$this->assertStringContainsString( 'memml-calendar--phone-list', $html );
+	}
+
+	/**
+	 * A calendar fixed to Month also renders its upcoming list for phones.
+	 *
+	 * @return void
+	 */
+	public function test_fixed_month_calendar_adds_upcoming_list_for_phones() {
+		$fixed_month = array(
+			'view'           => 'month',
+			'layoutSwitcher' => 'no',
+		);
+		$items       = array(
+			$this->make_item( 'Summer picnic', '2026-08-01' ),
+			$this->make_item( 'Fall fair', '2026-10-03' ),
+		);
+
+		$this->prepare_feeds( array( 'default_period' => 'past' ), $items );
+		$html = ( new Memml_Renderer() )->render_events( $fixed_month );
+
+		$this->assertStringContainsString( 'memml-calendar--phone-list', $html );
+		$this->assertStringContainsString( 'data-period="upcoming"', $html, 'Month has no Upcoming/Past controls, so phones list upcoming items.' );
+		$this->assertMatchesRegularExpression( '/<div data-memml-layout-panel="list" id="[^"]+">/', $html );
+		$this->assertMatchesRegularExpression( '/<div data-memml-layout-panel="month" id="[^"]+">/', $html );
+		$this->assertStringNotContainsString( 'Choose a display view', $html );
+		$this->assertStringNotContainsString( 'Filter by date', $html );
+
+		// Keep Month renders only the month grid, as before.
+		$html = ( new Memml_Renderer() )->render_events( $fixed_month + array( 'phoneView' => 'month' ) );
+
+		$this->assertStringNotContainsString( 'memml-calendar--phone-list', $html );
+		$this->assertStringNotContainsString( 'data-memml-layout-panel="list"', $html );
+		$this->assertStringContainsString( 'data-period="past"', $html );
+	}
+
+	/**
+	 * The settings preview shows the phone layout only at phone width.
+	 *
+	 * @return void
+	 */
+	public function test_settings_preview_shows_phone_layout_only_at_phone_width() {
+		$this->prepare_feeds( array( 'default_view' => 'month' ), array( $this->make_item( 'Fall fair', '2026-10-03' ) ) );
+
+		Memml_Renderer::set_editor_preview( true );
+		$this->assertStringNotContainsString( 'memml-calendar--phone-list', ( new Memml_Renderer() )->render_events() );
+
+		Memml_Renderer::set_editor_preview( true, false, true );
+		$this->assertStringContainsString( 'memml-calendar--phone-list', ( new Memml_Renderer() )->render_events() );
+
+		Memml_Renderer::set_editor_preview( false, false, true );
+		$this->assertStringContainsString( 'memml-calendar--phone-list', ( new Memml_Renderer() )->render_events(), 'Visitors always get the phone layout.' );
 	}
 }

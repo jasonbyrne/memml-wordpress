@@ -217,6 +217,7 @@ final class Memml_Plugin {
 				'list_style'                  => '',
 				'period'                      => '',
 				'period_switcher'             => '',
+				'phone_view'                  => '',
 				'show_add_to_calendar'        => '',
 				'show_cancelled_events'       => '',
 				'show_descriptions'           => '',

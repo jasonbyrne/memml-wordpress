@@ -74,6 +74,12 @@
 	background: #fff;
 }
 
+/* A typical phone screen width. */
+.memml-settings__preview-frame.is-phone {
+	max-width: 375px;
+	margin-inline: auto;
+}
+
 /* Wide screens keep the preview beside the settings while scrolling. */
 @media (min-width: 1280px) {
 

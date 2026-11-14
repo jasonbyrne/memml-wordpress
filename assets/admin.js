@@ -64,6 +64,7 @@
 	const frame = document.getElementById( 'memml-preview-frame' );
 	const calendarChoice = document.getElementById( 'memml-preview-calendar' );
 	const emptyChoice = document.getElementById( 'memml-preview-empty' );
+	const phoneChoice = document.getElementById( 'memml-preview-phone' );
 	const previewNames = Object.keys( settings.defaults || {} ).reduce(
 		function ( names, section ) {
 			return names.concat(
@@ -95,6 +96,17 @@
 			url.searchParams.set( 'empty', '1' );
 		} else {
 			url.searchParams.delete( 'empty' );
+		}
+
+		// A phone-width frame shows what narrow screens get, including
+		// Month view on phones. Otherwise the preview shows the wide layout.
+		const isPhone = Boolean( phoneChoice && phoneChoice.checked );
+
+		frame.classList.toggle( 'is-phone', isPhone );
+		if ( isPhone ) {
+			url.searchParams.set( 'phone', '1' );
+		} else {
+			url.searchParams.delete( 'phone' );
 		}
 		// Unchecked boxes are absent and resolve to off. The selects are
 		// always present, so the preview never falls back to saved values.
@@ -129,7 +141,7 @@
 	form.addEventListener( 'input', schedulePreview );
 	form.addEventListener( 'change', schedulePreview );
 
-	[ calendarChoice, emptyChoice ].forEach( function ( choice ) {
+	[ calendarChoice, emptyChoice, phoneChoice ].forEach( function ( choice ) {
 		if ( choice ) {
 			choice.addEventListener( 'change', function () {
 				window.clearTimeout( previewTimer );

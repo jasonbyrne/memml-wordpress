@@ -96,7 +96,9 @@ What the plugin needs to know:
 | RM-016 | 0.6 Reliability | **DONE** | Show multi-day events across every day they run. |
 | RM-006 | 0.6 Reliability | **DONE** | Show clear feed health and targeted refresh controls. |
 | RM-007 | 0.6 Reliability | **DONE** | Add useful, customizable empty states and calls to action. |
+| RM-020 | 0.6 Reliability | **DONE** | Open calendars in List view on phones instead of a clipped month grid. |
 | RM-008 | 0.6 Reliability | **NEXT** | Support delegated calendar management and improve onboarding. |
+| RM-021 | 0.7 Visitor experience | **PLANNED** | Fit Month view on phones with a compact grid and day list. |
 | RM-009 | 0.7 Visitor experience | **PLANNED** | Add a mobile-friendly chronological agenda view. |
 | RM-010 | 0.7 Visitor experience | **PLANNED** | Add headings, introductions, and optional destination links. |
 | RM-011 | 0.7 Visitor experience | **PLANNED** | Add simple search and high-value visitor filters. |
@@ -349,6 +351,47 @@ unavailable feeds, block controls and shortcode properties, unit tests for
 sanitization, resolution, rendering, and backward compatibility, README,
 readme.txt, and settings-page help are updated.
 
+### RM-020 — Phones open in List view
+
+**Status:** DONE
+
+**Completed:** 2026-11-14
+
+Prioritized 2026-11-14 ahead of RM-008 because visitors on live sites are
+affected. The month table has a `38rem` minimum width inside a horizontal
+scroll region, so on a phone roughly Thursday through Saturday are cut off with
+no visible cue to scroll. Weekend events, common for nonprofits, are the ones
+hidden.
+
+- On narrow viewports, a calendar whose initial view is Month opens in List
+  view instead. The breakpoint is screens narrower than 42rem (672 pixels):
+  the month table's 38rem minimum width plus typical theme padding.
+- Valid visitor state in a shared URL still wins: a link with the Month view
+  parameter opens Month, and a visitor can still choose Month from the
+  List/Month switcher when it is shown.
+- The choice is made in the browser (CSS and the existing script), never by
+  server-side device detection, because full-page caches would otherwise serve
+  the phone markup to desktop visitors.
+- A calendar fixed to Month (List/Month switcher hidden) currently renders only
+  the month layout. It must also render the List layout so phone visitors are
+  not left with the clipped grid and no way out.
+- Add a Calendar display preference, "Month view on phones", with *Switch to
+  List* (default) and *Keep Month*, plus a block override and a shortcode
+  property. Keep Month preserves today's behavior exactly.
+- No-JavaScript visitors on phones get List view through CSS; the switcher's
+  real query-string links keep working. Without JavaScript the switcher still
+  marks Month as the current view on phones.
+- The settings preview shows the wide-screen layout unless Show at phone width
+  is checked, which narrows the frame to 375 pixels.
+
+**Completion criteria:** Settings sanitization and default, renderer output for
+fixed-Month calendars, CSS and script behavior, block control and shortcode
+property, unit tests for resolution and backward compatibility of explicit
+`view` values, a Playwright test at a 375px viewport asserting the calendar
+does not scroll horizontally on first load and that a shared Month link still
+opens Month, settings preview support, README, readme.txt, and settings-page
+help are updated.
+
 ### RM-008 — Delegated management and onboarding
 
 **Status:** NEXT
@@ -360,13 +403,39 @@ feeds, a preview action, and copyable basic shortcodes without properties.
 
 ## 0.7 — Visitor usefulness and reach
 
+### RM-021 — Phone-friendly Month view
+
+**Status:** PLANNED
+
+Follows RM-020 so visitors who choose Month on a phone get a grid that fits
+instead of one that scrolls sideways.
+
+- Below the RM-020 breakpoint, Month view becomes a compact seven-column grid
+  with day cells of at least 44px that fits the screen without horizontal
+  scrolling. Days show a dot or count instead of entry titles.
+- Beneath the grid, the month's items are listed grouped by day, reusing the
+  existing list items and details dialog. Day cells link to their day's group,
+  so the layout works without JavaScript; with JavaScript, choosing a day
+  highlights and scrolls to it.
+- Multi-day items mark every day they run, following the RM-016 rules.
+- Day cells have accessible names that include the date and item count.
+- Desktop Month view is unchanged.
+
+Build the day-grouped list so RM-009 can reuse it, and revisit whether RM-020's
+"Keep Month" choice should then default to the phone-friendly grid.
+
+**Completion criteria:** Renderer and CSS for the compact grid and day list,
+script enhancement, unit tests for day grouping including multi-day items,
+Playwright tests at a 375px viewport for no horizontal scrolling and
+keyboard/no-JavaScript day navigation, README and readme.txt are updated.
+
 ### RM-009 — Agenda view
 
 **Status:** PLANNED
 
 Add a chronological agenda layout optimized for phones and modest event volumes.
 It must support the existing date rules, actions, accessible controls, block
-preview, and shared URLs.
+preview, and shared URLs. Reuse the day-grouped list built for RM-021.
 
 ### RM-010 — Calendar context and destination links
 

@@ -1,6 +1,11 @@
 ( function () {
 	'use strict';
 
+	// Calendars that open in Month view open in List view on narrow screens
+	// instead. Keep the breakpoint in step with calendar.css.
+	const phoneListClass = 'memml-calendar--phone-list';
+	const phoneQuery = '(max-width: 41.99rem)';
+
 	const rootControllers = [];
 	const monthControllers = [];
 	const messages = window.memmlCalendarI18n || {
@@ -95,7 +100,12 @@
 			);
 			const status = calendar.querySelector( '[data-memml-status]' );
 			const initialCalendar = calendar.dataset.calendar || 'events';
-			const initialLayout = calendar.dataset.layout || 'list';
+			const initialLayout =
+				calendar.classList.contains( phoneListClass ) &&
+				window.matchMedia &&
+				window.matchMedia( phoneQuery ).matches
+					? 'list'
+					: calendar.dataset.layout || 'list';
 			const initialPeriod = calendar.dataset.period || 'upcoming';
 
 			const showSource = function ( source ) {
@@ -147,6 +157,9 @@
 				if ( periodControls ) {
 					periodControls.hidden = 'list' !== layout;
 				}
+
+				// The panels' hidden state now decides, not the screen width.
+				calendar.classList.remove( phoneListClass );
 			};
 
 			const showPeriod = function ( period ) {
