@@ -176,6 +176,9 @@ try {
 		'class="memml-calendar__month-scroll" role="region" tabindex="0"',
 		'is-today',
 		'aria-current="date"',
+		'class="memml-calendar__day-link" data-memml-day-link href="#memml-month-calendar-',
+		'<div class="memml-calendar__day-list" data-memml-day-list>',
+		'<h5 class="memml-calendar__title">',
 	);
 
 	foreach ( $month_expectations as $expectation ) {

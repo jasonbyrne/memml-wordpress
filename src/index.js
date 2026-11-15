@@ -37,7 +37,7 @@ const PhoneViewControl = ( { value, onChange } ) => (
 	<SelectControl
 		label={ __( 'Month view on phones', 'memml' ) }
 		help={ __(
-			'Month view is too wide for phones. Switch to List opens this calendar in List view on narrow screens; visitors can still choose Month.',
+			"On phones, Month view shows a compact grid with each day's items listed beneath it. Switch to List opens this calendar in List view on narrow screens instead; visitors can still choose Month.",
 			'memml'
 		) }
 		value={ value }

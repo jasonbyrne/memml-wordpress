@@ -95,10 +95,24 @@ is left behind on uninstall.
 
 ### Month view on phones
 
-The month grid is wider than a phone screen, so on screens narrower than 42rem
-(672 pixels) part of the week would be cut off. With **Month view on phones**
-set to **Switch to List** (the default), a calendar that opens in Month view
-opens in List view on those screens instead:
+On screens narrower than 42rem (672 pixels), Month view becomes a compact grid
+that fits without scrolling sideways:
+
+- Day cells are at least 44 pixels tall. Days with items show the day number
+  and up to three dots instead of entry titles; a multi-day item marks every
+  day it runs.
+- Each busy day is a link whose accessible name gives the date and item count,
+  such as "November 21, 2026, 2 events".
+- Beneath the grid, the month's items are listed by day using the List view
+  item style and details pop-up. Choosing a day jumps to its group. With
+  JavaScript, the day is also highlighted and focus moves to its items without
+  adding a browser history entry; without JavaScript, the link jumps to the
+  group.
+- Wide screens show the same Month view as before.
+
+With **Month view on phones** set to **Switch to List** (the default), a
+calendar that opens in Month view opens in List view on phones instead, so
+visitors see item details without tapping a day first:
 
 - Wide screens still open in Month view, and visitors can still choose Month
   from the List/Month switcher on a phone.
@@ -110,9 +124,9 @@ opens in List view on those screens instead:
   layouts and `assets/calendar.css` and `assets/calendar.js` choose by screen
   width. Without JavaScript, the stylesheet alone shows the right layout.
 
-**Keep Month** renders exactly what earlier versions did. Blocks offer the same
-choice under Calendar settings, and shortcodes accept `phone_view="list"` or
-`phone_view="month"`.
+**Keep Month** opens those calendars in Month view on every screen, using the
+compact grid on phones. Blocks offer the same choice under Calendar settings,
+and shortcodes accept `phone_view="list"` or `phone_view="month"`.
 
 ## Empty calendars
 

@@ -98,8 +98,8 @@ What the plugin needs to know:
 | RM-007 | 0.6 Reliability | **DONE** | Add useful, customizable empty states and calls to action. |
 | RM-020 | 0.6 Reliability | **DONE** | Open calendars in List view on phones instead of a clipped month grid. |
 | RM-008 | 0.6 Reliability | **DONE** | Support delegated calendar management and improve onboarding. |
-| RM-021 | 0.7 Visitor experience | **NEXT** | Fit Month view on phones with a compact grid and day list. |
-| RM-009 | 0.7 Visitor experience | **PLANNED** | Add a mobile-friendly chronological agenda view. |
+| RM-021 | 0.7 Visitor experience | **DONE** | Fit Month view on phones with a compact grid and day list. |
+| RM-009 | 0.7 Visitor experience | **NEXT** | Add a mobile-friendly chronological agenda view. |
 | RM-010 | 0.7 Visitor experience | **PLANNED** | Add headings, introductions, and optional destination links. |
 | RM-011 | 0.7 Visitor experience | **PLANNED** | Add simple search and high-value visitor filters. |
 | RM-012 | 0.7 Visitor experience | **PLANNED** | Add appropriate Event structured data for search engines. |
@@ -443,7 +443,9 @@ and settings-page help are updated.
 
 ### RM-021 — Phone-friendly Month view
 
-**Status:** NEXT
+**Status:** DONE
+
+**Completed:** 2026-11-14
 
 Follows RM-020 so visitors who choose Month on a phone get a grid that fits
 instead of one that scrolls sideways.
@@ -462,6 +464,24 @@ instead of one that scrolls sideways.
 Build the day-grouped list so RM-009 can reuse it, and revisit whether RM-020's
 "Keep Month" choice should then default to the phone-friendly grid.
 
+Implementation notes 2026-11-14:
+
+- Every Month grid gets the compact phone layout, so "Keep Month" now means
+  Month view with the compact grid on phones. The site default stays *Switch
+  to List*, because List view shows item details without a tap; changing that
+  default is a product decision left open.
+- Only days with items are links; quiet days stay plain numbers. Busy days
+  show up to three dots.
+- The day list lives inside each month panel, so month navigation shows and
+  hides it with the grid. Items follow the List view style (cards or rows),
+  with h5 titles under h4 day headings, and open the same details dialog.
+- With JavaScript, choosing a day focuses its group without changing the URL
+  hash, so Back still leaves the page. Without JavaScript the link jumps to
+  the group, which `:target` highlights.
+- The live region counts grid entries only, not their copies in the day list.
+- `group_month_days()` and `render_day_list()` in the renderer are the pieces
+  for RM-009 to reuse.
+
 **Completion criteria:** Renderer and CSS for the compact grid and day list,
 script enhancement, unit tests for day grouping including multi-day items,
 Playwright tests at a 375px viewport for no horizontal scrolling and
@@ -469,7 +489,7 @@ keyboard/no-JavaScript day navigation, README and readme.txt are updated.
 
 ### RM-009 — Agenda view
 
-**Status:** PLANNED
+**Status:** NEXT
 
 Add a chronological agenda layout optimized for phones and modest event volumes.
 It must support the existing date rules, actions, accessible controls, block

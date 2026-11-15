@@ -619,7 +619,8 @@ final class Memml_Renderer_Test extends TestCase {
 			)
 		);
 
-		$this->assertSame( 3, substr_count( $markup, 'Overnight Vigil' ) );
+		$this->assertSame( 3, substr_count( $markup, '<h4 class="memml-calendar__month-title">Overnight Vigil</h4>' ) );
+		$this->assertSame( 3, substr_count( $markup, '<h5 class="memml-calendar__title">Overnight Vigil</h5>' ) );
 		$this->assertStringContainsString( 'data-month="2026-09"', $markup );
 		$this->assertStringContainsString( 'data-month="2026-10"', $markup );
 		$this->assertStringContainsString( '<article class="memml-calendar__month-entry" data-memml-item>', $markup );
@@ -1355,6 +1356,154 @@ final class Memml_Renderer_Test extends TestCase {
 			strpos( $panel, 'Garden Tour' ) < strpos( $panel, '<details' ),
 			'The first two items stay outside the disclosure.'
 		);
+	}
+
+	/**
+	 * The phone day list groups a month's items by day, in day order, and
+	 * lists a multi-day item under every day it runs.
+	 *
+	 * @return void
+	 */
+	public function test_month_day_list_groups_items_by_day() {
+		$timezone = new DateTimeZone( 'America/New_York' );
+		$this->set_today( '2026-09-01', $timezone );
+		Functions\when( 'esc_attr__' )->returnArg();
+
+		$markup = $this->call_renderer(
+			'render_month_calendar',
+			array(
+				array(
+					'title'    => 'Bake Sale',
+					'startsAt' => '2026-09-08T23:00:00.000Z',
+				),
+				array(
+					'title'    => 'Board Meeting',
+					'startsAt' => '2026-09-03T22:00:00.000Z',
+				),
+				array(
+					'title'    => 'Garden Tour',
+					'startsAt' => '2026-09-08T14:00:00.000Z',
+				),
+				array(
+					'title'    => 'Harvest Fair',
+					'startsAt' => '2026-09-29T14:00:00.000Z',
+					'endsAt'   => '2026-10-01T20:00:00.000Z',
+				),
+			),
+			'events',
+			$timezone,
+			array(
+				'query_prefix' => 'memml_test_',
+				'show_details' => false,
+			)
+		);
+
+		preg_match( '/<div id="(memml-month-calendar-\d+)">/', $markup, $calendar );
+		preg_match_all( '/data-memml-day-group id="([^"]+)"/', $markup, $groups );
+
+		$prefix = $calendar[1] . '-day-';
+
+		$this->assertSame(
+			array( $prefix . '2026-09-03', $prefix . '2026-09-08', $prefix . '2026-09-29', $prefix . '2026-09-30', $prefix . '2026-10-01' ),
+			$groups[1]
+		);
+		$this->assertSame( 5, substr_count( $markup, 'data-memml-day-link' ) );
+		$this->assertStringContainsString(
+			'<a aria-label="09/08/2026, 2 events" class="memml-calendar__day-link" data-memml-day-link href="#' . $prefix . '2026-09-08"><span class="memml-calendar__day-link-number">8</span><span aria-hidden="true" class="memml-calendar__day-dots"><span class="memml-calendar__day-dot"></span><span class="memml-calendar__day-dot"></span></span></a>',
+			$markup
+		);
+		$this->assertStringContainsString( 'aria-label="09/03/2026, 1 event"', $markup );
+		$this->assertStringContainsString( '<h4 class="memml-calendar__day-heading" id="' . $prefix . '2026-09-08-heading">09/08/2026</h4>', $markup );
+		$this->assertSame( 3, substr_count( $markup, '<h5 class="memml-calendar__title">Harvest Fair</h5>' ) );
+
+		$september_eighth = substr( $markup, strpos( $markup, 'id="' . $prefix . '2026-09-08"' ) );
+		$september_eighth = substr( $september_eighth, 0, strpos( $september_eighth, '</section>' ) );
+
+		$this->assertStringContainsString( 'Bake Sale', $september_eighth );
+		$this->assertStringContainsString( 'Garden Tour', $september_eighth );
+		$this->assertStringNotContainsString( 'Board Meeting', $september_eighth );
+
+		// The day list sits inside its month panel, so it hides with it.
+		$october = substr( $markup, strpos( $markup, 'data-month="2026-10"' ) );
+		$this->assertStringContainsString( 'id="' . $prefix . '2026-10-01"', $october );
+		$this->assertStringNotContainsString( 'id="' . $prefix . '2026-09-30"', $october );
+	}
+
+	/**
+	 * The day list follows the List view style and the feed's wording, and
+	 * List view keeps its h3 item titles.
+	 *
+	 * @return void
+	 */
+	public function test_month_day_list_follows_list_style_and_feed() {
+		$timezone = new DateTimeZone( 'America/New_York' );
+		$this->set_today( '2026-09-08', $timezone );
+
+		$panel = $this->call_renderer(
+			'render_month_panel',
+			array(
+				'first_day' => new DateTimeImmutable( '2026-09-01 00:00:00', $timezone ),
+				'days'      => array(
+					8 => array(
+						array(
+							'title'    => 'Park Cleanup',
+							'startsAt' => '2026-09-08T14:00:00.000Z',
+						),
+					),
+				),
+			),
+			'2026-09',
+			'volunteers',
+			$timezone,
+			0,
+			0,
+			array( 'list_style' => 'rows' ),
+			'memml-month-calendar-9'
+		);
+
+		$this->assertStringContainsString( 'aria-label="Today, 09/08/2026, 1 volunteer opportunity"', $panel );
+		$this->assertStringContainsString( 'href="#memml-month-calendar-9-day-2026-09-08"', $panel );
+		$this->assertStringContainsString( '>Today, 09/08/2026</h4><div class="memml-calendar__grid memml-calendar__grid--rows"><article class="memml-calendar__row memml-calendar__card--volunteer"', $panel );
+		$this->assertStringContainsString( '<h5 class="memml-calendar__title">Park Cleanup</h5>', $panel );
+		$this->assertSame( 1, substr_count( $panel, '<span class="memml-calendar__day-dot"></span>' ) );
+
+		$card = $this->call_renderer(
+			'render_volunteer_card',
+			array(
+				'title'    => 'Park Cleanup',
+				'startsAt' => '2026-09-08T14:00:00.000Z',
+			),
+			$timezone
+		);
+
+		$this->assertStringContainsString( '<h3 class="memml-calendar__title">Park Cleanup</h3>', $card );
+	}
+
+	/**
+	 * Days without items stay plain numbers, and an empty month has no day
+	 * list at all.
+	 *
+	 * @return void
+	 */
+	public function test_month_panel_without_items_has_no_day_links_or_list() {
+		$timezone = new DateTimeZone( 'America/New_York' );
+
+		$panel = $this->call_renderer(
+			'render_month_panel',
+			array(
+				'first_day' => new DateTimeImmutable( '2026-09-01 00:00:00', $timezone ),
+				'days'      => array(),
+			),
+			'2026-09',
+			'events',
+			$timezone,
+			0,
+			0
+		);
+
+		$this->assertStringNotContainsString( 'data-memml-day-link', $panel );
+		$this->assertStringNotContainsString( 'data-memml-day-list', $panel );
+		$this->assertStringEndsWith( '</table></div></section>', $panel );
 	}
 
 	/**

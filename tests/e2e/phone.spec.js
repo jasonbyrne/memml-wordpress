@@ -66,9 +66,8 @@ test.describe( 'on a phone', () => {
 		await expect( page ).toHaveURL( /memml_phone_view=month/ );
 		await expect( main.locator( '#phone-events-month' ) ).toBeVisible();
 		await expect( main.locator( '#phone-events-list' ) ).toBeHidden();
-		// The grid itself still scrolls on phones until RM-021, which also
-		// shows that the check above detects the clipped grid.
-		expect( await scrollsSideways( page ) ).toBe( true );
+		// The compact phone grid fits without scrolling sideways.
+		expect( await scrollsSideways( page ) ).toBe( false );
 
 		await page.reload();
 		await expect( main ).toHaveAttribute( 'data-layout', 'month' );

@@ -1033,7 +1033,7 @@ final class Memml_Settings {
 											)
 										);
 										?>
-										<p class="description"><?php echo esc_html__( 'Month view is too wide for phones and other narrow screens. Switch to List opens those calendars in List view instead; visitors can still choose Month, and a shared link to Month view always opens Month.', 'memml' ); ?></p>
+										<p class="description"><?php echo esc_html__( 'On phones and other narrow screens, Month view shows a compact grid with each day\'s items listed beneath it. Switch to List opens those calendars in List view instead, so item details show at a glance; visitors can still choose Month, and a shared link to Month view always opens Month.', 'memml' ); ?></p>
 									</td>
 								</tr>
 								<tr>

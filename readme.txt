@@ -215,15 +215,24 @@ To choose other roles or individual people instead, give them the
 
 = Why do phones show List view when I chose Month? =
 
-The month grid is too wide for a phone, so part of the week would be cut off.
-With Settings > Memml Calendar > Month view on phones set to Switch to List (the
-default), calendars that open in Month view open in List view on phones and other
-narrow screens. Wide screens still open in Month view, visitors can still choose
-Month, and a shared link to Month view always opens Month. A calendar fixed to
-Month shows its upcoming list on phones. Choose Keep Month to show the month grid
-everywhere, as earlier versions did. Blocks have the same setting, and shortcodes
-accept `phone_view="list"` or `phone_view="month"`. The settings preview shows
-the phone layout when Show at phone width is checked.
+List view shows each item's details at a glance, while Month view on a phone
+needs a tap on a day first. With Settings > Memml Calendar > Month view on phones
+set to Switch to List (the default), calendars that open in Month view open in
+List view on phones and other narrow screens. Wide screens still open in Month
+view, visitors can still choose Month, and a shared link to Month view always
+opens Month. A calendar fixed to Month shows its upcoming list on phones. Choose
+Keep Month to open Month view everywhere. Blocks have the same setting, and
+shortcodes accept `phone_view="list"` or `phone_view="month"`. The settings
+preview shows the phone layout when Show at phone width is checked.
+
+= What does Month view look like on a phone? =
+
+On phones and other narrow screens, Month view becomes a compact grid that fits
+the screen without scrolling sideways. Days with events or volunteer
+opportunities show dots instead of titles, and a multi-day item marks every day
+it runs. The month's items are listed by day beneath the grid, in the same style
+as List view, and tapping a day jumps to that day's items. This works without
+JavaScript. Wide screens show the full month grid with titles.
 
 = How are Upcoming and Past lists determined? =
 

@@ -1082,7 +1082,7 @@ final class Memml_Renderer {
 		$index  = 0;
 
 		foreach ( $months as $month_key => $month ) {
-			$panels .= $this->render_month_panel( $month, $month_key, $feed, $timezone, $index, $selected_index, $context );
+			$panels .= $this->render_month_panel( $month, $month_key, $feed, $timezone, $index, $selected_index, $context, $calendar_id );
 			++$index;
 		}
 
@@ -1128,7 +1128,13 @@ final class Memml_Renderer {
 	}
 
 	/**
-	 * Renders one month table.
+	 * Renders one month table and its phone day list.
+	 *
+	 * Wide screens show entry titles in the grid. Below the phone breakpoint
+	 * the stylesheet hides those entries, shows each busy day as a link with
+	 * dots, and shows the day list beneath the grid, so the month fits without
+	 * scrolling sideways. Both are rendered because page caches serve the same
+	 * markup to every device.
 	 *
 	 * @param array        $month          Grouped month data.
 	 * @param string       $month_key      Month key in YYYY-MM format.
@@ -1137,9 +1143,11 @@ final class Memml_Renderer {
 	 * @param int          $index          Month index.
 	 * @param int          $selected_index Initially selected month index.
 	 * @param array        $context        Instance render context.
+	 * @param string       $calendar_id    Month calendar ID, used to keep day anchors unique.
 	 * @return string
 	 */
-	private function render_month_panel( $month, $month_key, $feed, $timezone, $index, $selected_index, $context = array() ) {
+	private function render_month_panel( $month, $month_key, $feed, $timezone, $index, $selected_index, $context = array(), $calendar_id = '' ) {
+		$id_prefix     = ( '' === $calendar_id ? 'memml-month' : $calendar_id ) . '-day-';
 		$first_day     = $month['first_day'];
 		$month_label   = wp_date( 'F Y', $first_day->getTimestamp(), $timezone );
 		$start_of_week = min( 6, max( 0, (int) get_option( 'start_of_week', 0 ) ) );
@@ -1173,6 +1181,7 @@ final class Memml_Renderer {
 				$date_label = wp_date( get_option( 'date_format' ), $date->getTimestamp(), $timezone );
 				$is_today   = $date->format( 'Y-m-d' ) === $today;
 				$entries    = '';
+				$day_link   = '';
 
 				if ( $is_today ) {
 					/* translators: %s: Formatted date. */
@@ -1188,6 +1197,20 @@ final class Memml_Renderer {
 					// behind a native disclosure that works without script.
 					$shown    = $total > 3 ? 2 : $total;
 					$overflow = '';
+					$day_link = sprintf(
+						'<a aria-label="%1$s" class="memml-calendar__day-link" data-memml-day-link href="#%2$s"><span class="memml-calendar__day-link-number">%3$d</span><span aria-hidden="true" class="memml-calendar__day-dots">%4$s</span></a>',
+						esc_attr(
+							sprintf(
+								/* translators: 1: Formatted date. 2: Number of items, such as "2 events". */
+								__( '%1$s, %2$s', 'memml' ),
+								$date_label,
+								$this->describe_item_count( $feed, $total )
+							)
+						),
+						esc_attr( $id_prefix . $date->format( 'Y-m-d' ) ),
+						$day,
+						str_repeat( '<span class="memml-calendar__day-dot"></span>', min( 3, $total ) )
+					);
 
 					foreach ( $day_items as $item_index => $item ) {
 						$entry = $this->render_month_entry( $item, $feed, $timezone, $context, $date );
@@ -1215,13 +1238,14 @@ final class Memml_Renderer {
 				}
 
 				$rows .= sprintf(
-					'<td aria-label="%1$s" class="memml-calendar__month-day%2$s%3$s"%4$s><span class="memml-calendar__day-number">%5$d</span>%6$s</td>',
+					'<td aria-label="%1$s" class="memml-calendar__month-day%2$s%3$s"%4$s><span class="memml-calendar__day-number">%5$d</span>%7$s%6$s</td>',
 					esc_attr( $date_label ),
 					'' === $entries ? '' : ' has-items',
 					$is_today ? ' is-today' : '',
 					$is_today ? ' aria-current="date"' : '',
 					$day,
-					$entries
+					$entries,
+					$day_link
 				);
 			}
 
@@ -1231,14 +1255,159 @@ final class Memml_Renderer {
 		}
 
 		return sprintf(
-			'<section class="memml-calendar__month-panel" data-memml-month-index="%1$d" data-month="%2$s" data-month-label="%3$s"%4$s><div aria-label="%3$s" class="memml-calendar__month-scroll" role="region" tabindex="0"><table class="memml-calendar__month-table"><caption class="screen-reader-text">%3$s</caption><thead><tr>%5$s</tr></thead><tbody>%6$s</tbody></table></div></section>',
+			'<section class="memml-calendar__month-panel" data-memml-month-index="%1$d" data-month="%2$s" data-month-label="%3$s"%4$s><div aria-label="%3$s" class="memml-calendar__month-scroll" role="region" tabindex="0"><table class="memml-calendar__month-table"><caption class="screen-reader-text">%3$s</caption><thead><tr>%5$s</tr></thead><tbody>%6$s</tbody></table></div>%7$s</section>',
 			$index,
 			esc_attr( $month_key ),
 			esc_attr( $month_label ),
 			$selected_index === $index ? '' : ' hidden',
 			$weekday_row,
-			$rows
+			$rows,
+			$this->render_day_list( $month, $feed, $timezone, $context, $id_prefix )
 		);
+	}
+
+	/**
+	 * Groups a month's items by local day in day order.
+	 *
+	 * The month grouping already places a multi-day item on every day it
+	 * runs, so each day here lists everything happening that day.
+	 *
+	 * @param array $month Grouped month data.
+	 * @return array List of arrays with date (DateTimeImmutable) and items keys.
+	 */
+	private function group_month_days( $month ) {
+		$days  = isset( $month['days'] ) && is_array( $month['days'] ) ? $month['days'] : array();
+		$first = $month['first_day'];
+
+		ksort( $days );
+
+		$groups = array();
+
+		foreach ( $days as $day => $items ) {
+			if ( empty( $items ) ) {
+				continue;
+			}
+
+			$groups[] = array(
+				'date'  => $first->setDate( (int) $first->format( 'Y' ), (int) $first->format( 'n' ), (int) $day ),
+				'items' => array_values( $items ),
+			);
+		}
+
+		return $groups;
+	}
+
+	/**
+	 * Renders the month's items grouped by day for phones.
+	 *
+	 * Each group is the target of its day's link in the grid, so a visitor
+	 * without JavaScript still jumps to the right day. Items reuse the List
+	 * view markup and details dialog, with headings one level below the day.
+	 *
+	 * @param array        $month     Grouped month data.
+	 * @param string       $feed      Feed identifier.
+	 * @param DateTimeZone $timezone  Organization timezone.
+	 * @param array        $context   Instance render context.
+	 * @param string       $id_prefix Prefix for day group IDs.
+	 * @return string
+	 */
+	private function render_day_list( $month, $feed, $timezone, $context, $id_prefix ) {
+		$groups = $this->group_month_days( $month );
+
+		if ( empty( $groups ) ) {
+			return '';
+		}
+
+		$item_context                 = is_array( $context ) ? $context : array();
+		$item_context['item_heading'] = 'h5';
+		$today                        = $this->get_today( $timezone )->format( 'Y-m-d' );
+		$markup                       = '';
+
+		foreach ( $groups as $group ) {
+			$date       = $group['date'];
+			$group_id   = $id_prefix . $date->format( 'Y-m-d' );
+			$date_label = wp_date( get_option( 'date_format' ), $date->getTimestamp(), $timezone );
+			$items      = '';
+
+			if ( $date->format( 'Y-m-d' ) === $today ) {
+				/* translators: %s: Formatted date. */
+				$date_label = sprintf( __( 'Today, %s', 'memml' ), $date_label );
+			}
+
+			foreach ( $group['items'] as $item ) {
+				if ( is_array( $item ) ) {
+					$items .= $this->render_list_item( $item, $feed, $timezone, $this->is_item_past( $item, $timezone ), $item_context );
+				}
+			}
+
+			$markup .= sprintf(
+				'<section aria-labelledby="%1$s-heading" class="memml-calendar__day-group" data-memml-day-group id="%1$s" tabindex="-1"><h4 class="memml-calendar__day-heading" id="%1$s-heading">%2$s</h4><div class="%3$s">%4$s</div></section>',
+				esc_attr( $group_id ),
+				esc_html( $date_label ),
+				esc_attr( $this->get_grid_class( $context ) ),
+				$items
+			);
+		}
+
+		return '<div class="memml-calendar__day-list" data-memml-day-list>' . $markup . '</div>';
+	}
+
+	/**
+	 * Describes how many items a day holds, for day link names.
+	 *
+	 * @param string $feed  Feed identifier.
+	 * @param int    $count Number of items.
+	 * @return string
+	 */
+	private function describe_item_count( $feed, $count ) {
+		return sprintf(
+			'volunteers' === $feed
+				/* translators: %d: Number of volunteer opportunities on a day. */
+				? _n( '%d volunteer opportunity', '%d volunteer opportunities', $count, 'memml' )
+				/* translators: %d: Number of events on a day. */
+				: _n( '%d event', '%d events', $count, 'memml' ),
+			$count
+		);
+	}
+
+	/**
+	 * Renders one item in the configured List view style.
+	 *
+	 * @param array        $item     Feed record.
+	 * @param string       $feed     Feed identifier.
+	 * @param DateTimeZone $timezone Organization timezone.
+	 * @param bool         $is_past  Whether the item is in the past.
+	 * @param array        $context  Instance render context.
+	 * @return string
+	 */
+	private function render_list_item( $item, $feed, $timezone, $is_past, $context ) {
+		$is_rows = 'rows' === ( isset( $context['list_style'] ) ? $context['list_style'] : 'grid' );
+
+		if ( 'volunteers' === $feed ) {
+			return $is_rows
+				? $this->render_volunteer_row( $item, $timezone, $is_past, $context )
+				: $this->render_volunteer_card( $item, $timezone, $is_past, $context );
+		}
+
+		return $is_rows
+			? $this->render_event_row( $item, $timezone, $is_past, $context )
+			: $this->render_event_card( $item, $timezone, $is_past, $context );
+	}
+
+	/**
+	 * Renders a list item's title heading.
+	 *
+	 * List view titles are h3 under the calendar. In the phone day list they
+	 * sit under a day heading, so they drop to h5.
+	 *
+	 * @param string $title   Item title.
+	 * @param array  $context Instance render context.
+	 * @return string
+	 */
+	private function render_item_title( $title, $context ) {
+		$tag = is_array( $context ) && isset( $context['item_heading'] ) && 'h5' === $context['item_heading'] ? 'h5' : 'h3';
+
+		return sprintf( '<%1$s class="memml-calendar__title">%2$s</%1$s>', $tag, esc_html( $title ) );
 	}
 
 	/**
@@ -1976,11 +2145,11 @@ final class Memml_Renderer {
 		$status = in_array( $status, array( 'scheduled', 'cancelled', 'postponed' ), true ) ? $status : 'scheduled';
 
 		return sprintf(
-			'<article class="memml-calendar__card memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__card-body">%3$s<h3 class="memml-calendar__title">%4$s</h3><div class="memml-calendar__meta">%5$s</div>%6$s%7$s</div>%8$s</article>',
+			'<article class="memml-calendar__card memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__card-body">%3$s%4$s<div class="memml-calendar__meta">%5$s</div>%6$s%7$s</div>%8$s</article>',
 			esc_attr( $status ),
 			$this->is_visible( $context, 'show_images' ) ? $this->render_image( isset( $event['imageUrl'] ) ? $event['imageUrl'] : '', $title ) : '',
 			$this->render_status_badge( $status ),
-			esc_html( $title ),
+			$this->render_item_title( $title, $context ),
 			$this->render_event_meta( $event, $timezone, $is_past ? 'full' : 'compact', true, false, $context ),
 			$this->is_visible( $context, 'show_descriptions' ) ? $this->render_description( isset( $event['description'] ) ? $event['description'] : '' ) : '',
 			$this->render_event_actions( $event, $timezone, $context, $is_past ),
@@ -2008,10 +2177,10 @@ final class Memml_Renderer {
 		$add_links = $this->render_add_to_calendar( $event, $context, $is_past, $timezone );
 
 		return sprintf(
-			'<article class="memml-calendar__row memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__row-body"><h3 class="memml-calendar__title">%3$s</h3><div class="memml-calendar__meta memml-calendar__meta--inline">%4$s</div>%5$s%6$s</div><div class="memml-calendar__row-aside">%7$s%8$s</div>%9$s</article>',
+			'<article class="memml-calendar__row memml-calendar__card--%1$s" data-memml-item>%2$s<div class="memml-calendar__row-body">%3$s<div class="memml-calendar__meta memml-calendar__meta--inline">%4$s</div>%5$s%6$s</div><div class="memml-calendar__row-aside">%7$s%8$s</div>%9$s</article>',
 			esc_attr( $status ),
 			$this->render_date_chip( $event, $timezone ),
-			esc_html( $title ),
+			$this->render_item_title( $title, $context ),
 			$this->render_event_meta( $event, $timezone, $is_past ? 'full' : 'compact', false, false, $context ),
 			$this->is_visible( $context, 'show_descriptions' ) ? $this->render_description( isset( $event['description'] ) ? $event['description'] : '' ) : '',
 			'' === $add_links ? '' : '<div class="memml-calendar__row-links">' . $add_links . '</div>',
@@ -2037,9 +2206,9 @@ final class Memml_Renderer {
 			: '';
 
 		return sprintf(
-			'<article class="memml-calendar__row memml-calendar__card--volunteer" data-memml-item>%1$s<div class="memml-calendar__row-body"><h3 class="memml-calendar__title">%2$s</h3><div class="memml-calendar__meta memml-calendar__meta--inline">%3$s</div>%4$s</div><div class="memml-calendar__row-aside">%5$s%6$s</div>%7$s</article>',
+			'<article class="memml-calendar__row memml-calendar__card--volunteer" data-memml-item>%1$s<div class="memml-calendar__row-body">%2$s<div class="memml-calendar__meta memml-calendar__meta--inline">%3$s</div>%4$s</div><div class="memml-calendar__row-aside">%5$s%6$s</div>%7$s</article>',
 			$this->render_date_chip( $opportunity, $timezone ),
-			esc_html( $title ),
+			$this->render_item_title( $title, $context ),
 			$this->render_volunteer_meta( $opportunity, $timezone, $is_past ? 'full' : 'compact', false, $context ),
 			$this->is_visible( $context, 'show_descriptions' ) ? $this->render_description( isset( $opportunity['description'] ) ? $opportunity['description'] : '' ) : '',
 			$needs_more,
@@ -2374,10 +2543,10 @@ final class Memml_Renderer {
 			: '';
 
 		return sprintf(
-			'<article class="memml-calendar__card memml-calendar__card--volunteer" data-memml-item>%1$s<div class="memml-calendar__card-body">%2$s<h3 class="memml-calendar__title">%3$s</h3><div class="memml-calendar__meta">%4$s</div>%5$s%6$s</div>%7$s</article>',
+			'<article class="memml-calendar__card memml-calendar__card--volunteer" data-memml-item>%1$s<div class="memml-calendar__card-body">%2$s%3$s<div class="memml-calendar__meta">%4$s</div>%5$s%6$s</div>%7$s</article>',
 			$this->is_visible( $context, 'show_images' ) ? $this->render_image( isset( $opportunity['imageUrl'] ) ? $opportunity['imageUrl'] : '', $title ) : '',
 			$needs_more,
-			esc_html( $title ),
+			$this->render_item_title( $title, $context ),
 			$this->render_volunteer_meta( $opportunity, $timezone, $is_past ? 'full' : 'compact', true, $context ),
 			$this->is_visible( $context, 'show_descriptions' ) ? $this->render_description( isset( $opportunity['description'] ) ? $opportunity['description'] : '' ) : '',
 			$is_past ? '' : $this->render_volunteer_actions( $opportunity, $timezone, $context ),

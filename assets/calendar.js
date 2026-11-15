@@ -248,8 +248,13 @@
 					}
 				}
 
-				const count =
-					content.querySelectorAll( '[data-memml-item]' ).length;
+				// Each month item also appears in the phone day list; count
+				// the grid entries only.
+				const count = Array.from(
+					content.querySelectorAll( '[data-memml-item]' )
+				).filter( function ( item ) {
+					return ! item.closest( '[data-memml-day-list]' );
+				} ).length;
 				const feed = calendar.dataset.calendar || calendar.dataset.feed;
 				let items = 1 === count ? messages.event : messages.events;
 
@@ -445,6 +450,46 @@
 
 			navigate( previous, -1 );
 			navigate( next, 1 );
+
+			// On phones, busy days are links to their group in the day list,
+			// which works without JavaScript. Here a chosen day is also
+			// highlighted, and focus moves to its group without adding a
+			// history entry.
+			const reduceMotion = window.matchMedia(
+				'(prefers-reduced-motion: reduce)'
+			);
+
+			calendar
+				.querySelectorAll( '[data-memml-day-link]' )
+				.forEach( function ( link ) {
+					link.addEventListener( 'click', function ( event ) {
+						const group = document.getElementById(
+							decodeURIComponent(
+								link.getAttribute( 'href' ).slice( 1 )
+							)
+						);
+
+						if ( ! group || ! takesOver( event ) ) {
+							return;
+						}
+
+						event.preventDefault();
+
+						calendar
+							.querySelectorAll( '.is-selected' )
+							.forEach( function ( selected ) {
+								selected.classList.remove( 'is-selected' );
+							} );
+
+						link.closest( 'td' ).classList.add( 'is-selected' );
+						group.classList.add( 'is-selected' );
+						group.scrollIntoView( {
+							behavior: reduceMotion.matches ? 'auto' : 'smooth',
+							block: 'start',
+						} );
+						group.focus( { preventScroll: true } );
+					} );
+				} );
 
 			showMonth( current, false );
 			monthControllers.push( { initialMonth, prefix, showMonthKey } );

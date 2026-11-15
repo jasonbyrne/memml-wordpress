@@ -389,7 +389,8 @@
    keeps the theme's link styling. */
 .memml-calendar a.memml-calendar__button,
 .memml-calendar a.memml-calendar__filter-button,
-.memml-calendar a.memml-calendar__month-button {
+.memml-calendar a.memml-calendar__month-button,
+.memml-calendar a.memml-calendar__day-link {
 	color: inherit;
 	text-decoration: none;
 }
@@ -620,6 +621,102 @@
 
 :where(.memml-calendar__month-status--postponed) {
 	color: var(--memml-warning);
+}
+
+/* Phones get a compact month: busy days become links with dots, and the
+   month's items are listed by day beneath the grid. Wide screens never show
+   the day links or the day list. Keep the breakpoint in step with
+   calendar.js. */
+:where(.memml-calendar__day-link, .memml-calendar__day-list) {
+	display: none;
+}
+
+@media (max-width: 41.99rem) {
+
+	:where(.memml-calendar__month-table) {
+		min-width: 0;
+	}
+
+	:where(.memml-calendar__month-table th) {
+		padding: 0.35rem 0;
+		font-size: 0.75em;
+	}
+
+	:where(.memml-calendar__month-day) {
+		height: auto;
+		padding: 0;
+		text-align: center;
+		vertical-align: middle;
+	}
+
+	:where(.memml-calendar__month-day.has-items) > :is(.memml-calendar__day-number, .memml-calendar__month-entry, .memml-calendar__month-more) {
+		display: none;
+	}
+
+	:where(.memml-calendar__day-number) {
+		display: grid;
+		min-height: 2.75rem;
+		margin: 0;
+		place-items: center;
+	}
+
+	:where(.memml-calendar__month-day.is-today .memml-calendar__day-number) {
+		display: grid;
+		min-height: 2.75rem;
+		background: transparent;
+		color: var(--memml-accent);
+	}
+
+	:where(.memml-calendar__day-link) {
+		display: grid;
+		min-height: 2.75rem;
+		align-content: center;
+		justify-items: center;
+		gap: 0.2rem;
+		font-size: 0.9em;
+		font-weight: 700;
+	}
+
+	:where(.memml-calendar__month-day.is-today .memml-calendar__day-link-number) {
+		color: var(--memml-accent);
+	}
+
+	:where(.memml-calendar__day-dots) {
+		display: flex;
+		gap: 0.15rem;
+	}
+
+	:where(.memml-calendar__day-dot) {
+		width: 0.35rem;
+		height: 0.35rem;
+		border-radius: 999px;
+		background: var(--memml-accent);
+	}
+
+	:where(.memml-calendar__month-day.is-selected) {
+		background: color-mix(in srgb, var(--memml-accent) 22%, var(--memml-card-background));
+	}
+
+	:where(.memml-calendar__day-list) {
+		display: grid;
+		gap: calc(var(--memml-spacing) * 1.25);
+		margin-block-start: var(--memml-spacing);
+	}
+
+	:where(.memml-calendar__day-group) {
+		scroll-margin-block-start: var(--memml-spacing);
+	}
+
+	:where(.memml-calendar__day-heading) {
+		margin: 0 0 0.5rem;
+		padding-inline-start: 0.5rem;
+		border-inline-start: 0.25rem solid transparent;
+		font-size: 1em;
+	}
+
+	:where(.memml-calendar__day-group:target, .memml-calendar__day-group.is-selected) .memml-calendar__day-heading {
+		border-inline-start-color: var(--memml-accent);
+	}
 }
 
 /* Crowded days collapse extra items behind a native disclosure. */
