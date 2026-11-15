@@ -491,6 +491,28 @@ Implementation notes 2026-11-14:
 - `group_month_days()` and `render_day_list()` in the renderer are the pieces
   for RM-009 to reuse.
 
+Follow-up from multi-width testing 2026-11-14 (five bundled themes, 320–1440px,
+normal and 150% text, including a two-column layout):
+
+- The compact grid now follows the month calendar's own width through a
+  `memml-month` container query instead of the viewport. The full grid's
+  min-width and the query threshold are both `max(38rem, 560px)`, so the full
+  grid never scrolls sideways: narrow columns on wide screens get the compact
+  grid, themes with a 62.5% root font size (Twenty Twenty) still compact on
+  phones, and larger text compacts sooner. The *Switch to List* default stays
+  viewport-based at 42rem, since it is about phones.
+- The scroll-region tab stop now follows real overflow (ResizeObserver)
+  rather than the phone media query.
+- Item text (cards, rows, month entries, dialog) uses `overflow-wrap:
+  anywhere`, fixing compact rows that overflowed 320–390px phones on long
+  words. Buttons and badges keep whole words.
+- Switchers wrap, and on small phones (30rem) their buttons share a row. The
+  month heading may wrap with very large text. The details dialog uses
+  border-box sizing so it fits 320px screens in themes without a global
+  box-sizing reset.
+- Remaining at 150% text on 320–390px: Twenty Twenty itself scrolls sideways
+  with no calendar on the page.
+
 **Completion criteria:** Renderer and CSS for the compact grid and day list,
 script enhancement, unit tests for day grouping including multi-day items,
 Playwright tests at a 375px viewport for no horizontal scrolling and

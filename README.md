@@ -95,8 +95,12 @@ is left behind on uninstall.
 
 ### Month view on phones
 
-On screens narrower than 42rem (672 pixels), Month view becomes a compact grid
-that fits without scrolling sideways:
+When a Month calendar is too narrow for the full grid, it becomes a compact
+grid that fits without scrolling sideways. That is on phones, and also in a
+narrow column or sidebar on a wide screen. The switch follows the calendar's
+own width (a CSS container query), not the screen's: the full grid needs
+38rem, or 560 pixels in themes that shrink the root font size, and more with
+larger text.
 
 - Day cells are at least 44 pixels tall. Days with items show the day number
   and up to three dots instead of entry titles: cancelled and postponed events
@@ -108,9 +112,11 @@ that fits without scrolling sideways:
   item style and details pop-up. Choosing a day jumps to its group. With
   JavaScript, the day is also highlighted (until the month changes) and focus
   moves to its items without adding a browser history entry; without
-  JavaScript, the link jumps to the group. On phones the grid fits, so it is
-  no longer a separate keyboard scroll stop.
-- Wide screens show the same Month view as before.
+  JavaScript, the link jumps to the group. With JavaScript, the grid's
+  scroll region is a keyboard tab stop only while it can actually scroll.
+- Calendars with room for the full grid show the same Month view as before.
+- Long words in event text wrap instead of widening the page, and the
+  calendar switchers share a row on small phones.
 
 With **Month view on phones** set to **Switch to List** (the default), a
 calendar that opens in Month view opens in List view on phones instead, so
@@ -127,7 +133,9 @@ visitors see item details without tapping a day first:
   width. Without JavaScript, the stylesheet alone shows the right layout.
 
 **Keep Month** opens those calendars in Month view on every screen, using the
-compact grid on phones. Blocks offer the same choice under Calendar settings,
+compact grid on phones. The List switch follows the screen width (narrower
+than 42rem, 672 pixels), since it is about phones; the compact grid follows
+the calendar's width. Blocks offer the same choice under Calendar settings,
 and shortcodes accept `phone_view="list"` or `phone_view="month"`.
 
 ## Empty calendars

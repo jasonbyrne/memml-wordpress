@@ -465,28 +465,40 @@
 			navigate( previous, -1 );
 			navigate( next, 1 );
 
-			// On phones, busy days are links to their group in the day list,
-			// which works without JavaScript. Here a chosen day is also
-			// highlighted, and focus moves to its group without adding a
+			// In the compact grid, busy days are links to their group in the
+			// day list, which works without JavaScript. Here a chosen day is
+			// also highlighted, and focus moves to its group without adding a
 			// history entry.
-			// The grid only scrolls sideways on wide screens with narrow
-			// containers; on phones it fits, so its scroll region does not
-			// need a tab stop there.
-			const phoneMedia = window.matchMedia( phoneQuery );
-			const updateScrollStops = function () {
-				calendar
-					.querySelectorAll( '.memml-calendar__month-scroll' )
-					.forEach( function ( region ) {
-						if ( phoneMedia.matches ) {
-							region.removeAttribute( 'tabindex' );
-						} else {
-							region.setAttribute( 'tabindex', '0' );
-						}
-					} );
+			// The server makes each grid's scroll region a tab stop so it can
+			// be scrolled by keyboard without JavaScript. The compact grid
+			// takes over before the full grid would overflow, so the region
+			// stays a tab stop only while it can actually scroll.
+			const updateScrollStop = function ( region ) {
+				if ( region.scrollWidth > region.clientWidth ) {
+					region.setAttribute( 'tabindex', '0' );
+				} else {
+					region.removeAttribute( 'tabindex' );
+				}
 			};
+			const regions = calendar.querySelectorAll(
+				'.memml-calendar__month-scroll'
+			);
 
-			updateScrollStops();
-			phoneMedia.addEventListener( 'change', updateScrollStops );
+			regions.forEach( updateScrollStop );
+
+			if ( 'ResizeObserver' in window ) {
+				const observer = new window.ResizeObserver( function (
+					entries
+				) {
+					entries.forEach( function ( entry ) {
+						updateScrollStop( entry.target );
+					} );
+				} );
+
+				regions.forEach( function ( region ) {
+					observer.observe( region );
+				} );
+			}
 
 			const reduceMotion = window.matchMedia(
 				'(prefers-reduced-motion: reduce)'

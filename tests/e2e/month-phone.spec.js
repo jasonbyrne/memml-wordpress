@@ -169,6 +169,19 @@ test.describe( 'Month view on a phone', () => {
 		await expect( page.locator( '.is-selected' ) ).toHaveCount( 0 );
 	} );
 
+	test( 'wraps words longer than the screen', async ( { page } ) => {
+		await page.goto( fixture );
+		await page
+			.locator( '[data-memml-day-list] .memml-calendar__title' )
+			.first()
+			.evaluate( ( title ) => {
+				title.textContent =
+					'Antidisestablishmentarianism-themed-debate-club-championship-finals';
+			} );
+
+		expect( await scrollsSideways( page ) ).toBe( false );
+	} );
+
 	test( 'announces grid items only once', async ( { page } ) => {
 		await page.goto( fixture );
 
@@ -197,12 +210,79 @@ test.describe( 'Month view on a wide screen', () => {
 		await expect(
 			page.locator( '[data-memml-day-list]' ).first()
 		).toBeHidden();
-		// The wide grid can scroll in a narrow container, so it keeps its
-		// keyboard tab stop.
+		// The full grid fits, so its scroll region is not a tab stop.
 		await expect(
 			page.locator( '.memml-calendar__month-scroll' ).first()
-		).toHaveAttribute( 'tabindex', '0' );
+		).not.toHaveAttribute( 'tabindex' );
+		expect( await scrollsSideways( page ) ).toBe( false );
 	} );
+
+	test( 'uses the compact grid in a narrow column', async ( { page } ) => {
+		await page.goto( fixture );
+		await page.addStyleTag( {
+			content: '[data-memml-calendar] { max-width: 20rem; }',
+		} );
+
+		await expect(
+			page.getByRole( 'link', { name: 'November 21, 2026, 3 events' } )
+		).toBeVisible();
+		await expect(
+			page.locator( '.memml-calendar__month-entry' ).first()
+		).toBeHidden();
+		await expect(
+			page.locator( '[data-memml-day-list]' ).first()
+		).toBeVisible();
+		await expect
+			.poll( () =>
+				page
+					.locator( '.memml-calendar__month-scroll' )
+					.first()
+					.getAttribute( 'tabindex' )
+			)
+			.toBeNull();
+		expect( await scrollsSideways( page ) ).toBe( false );
+	} );
+
+	test( 'returns to the full grid when its column widens', async ( {
+		page,
+	} ) => {
+		await page.setViewportSize( { width: 500, height: 800 } );
+		await page.goto( fixture );
+		await expect(
+			page.locator( '[data-memml-day-link]' ).first()
+		).toBeVisible();
+
+		await page.setViewportSize( desktop );
+
+		await expect(
+			page.getByRole( 'heading', { name: 'Saturday fair' } ).first()
+		).toBeVisible();
+		await expect(
+			page.locator( '[data-memml-day-link]' ).first()
+		).toBeHidden();
+		expect( await scrollsSideways( page ) ).toBe( false );
+	} );
+} );
+
+test.describe( 'Month view at every common width', () => {
+	for ( const width of [ 320, 360, 414, 600, 640, 700, 768, 1024 ] ) {
+		test( `never scrolls sideways at ${ width }px`, async ( { page } ) => {
+			await page.setViewportSize( { width, height: 800 } );
+			await page.goto( fixture );
+
+			expect( await scrollsSideways( page ) ).toBe( false );
+
+			// One layout is shown: the compact grid or the full one.
+			const links = await page
+				.locator( '[data-memml-day-link]:visible' )
+				.count();
+			const entries = await page
+				.locator( '.memml-calendar__month-entry:visible' )
+				.count();
+
+			expect( links > 0 ).not.toBe( entries > 0 );
+		} );
+	}
 } );
 
 test.describe( 'Month view on a phone without JavaScript', () => {

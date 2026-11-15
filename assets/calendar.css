@@ -20,6 +20,17 @@
 	line-height: 1.5;
 }
 
+/* Feed text can hold words or URLs longer than a phone is wide. Breaking
+   them keeps items inside the screen instead of scrolling it. Buttons and
+   badges keep whole words. */
+:where(.memml-calendar__card, .memml-calendar__row, .memml-calendar__month-entry, .memml-calendar__dialog) {
+	overflow-wrap: anywhere;
+}
+
+:where(.memml-calendar__button, .memml-calendar__status) {
+	overflow-wrap: normal;
+}
+
 /* Appearance presets from Settings → Memml Calendar → Appearance. The
    default presets add no class. Like the defaults above, these only set
    custom properties at zero specificity, so theme overrides still win. */
@@ -99,6 +110,8 @@
 
 :where(.memml-calendar__filter) {
 	display: inline-flex;
+	flex-wrap: wrap;
+	max-width: 100%;
 	gap: 0.25rem;
 	padding: 0.25rem;
 	background: color-mix(in srgb, var(--memml-border) 35%, transparent);
@@ -126,6 +139,19 @@
 	cursor: pointer;
 	font: inherit;
 	text-align: center;
+}
+
+/* On small phones the buttons in each switcher share its row and wrap
+   their own text, so a long label such as "Volunteer Opportunities" does
+   not push its neighbour onto a second line. With very large text they
+   still wrap onto separate lines rather than overflow. */
+@media (max-width: 30rem) {
+
+	:where(.memml-calendar__filter-button) {
+		flex: 1 1 0;
+		justify-content: center;
+		min-width: min-content;
+	}
 }
 
 :where(.memml-calendar__filter-button:hover) {
@@ -523,14 +549,27 @@
 	}
 }
 
-/* Focusable so the grid can be scrolled by keyboard on narrow screens. */
+/* The month calendar is a size container so it can switch to the compact
+   grid whenever it is too narrow for the full one: on phones, and also in a
+   narrow column or sidebar on a wide screen. */
+:where(.memml-calendar__month) {
+	container: memml-month / inline-size;
+}
+
+/* A safety net only: the compact grid takes over before the full grid would
+   need to scroll. The server marks the region focusable for visitors without
+   JavaScript; the script keeps it a tab stop only while it can scroll. */
 :where(.memml-calendar__month-scroll) {
 	overflow-x: auto;
 }
 
 :where(.memml-calendar__month-table) {
 	width: 100%;
-	min-width: 38rem;
+
+	/* At least 560px even in themes that shrink the root font size, and
+	   wider with larger text. Keep in step with the memml-month container
+	   query below. */
+	min-width: max(38rem, 560px);
 	border-spacing: 0;
 	border-collapse: separate;
 	table-layout: fixed;
@@ -623,21 +662,41 @@
 	color: var(--memml-warning);
 }
 
-/* Phones get a compact month: busy days become links with dots, and the
-   month's items are listed by day beneath the grid. Wide screens never show
-   the day links or the day list. Keep the breakpoint in step with
-   calendar.js. */
+/* A month calendar narrower than the full grid's minimum width (phones, and
+   narrow columns on wide screens) gets a compact month: busy days become
+   links with dots, and the month's items are listed by day beneath the grid.
+   The full grid never shows the day links or the day list. The threshold
+   matches the full table's min-width, max(38rem, 560px), so the full grid
+   never has to scroll sideways. */
 :where(.memml-calendar__day-link, .memml-calendar__day-list) {
 	display: none;
 }
 
-@media (max-width: 41.99rem) {
+@container memml-month (max-width: 37.99rem) or (max-width: 559.99px) {
+
+	/* With large text the label may wrap; the arrows keep their size. */
+	:where(.memml-calendar__month-header) {
+		gap: 0.5rem;
+	}
+
+	.memml-calendar .memml-calendar__month-label {
+		min-width: 0;
+		font-size: 1.15rem;
+		overflow-wrap: anywhere;
+	}
+
+	:where(.memml-calendar__month-button) {
+		flex: none;
+	}
 
 	:where(.memml-calendar__month-table) {
 		min-width: 0;
 	}
 
+	/* With very large text a weekday name can be a pixel or two wider than
+	   its column; clip it rather than let the grid scroll. */
 	:where(.memml-calendar__month-table th) {
+		overflow: hidden;
 		padding: 0.35rem 0;
 		font-size: 0.75em;
 	}
@@ -690,8 +749,8 @@
 
 	:where(.memml-calendar__day-dot) {
 		box-sizing: border-box;
-		width: 0.35rem;
-		height: 0.35rem;
+		width: max(0.35rem, 5px);
+		height: max(0.35rem, 5px);
 		border: 1px solid var(--memml-accent);
 		border-radius: 999px;
 		background: var(--memml-accent);
@@ -952,6 +1011,7 @@
 }
 
 :where(.memml-calendar__dialog) {
+	box-sizing: border-box;
 	width: min(36rem, calc(100vw - 2rem));
 	max-height: calc(100vh - 4rem);
 	padding: calc(var(--memml-spacing) * 1.5);
