@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -278,6 +278,33 @@ Yes. The URL updates as visitors use enabled calendar, layout, list-filter, or
 month controls. Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.6.0 =
+
+* Calendars that open in Month view now open in List view on phones, where the
+  month grid was cut off. Visitors can still choose Month, and a shared link to
+  a view always opens it. To keep Month on phones, set Settings > Memml
+  Calendar > Month view on phones to Keep Month, or use the block setting or
+  the shortcode's `phone_view` property.
+* Month view on phones, and in narrow columns or sidebars, is now a compact
+  grid that fits without scrolling sideways. Busy days show dots and link to
+  that day's items, listed by day beneath the grid.
+* Long words in event titles and details wrap instead of widening the page,
+  the calendar switchers wrap on small screens, and the details pop-up fits
+  small phones in every theme.
+* Added an Empty calendars section: for Events and Volunteer opportunities
+  separately, show the standard message, a custom message with an optional
+  link, or hide the calendar when nothing is upcoming. Blocks and shortcodes
+  can override it.
+* The Status section now shows a card for each feed with its item count, last
+  update, and any problem in plain language, with Refresh buttons for each
+  feed or all of them.
+* Administrators can let Editors manage Memml Calendar settings. The
+  organization key and connection stay with administrators, and a new
+  `manage_memml_calendar` capability can be granted to other roles.
+* After connecting, a Connected panel shows your organization, each feed's
+  item count, a preview button, and shortcodes to copy. Test connection now
+  reports the timezone and item counts.
 
 = 0.5.0 =
 
