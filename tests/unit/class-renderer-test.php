@@ -1480,6 +1480,30 @@ final class Memml_Renderer_Test extends TestCase {
 	}
 
 	/**
+	 * Day dots show up to three items, hollow for cancelled or postponed
+	 * events, with a plus sign for more.
+	 *
+	 * @return void
+	 */
+	public function test_day_dots_mark_status_and_overflow() {
+		$items = array(
+			array( 'status' => 'cancelled' ),
+			array( 'status' => 'scheduled' ),
+			array( 'status' => 'postponed' ),
+			array( 'status' => 'cancelled' ),
+		);
+
+		$this->assertSame(
+			'<span class="memml-calendar__day-dot is-cancelled"></span><span class="memml-calendar__day-dot"></span><span class="memml-calendar__day-dot is-postponed"></span><span class="memml-calendar__day-more">+</span>',
+			$this->call_renderer( 'render_day_dots', $items, 'events', 4 )
+		);
+		$this->assertSame(
+			'<span class="memml-calendar__day-dot"></span><span class="memml-calendar__day-dot"></span>',
+			$this->call_renderer( 'render_day_dots', array( array( 'status' => 'cancelled' ), array() ), 'volunteers', 2 )
+		);
+	}
+
+	/**
 	 * Days without items stay plain numbers, and an empty month has no day
 	 * list at all.
 	 *

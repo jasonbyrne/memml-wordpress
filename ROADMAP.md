@@ -471,7 +471,16 @@ Implementation notes 2026-11-14:
   to List*, because List view shows item details without a tap; changing that
   default is a product decision left open.
 - Only days with items are links; quiet days stay plain numbers. Busy days
-  show up to three dots.
+  show up to three dots, hollow for cancelled or postponed events, and a plus
+  sign for more than three items.
+- The day list repeats each grid item in the List view style. Measured on the
+  browser fixture, that adds about 70 bytes per item after gzip, so it is not
+  trimmed.
+- On phones the script removes the grid's scroll-region tab stop, since the
+  grid no longer scrolls; wide screens keep it. Choosing a day is cleared
+  when the month changes.
+- `tests/e2e/month-phone.html` is generated from renderer output by
+  `composer fixtures`, and a unit test fails when it is out of date.
 - The day list lives inside each month panel, so month navigation shows and
   hides it with the grid. Items follow the List view style (cards or rows),
   with h5 titles under h4 day headings, and open the same details dialog.

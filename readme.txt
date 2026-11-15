@@ -229,8 +229,9 @@ preview shows the phone layout when Show at phone width is checked.
 
 On phones and other narrow screens, Month view becomes a compact grid that fits
 the screen without scrolling sideways. Days with events or volunteer
-opportunities show dots instead of titles, and a multi-day item marks every day
-it runs. The month's items are listed by day beneath the grid, in the same style
+opportunities show dots instead of titles, with hollow dots for cancelled or
+postponed events and a plus sign when a day has more than three items. A
+multi-day item marks every day it runs. The month's items are listed by day beneath the grid, in the same style
 as List view, and tapping a day jumps to that day's items. This works without
 JavaScript. Wide screens show the full month grid with titles.
 

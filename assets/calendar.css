@@ -683,14 +683,33 @@
 
 	:where(.memml-calendar__day-dots) {
 		display: flex;
+		align-items: center;
+		min-height: 0.6rem;
 		gap: 0.15rem;
 	}
 
 	:where(.memml-calendar__day-dot) {
+		box-sizing: border-box;
 		width: 0.35rem;
 		height: 0.35rem;
+		border: 1px solid var(--memml-accent);
 		border-radius: 999px;
 		background: var(--memml-accent);
+	}
+
+	/* Cancelled and postponed events are hollow. */
+	:where(.memml-calendar__day-dot.is-cancelled, .memml-calendar__day-dot.is-postponed) {
+		background: transparent;
+	}
+
+	:where(.memml-calendar__day-dot.is-cancelled) {
+		border-color: var(--memml-muted);
+	}
+
+	:where(.memml-calendar__day-more) {
+		color: var(--memml-accent);
+		font-size: 0.75em;
+		line-height: 1;
 	}
 
 	:where(.memml-calendar__month-day.is-selected) {

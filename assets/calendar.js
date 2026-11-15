@@ -393,7 +393,21 @@
 				}
 			};
 
+			const clearSelectedDay = function () {
+				calendar
+					.querySelectorAll(
+						'.memml-calendar__month-day.is-selected, [data-memml-day-group].is-selected'
+					)
+					.forEach( function ( selected ) {
+						selected.classList.remove( 'is-selected' );
+					} );
+			};
+
 			const showMonth = function ( index, updateHistory ) {
+				if ( index !== current ) {
+					clearSelectedDay();
+				}
+
 				current = Math.max( 0, Math.min( panels.length - 1, index ) );
 
 				panels.forEach( function ( panel, panelIndex ) {
@@ -455,6 +469,25 @@
 			// which works without JavaScript. Here a chosen day is also
 			// highlighted, and focus moves to its group without adding a
 			// history entry.
+			// The grid only scrolls sideways on wide screens with narrow
+			// containers; on phones it fits, so its scroll region does not
+			// need a tab stop there.
+			const phoneMedia = window.matchMedia( phoneQuery );
+			const updateScrollStops = function () {
+				calendar
+					.querySelectorAll( '.memml-calendar__month-scroll' )
+					.forEach( function ( region ) {
+						if ( phoneMedia.matches ) {
+							region.removeAttribute( 'tabindex' );
+						} else {
+							region.setAttribute( 'tabindex', '0' );
+						}
+					} );
+			};
+
+			updateScrollStops();
+			phoneMedia.addEventListener( 'change', updateScrollStops );
+
 			const reduceMotion = window.matchMedia(
 				'(prefers-reduced-motion: reduce)'
 			);
@@ -474,12 +507,7 @@
 						}
 
 						event.preventDefault();
-
-						calendar
-							.querySelectorAll( '.is-selected' )
-							.forEach( function ( selected ) {
-								selected.classList.remove( 'is-selected' );
-							} );
+						clearSelectedDay();
 
 						link.closest( 'td' ).classList.add( 'is-selected' );
 						group.classList.add( 'is-selected' );

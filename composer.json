@@ -24,6 +24,7 @@
     "sort-packages": true
   },
   "scripts": {
+    "fixtures": "php tests/e2e/generate-month-phone-fixture.php",
     "lint": "phpcs",
     "test": "phpunit"
   }

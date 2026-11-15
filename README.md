@@ -99,15 +99,17 @@ On screens narrower than 42rem (672 pixels), Month view becomes a compact grid
 that fits without scrolling sideways:
 
 - Day cells are at least 44 pixels tall. Days with items show the day number
-  and up to three dots instead of entry titles; a multi-day item marks every
-  day it runs.
+  and up to three dots instead of entry titles: cancelled and postponed events
+  get a hollow dot, and a plus sign means more than three items. A multi-day
+  item marks every day it runs.
 - Each busy day is a link whose accessible name gives the date and item count,
   such as "November 21, 2026, 2 events".
 - Beneath the grid, the month's items are listed by day using the List view
   item style and details pop-up. Choosing a day jumps to its group. With
-  JavaScript, the day is also highlighted and focus moves to its items without
-  adding a browser history entry; without JavaScript, the link jumps to the
-  group.
+  JavaScript, the day is also highlighted (until the month changes) and focus
+  moves to its items without adding a browser history entry; without
+  JavaScript, the link jumps to the group. On phones the grid fits, so it is
+  no longer a separate keyboard scroll stop.
 - Wide screens show the same Month view as before.
 
 With **Month view on phones** set to **Switch to List** (the default), a
@@ -421,6 +423,11 @@ npm run lint:css
 npm run build
 npm run test:e2e
 ```
+
+The browser test page `tests/e2e/month-phone.html` is generated from the
+renderer's real Month output. After changing Month markup, regenerate it with
+`composer fixtures` and commit the result; `composer test` fails while the page
+is out of date.
 
 The complete WordPress smoke test can be run with:
 

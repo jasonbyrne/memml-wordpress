@@ -1209,7 +1209,7 @@ final class Memml_Renderer {
 						),
 						esc_attr( $id_prefix . $date->format( 'Y-m-d' ) ),
 						$day,
-						str_repeat( '<span class="memml-calendar__day-dot"></span>', min( 3, $total ) )
+						$this->render_day_dots( $day_items, $feed, $total )
 					);
 
 					foreach ( $day_items as $item_index => $item ) {
@@ -1302,7 +1302,9 @@ final class Memml_Renderer {
 	 *
 	 * Each group is the target of its day's link in the grid, so a visitor
 	 * without JavaScript still jumps to the right day. Items reuse the List
-	 * view markup and details dialog, with headings one level below the day.
+	 * view style and details dialog, with headings one level below the day.
+	 * Repeating the grid's items costs roughly 70 bytes per item once
+	 * compressed, so the list is rendered in full rather than trimmed.
 	 *
 	 * @param array        $month     Grouped month data.
 	 * @param string       $feed      Feed identifier.
@@ -1344,12 +1346,41 @@ final class Memml_Renderer {
 				'<section aria-labelledby="%1$s-heading" class="memml-calendar__day-group" data-memml-day-group id="%1$s" tabindex="-1"><h4 class="memml-calendar__day-heading" id="%1$s-heading">%2$s</h4><div class="%3$s">%4$s</div></section>',
 				esc_attr( $group_id ),
 				esc_html( $date_label ),
-				esc_attr( $this->get_grid_class( $context ) ),
+				esc_attr( $this->get_grid_class( $item_context ) ),
 				$items
 			);
 		}
 
 		return '<div class="memml-calendar__day-list" data-memml-day-list>' . $markup . '</div>';
+	}
+
+	/**
+	 * Renders the dots that stand in for a day's items on phones.
+	 *
+	 * One dot per item, up to three. Cancelled and postponed events get a
+	 * hollow dot, and a day with more than three items adds a plus sign. The
+	 * dots are decorative; the day link's name carries the count.
+	 *
+	 * @param array  $items Items on the day.
+	 * @param string $feed  Feed identifier.
+	 * @param int    $total Number of items on the day.
+	 * @return string
+	 */
+	private function render_day_dots( $items, $feed, $total ) {
+		$dots = '';
+
+		foreach ( array_slice( $items, 0, 3 ) as $item ) {
+			$status = 'events' === $feed && is_array( $item ) && isset( $item['status'] ) ? (string) $item['status'] : '';
+			$dots  .= in_array( $status, array( 'cancelled', 'postponed' ), true )
+				? '<span class="memml-calendar__day-dot is-' . esc_attr( $status ) . '"></span>'
+				: '<span class="memml-calendar__day-dot"></span>';
+		}
+
+		if ( $total > 3 ) {
+			$dots .= '<span class="memml-calendar__day-more">+</span>';
+		}
+
+		return $dots;
 	}
 
 	/**

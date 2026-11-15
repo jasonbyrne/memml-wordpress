@@ -34,7 +34,7 @@ test.describe( 'Month view on a phone', () => {
 
 		const calendar = page.locator( '[data-memml-calendar]' );
 		const busyDay = page.getByRole( 'link', {
-			name: 'November 21, 2026, 2 events',
+			name: 'November 21, 2026, 3 events',
 		} );
 
 		await expect( calendar ).toHaveAttribute( 'data-layout', 'month' );
@@ -55,6 +55,16 @@ test.describe( 'Month view on a phone', () => {
 		expect( linkBox.height ).toBeGreaterThanOrEqual( 44 );
 		expect( linkBox.width ).toBeGreaterThanOrEqual( 44 );
 		expect( quietDay.height ).toBeGreaterThanOrEqual( 44 );
+
+		// The cancelled event on the 21st has a hollow dot.
+		await expect(
+			busyDay.locator( '.memml-calendar__day-dot.is-cancelled' )
+		).toBeVisible();
+
+		// The grid fits, so its scroll region is not a tab stop.
+		await expect(
+			page.locator( '.memml-calendar__month-scroll' ).first()
+		).not.toHaveAttribute( 'tabindex' );
 
 		// The day list repeats a multi-day item under every day it runs.
 		const list = page.locator( '[data-memml-day-list]' ).first();
@@ -120,10 +130,43 @@ test.describe( 'Month view on a phone', () => {
 		await page.getByRole( 'link', { name: 'Next month' } ).click();
 		await expect( page.locator( groupId( '2026-11-03' ) ) ).toBeHidden();
 		await page
-			.getByRole( 'link', { name: 'December 12, 2026, 1 event' } )
+			.getByRole( 'link', { name: 'December 12, 2026, 4 events' } )
 			.click();
 		await expect( page.locator( groupId( '2026-12-12' ) ) ).toBeFocused();
+		await expect(
+			page.locator( groupId( '2026-12-12' ) ).locator( 'article' )
+		).toHaveCount( 4 );
 		expect( await scrollsSideways( page ) ).toBe( false );
+	} );
+
+	test( 'shows a plus sign for crowded days', async ( { page } ) => {
+		await page.goto( fixture + '?memml_month_month=2026-12' );
+
+		const crowdedDay = page.getByRole( 'link', {
+			name: 'December 12, 2026, 4 events',
+		} );
+
+		await expect(
+			crowdedDay.locator( '.memml-calendar__day-dot' )
+		).toHaveCount( 3 );
+		await expect(
+			crowdedDay.locator( '.memml-calendar__day-more' )
+		).toBeVisible();
+	} );
+
+	test( 'clears the chosen day when the month changes', async ( {
+		page,
+	} ) => {
+		await page.goto( fixture );
+
+		await page
+			.getByRole( 'link', { name: 'November 22, 2026, 1 event' } )
+			.click();
+		await expect( page.locator( '.is-selected' ) ).toHaveCount( 2 );
+
+		await page.getByRole( 'link', { name: 'Next month' } ).click();
+		await page.getByRole( 'link', { name: 'Previous month' } ).click();
+		await expect( page.locator( '.is-selected' ) ).toHaveCount( 0 );
 	} );
 
 	test( 'announces grid items only once', async ( { page } ) => {
@@ -131,10 +174,10 @@ test.describe( 'Month view on a phone', () => {
 
 		await page.getByRole( 'link', { name: 'List' } ).click();
 		await page.getByRole( 'link', { name: 'Month' } ).click();
-		// Four grid entries: one on the 3rd, two on the 21st, and the
+		// Five grid entries: one on the 3rd, three on the 21st, and the
 		// continued multi-day item on the 22nd.
 		await expect( page.locator( '[data-memml-status]' ) ).toHaveText(
-			'Showing November 2026, 4 events.'
+			'Showing November 2026, 5 events.'
 		);
 	} );
 } );
@@ -154,6 +197,11 @@ test.describe( 'Month view on a wide screen', () => {
 		await expect(
 			page.locator( '[data-memml-day-list]' ).first()
 		).toBeHidden();
+		// The wide grid can scroll in a narrow container, so it keeps its
+		// keyboard tab stop.
+		await expect(
+			page.locator( '.memml-calendar__month-scroll' ).first()
+		).toHaveAttribute( 'tabindex', '0' );
 	} );
 } );
 
@@ -166,7 +214,7 @@ test.describe( 'Month view on a phone without JavaScript', () => {
 		expect( await scrollsSideways( page ) ).toBe( false );
 
 		await page
-			.getByRole( 'link', { name: 'November 21, 2026, 2 events' } )
+			.getByRole( 'link', { name: 'November 21, 2026, 3 events' } )
 			.click();
 
 		const group = page.locator( groupId( '2026-11-21' ) );
