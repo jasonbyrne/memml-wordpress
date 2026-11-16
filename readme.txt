@@ -95,7 +95,11 @@ Advanced shortcodes can also set `show_images`, `show_descriptions`,
 `show_add_to_calendar`, and `show_event_page` to `yes` or `no`. For example, `[memml_events show_images="no" show_cancelled_events="no"]`
 hides event images and removes cancelled events from both List and Month views.
 Clicking an item opens its full details in a pop-up, and events offer per-event
-Apple / Outlook and Google add-to-calendar links. Current and upcoming events
+Apple / Outlook and Google add-to-calendar links. The pop-up shows the full
+description with the simple Markdown organizers use in Memml (bold, italic,
+links, lists, headings, and quotes), and web addresses and email addresses in
+it become clickable links, as on memml.com. Cards and rows show a short
+plain-text summary of the description without the formatting marks. Current and upcoming events
 also show a Join online action when the feed supplies an online meeting URL.
 When an organizer advertises RSVP in Memml, upcoming events show an RSVP button
 that links to the Memml RSVP page, with the organizer's capacity wording beside
@@ -265,6 +269,15 @@ Events and Volunteer opportunities each have their own choice, and a block or
 shortcode can make its own. If Memml is temporarily unreachable, visitors see a
 short "temporarily unavailable" note instead, so an outage never looks like an
 empty calendar.
+
+= Can event descriptions include links and formatting? =
+
+Yes. Descriptions written in Memml can use simple Markdown such as `**bold**`,
+`*italic*`, `[link text](https://example.com)`, lists, headings, and quotes,
+and a plain web address or email address becomes a clickable link. The details
+pop-up shows that formatting, with web links opening in a new tab; cards and
+rows show a plain-text summary. HTML in a description is shown as text, and only
+web and email links are created.
 
 = Can I show only the next few events? =
 

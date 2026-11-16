@@ -25,6 +25,7 @@ define( 'MEMML_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 require_once MEMML_PLUGIN_DIR . 'includes/class-feed-client.php';
 require_once MEMML_PLUGIN_DIR . 'includes/class-page-cache.php';
+require_once MEMML_PLUGIN_DIR . 'includes/class-markdown.php';
 require_once MEMML_PLUGIN_DIR . 'includes/class-settings.php';
 require_once MEMML_PLUGIN_DIR . 'includes/class-renderer.php';
 require_once MEMML_PLUGIN_DIR . 'includes/class-plugin.php';

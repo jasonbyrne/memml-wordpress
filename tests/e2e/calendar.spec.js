@@ -92,6 +92,21 @@ test( 'opens an item’s full details in a modal dialog', async ( { page } ) => 
 	);
 	await expect( dialog ).toContainText( 'Use the lot behind the building.' );
 
+	// The description's Markdown and bare URLs render as formatting and
+	// links, and a long URL wraps instead of widening the dialog.
+	await expect(
+		dialog.locator( '.memml-calendar__description strong' )
+	).toHaveText( 'dialog' );
+	const ticketLink = dialog.locator(
+		'.memml-calendar__description a[href^="https://example.com/tickets/"]'
+	);
+	await expect( ticketLink ).toHaveAttribute( 'target', '_blank' );
+	await expect( ticketLink ).toHaveAttribute( 'rel', 'noopener noreferrer' );
+	const overflow = await dialog.evaluate(
+		( element ) => element.scrollWidth - element.clientWidth
+	);
+	expect( overflow ).toBeLessThanOrEqual( 0 );
+
 	await page.keyboard.press( 'Escape' );
 	await expect( dialog ).toBeHidden();
 

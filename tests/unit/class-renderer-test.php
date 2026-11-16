@@ -939,6 +939,39 @@ final class Memml_Renderer_Test extends TestCase {
 	}
 
 	/**
+	 * Cards and rows show a plain-text description summary; the details
+	 * dialog renders its Markdown with links, and hidden descriptions stay
+	 * hidden everywhere.
+	 *
+	 * @return void
+	 */
+	public function test_descriptions_render_markdown_only_in_details() {
+		$timezone = new DateTimeZone( 'UTC' );
+		$event    = array(
+			'title'       => 'Carols & Cocoa',
+			'status'      => 'scheduled',
+			'startsAt'    => '2099-11-28T20:30:00.000Z',
+			'description' => "Kick off the **holiday** season.\n\nMore info:\nhttps://runsignup.com/TicketEvent/CarolsAndCocoa2026",
+		);
+
+		$card    = $this->call_renderer( 'render_event_card', $event, $timezone, false );
+		$row     = $this->call_renderer( 'render_event_row', $event, $timezone, false );
+		$details = $this->call_renderer( 'render_details', $event, 'events', $timezone, false );
+		$summary = '<p class="memml-calendar__description">Kick off the holiday season. More info: https://runsignup.com/TicketEvent/CarolsAndCocoa2026</p>';
+
+		$this->assertStringContainsString( $summary, $card );
+		$this->assertStringContainsString( $summary, $row );
+		$this->assertStringContainsString(
+			'<div class="memml-calendar__description memml-calendar__description--rich"><p>Kick off the <strong>holiday</strong> season.</p><p>More info:<br>' . "\n" . '<a href="https://runsignup.com/TicketEvent/CarolsAndCocoa2026" rel="noopener noreferrer" target="_blank">https://runsignup.com/TicketEvent/CarolsAndCocoa2026</a></p></div>',
+			$details
+		);
+
+		$hidden = $this->call_renderer( 'render_details', $event, 'events', $timezone, false, array( 'show_descriptions' => false ) );
+
+		$this->assertStringNotContainsString( 'memml-calendar__description', $hidden );
+	}
+
+	/**
 	 * Cancelled events keep their calendar and event page links but drop sign-up actions.
 	 *
 	 * @return void

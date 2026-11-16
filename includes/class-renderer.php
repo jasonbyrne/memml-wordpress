@@ -2553,7 +2553,7 @@ final class Memml_Renderer {
 			$badge,
 			esc_html( $title ),
 			$meta,
-			$this->is_visible( $context, 'show_descriptions' ) ? $this->render_description( isset( $item['description'] ) ? $item['description'] : '' ) : '',
+			$this->is_visible( $context, 'show_descriptions' ) ? $this->render_description( isset( $item['description'] ) ? $item['description'] : '', true ) : '',
 			$actions
 		);
 	}
@@ -2901,15 +2901,31 @@ final class Memml_Renderer {
 	}
 
 	/**
-	 * Renders an escaped plain-text description.
+	 * Renders a description written in Markdown.
 	 *
-	 * @param string $description Plain-text description.
+	 * Cards and rows clamp a one-paragraph summary, so they show the
+	 * description as plain text with the Markdown marks removed. The details
+	 * pop-up shows the full description with its formatting and links, as on
+	 * memml.com.
+	 *
+	 * @param string $description Markdown description.
+	 * @param bool   $rich        Whether to render formatting and links.
 	 * @return string
 	 */
-	private function render_description( $description ) {
-		return '' === $description
+	private function render_description( $description, $rich = false ) {
+		if ( $rich ) {
+			$html = Memml_Markdown::to_html( $description );
+
+			return '' === $html
+				? ''
+				: '<div class="memml-calendar__description memml-calendar__description--rich">' . $html . '</div>';
+		}
+
+		$text = Memml_Markdown::to_plain_text( $description );
+
+		return '' === $text
 			? ''
-			: '<p class="memml-calendar__description">' . nl2br( esc_html( $description ) ) . '</p>';
+			: '<p class="memml-calendar__description">' . esc_html( $text ) . '</p>';
 	}
 
 	/**

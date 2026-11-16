@@ -1044,6 +1044,62 @@
 	margin-block-start: 0.25rem;
 }
 
+/* The details pop-up renders the description's Markdown: paragraphs, lists,
+   headings, quotes, code, and links. Long bare URLs wrap instead of widening
+   the dialog. */
+:where(.memml-calendar__description--rich) {
+	overflow-wrap: anywhere;
+}
+
+:where(.memml-calendar__description--rich) > :first-child {
+	margin-block-start: 0;
+}
+
+:where(.memml-calendar__description--rich) > :last-child {
+	margin-block-end: 0;
+}
+
+:where(.memml-calendar__description--rich :is(p, ul, ol, blockquote, pre)) {
+	margin: 0 0 0.75em;
+}
+
+:where(.memml-calendar__description--rich :is(ul, ol)) {
+	padding-inline-start: 1.5em;
+}
+
+:where(.memml-calendar__description--rich li > :is(ul, ol, p)) {
+	margin-block-end: 0.25em;
+}
+
+:where(.memml-calendar__description--rich :is(h4, h5, h6)) {
+	margin: 1em 0 0.5em;
+	color: var(--memml-text);
+	font-size: 1.05em;
+	line-height: 1.3;
+}
+
+:where(.memml-calendar__description--rich blockquote) {
+	padding-inline-start: 0.75em;
+	border-inline-start: 3px solid var(--memml-border);
+	color: var(--memml-muted);
+}
+
+:where(.memml-calendar__description--rich pre) {
+	overflow-x: auto;
+	white-space: pre-wrap;
+}
+
+:where(.memml-calendar__description--rich hr) {
+	margin: 1em 0;
+	border: 0;
+	border-block-start: 1px solid var(--memml-border);
+}
+
+:where(.memml-calendar__description--rich a) {
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+}
+
 :where(.memml-calendar__dialog .memml-calendar__actions) {
 	margin-block-start: 0.25rem;
 	padding-block-start: var(--memml-spacing);

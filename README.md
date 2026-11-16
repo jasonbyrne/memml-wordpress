@@ -351,6 +351,17 @@ supplies an online meeting URL, current and upcoming events also show a
 add-to-calendar actions are omitted after the event's last day in the
 organization's timezone.
 
+Descriptions are Markdown, rendered the same way memml.com renders them
+(GitHub-flavored Markdown with line breaks kept as typed). The details pop-up
+shows bold, italic, links, lists, headings (starting at `h4`, below the pop-up's
+`h3` title), quotes, and code, and turns bare `https://…`, `www.…`, and email
+addresses into links; web links open in a new tab with
+`rel="noopener noreferrer"`. Cards and rows show a one-paragraph plain-text
+summary with the Markdown marks removed, so their line clamp stays intact.
+`Memml_Markdown` (`includes/class-markdown.php`) escapes all source text first
+and only emits its own markup: raw HTML is shown as text, images become links,
+and only `http`, `https`, and `mailto` link targets are allowed.
+
 Events and volunteer opportunities that run across several days show their
 first and last day, such as "Fri, Sep 11 – Sun, Sep 13 · All day", and timed
 items pair each day with its time. Month view places a multi-day item on every
