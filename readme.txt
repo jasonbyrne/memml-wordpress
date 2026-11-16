@@ -4,7 +4,7 @@ Tags: events, calendar, volunteers, nonprofit, memml
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.6.0
+Stable tag: 0.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -293,6 +293,18 @@ Yes. The URL updates as visitors use enabled calendar, layout, list-filter, or
 month controls. Copying the current URL preserves those selections for the recipient.
 
 == Changelog ==
+
+= 0.7.0 =
+
+* Event and volunteer descriptions in the details pop-up now show the simple
+  Markdown organizers use in Memml, such as bold, italic, links, lists,
+  headings, and quotes, the same way memml.com shows them. Web addresses and
+  email addresses become clickable links, and web links open in a new tab.
+* Cards and rows show a plain-text summary of the description without
+  Markdown marks.
+* A long description scrolls inside the pop-up, and the close button stays
+  pinned to the top corner while it scrolls. The pop-up also fits above
+  mobile browser toolbars.
 
 = 0.6.0 =
 
