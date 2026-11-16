@@ -99,7 +99,9 @@ Apple / Outlook and Google add-to-calendar links. The pop-up shows the full
 description with the simple Markdown organizers use in Memml (bold, italic,
 links, lists, headings, and quotes), and web addresses and email addresses in
 it become clickable links, as on memml.com. Cards and rows show a short
-plain-text summary of the description without the formatting marks. Current and upcoming events
+plain-text summary of the description without the formatting marks. A long
+description scrolls inside the pop-up, and its close button stays in view.
+Current and upcoming events
 also show a Join online action when the feed supplies an online meeting URL.
 When an organizer advertises RSVP in Memml, upcoming events show an RSVP button
 that links to the Memml RSVP page, with the organizer's capacity wording beside

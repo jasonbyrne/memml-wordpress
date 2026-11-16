@@ -358,6 +358,9 @@ shows bold, italic, links, lists, headings (starting at `h4`, below the pop-up's
 addresses into links; web links open in a new tab with
 `rel="noopener noreferrer"`. Cards and rows show a one-paragraph plain-text
 summary with the Markdown marks removed, so their line clamp stays intact.
+A long description scrolls inside the pop-up, which fits the visible screen
+(including mobile browser toolbars), and its close button stays pinned to the
+top corner while it scrolls.
 `Memml_Markdown` (`includes/class-markdown.php`) escapes all source text first
 and only emits its own markup: raw HTML is shown as text, images become links,
 and only `http`, `https`, and `mailto` link targets are allowed.

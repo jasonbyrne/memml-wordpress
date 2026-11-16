@@ -121,6 +121,57 @@ test( 'opens an item’s full details in a modal dialog', async ( { page } ) => 
 	await expect( dialog ).toBeHidden();
 } );
 
+test( 'keeps the close button in reach while a long description scrolls', async ( {
+	page,
+} ) => {
+	await page.setViewportSize( { width: 390, height: 700 } );
+	await page.goto( '/tests/e2e/fixture.html' );
+
+	const main = page.locator( '[data-memml-url-prefix="memml_main_"]' );
+	const dialog = main.locator( 'dialog.memml-calendar__dialog' );
+
+	await main
+		.locator( '[data-memml-details] .memml-calendar__description' )
+		.evaluate( ( description ) => {
+			for ( let index = 1; index <= 15; index++ ) {
+				const paragraph =
+					description.ownerDocument.createElement( 'p' );
+
+				paragraph.textContent = `Paragraph ${ index } of a long description that needs scrolling.`;
+				description.append( paragraph );
+			}
+		} );
+
+	await main.getByRole( 'button', { name: 'Upcoming event' } ).click();
+	await expect( dialog ).toBeVisible();
+
+	const close = dialog.getByRole( 'button', { name: 'Close' } );
+	const restingOffset = await close.evaluate(
+		( button ) =>
+			button.getBoundingClientRect().top -
+			button.closest( 'dialog' ).getBoundingClientRect().top
+	);
+
+	await dialog.evaluate( ( element ) =>
+		element.scrollTo( 0, element.scrollHeight )
+	);
+
+	const scrolled = await dialog.evaluate( ( element ) => ( {
+		scrollTop: element.scrollTop,
+		offset:
+			element
+				.querySelector( '.memml-calendar__dialog-close' )
+				.getBoundingClientRect().top -
+			element.getBoundingClientRect().top,
+	} ) );
+
+	expect( scrolled.scrollTop ).toBeGreaterThan( 0 );
+	expect( Math.abs( scrolled.offset - restingOffset ) ).toBeLessThan( 1 );
+
+	await close.click();
+	await expect( dialog ).toBeHidden();
+} );
+
 test( 'renders structured venue data without turning its map link into a dialog opener', async ( {
 	page,
 } ) => {
